@@ -1,0 +1,12 @@
+package build
+
+import mill._
+import mill.scalalib._
+
+object `package` extends RootModule with ScalaModule {
+  override def scalaVersion = "3.3.6"
+
+  def ivyDeps = Agg(
+    ivy"com.mchange::sqlutil-scala:0.0.2-SNAPSHOT",
+  )
+}
