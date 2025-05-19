@@ -48,7 +48,8 @@ object PgSchema:
         override val Create =
           """|CREATE TABLE post (
              |  destination_id        INTEGER,
-             |  post_id               VARCHAR(256),
+             |  post_id               INTEGER,
+             |  post_anchor           VARCHAR(256),
              |  content_type          VARCHAR(128),
              |  title                 VARCHAR(1024),
              |  sprout                BOOLEAN,
@@ -71,7 +72,7 @@ object PgSchema:
         override val Create =
           """|CREATE TABLE post_author (
              |  destination_id           INTEGER,
-             |  post_id                  VARCHAR(256),
+             |  post_id                  INTEGER,
              |  order                    INTEGER,
              |  full_name                VARCHAR(2048),
              |  PRIMARY KEY ( destination_id, post_id, order ),
@@ -82,29 +83,42 @@ object PgSchema:
         override val Create =
           """|CREATE TABLE post_revision (
              |  destination_id INTEGER,
-             |  post_id        VARCHAR(256),
+             |  post_id        INTEGER,
              |  save_time      TIMESTAMP,
              |  body           TEXT,
              |  PRIMARY KEY ( destination_id, post_id, save_time )
              |  FOREIGN KEY(destination_id, post_id) REFERENCES post(destination_id, post_id)
              |)""".stripMargin
       end PostRevision
-      object PostHistory extends Creatable:
+      object PostPublicationHistory extends Creatable:
         override val Create =
-          """|CREATE TABLE post_history (
+          """|CREATE TABLE post_publication_history (
              |  destination_id           INTEGER,
-             |  post_id                  VARCHAR(256),
-             |  update_time              TIMESTAMP,
+             |  post_id                  INTEGER,
              |  save_time                TIMESTAMP,
+             |  update_time              TIMESTAMP,
              |  major_update_description VARCHAR(2048),
              |  PRIMARY KEY ( destination_id, post_id, update_time )
              |  FOREIGN KEY(destination_id, post_id, save_time) REFERENCES post_revision(destination_id, post_id, save_time)
              |)""".stripMargin
-      end PostHistory
+      end PostPublicationHistory
+      object PostMedia extends Creatable:
+        override val Create =
+          """|CREATE TABLE post_media (
+             |  destination_id INTEGER,
+             |  post_id        INTEGER,
+             |  media_name     VARCHAR(1024),
+             |  PRIMARY KEY ( destination_id, post_id, media_name ),
+             |  FOREIGN KEY(destination_id, post_id) references post(destination_id, post_id)
+             |)""".stripMargin
+      end PostMedia
     end Table
     object Sequence:
       object DestinationId extends Creatable:
-        protected val Create = "CREATE SEQUENCE destination_seq AS INTEGER"
+        protected val Create = "CREATE SEQUENCE destination_id_seq AS INTEGER"
       end DestinationId
+      object PostId extends Creatable:
+        protected val Create = "CREATE SEQUENCE post_id_seq AS INTEGER"
+      end PostId
     end Sequence
   end V1
