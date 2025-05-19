@@ -39,7 +39,7 @@ object PgSchema:
     override val Version = 1
     object Table:
       object Destination extends Creatable:
-        override val Create = "CREATE TABLE destination ( id VARCHAR(256) PRIMARY KEY, auth CHAR(60) )"
+        override val Create = "CREATE TABLE destination ( id INTEGER PRIMARY KEY, seismic_host VARCHAR(1024), seismic_port INTEGER, seismic_auth CHAR(60) )"
       end Destination
       object User extends Creatable:
         override val Create = "CREATE TABLE user ( id VARCHAR(256) PRIMARY KEY, full_name VARCHAR(2048), auth CHAR(60) )"
@@ -47,7 +47,7 @@ object PgSchema:
       object Post extends Creatable:
         override val Create =
           """|CREATE TABLE post (
-             |  destination_id        VARCHAR(256),
+             |  destination_id        INTEGER,
              |  post_id               VARCHAR(256),
              |  content_type          VARCHAR(128),
              |  title                 VARCHAR(1024),
@@ -70,7 +70,7 @@ object PgSchema:
          */
         override val Create =
           """|CREATE TABLE post_author (
-             |  destination_id           VARCHAR(256),
+             |  destination_id           INTEGER,
              |  post_id                  VARCHAR(256),
              |  order                    INTEGER,
              |  full_name                VARCHAR(2048),
@@ -81,7 +81,7 @@ object PgSchema:
       object PostRevision extends Creatable:
         override val Create =
           """|CREATE TABLE post_revision (
-             |  destination_id VARCHAR(256),
+             |  destination_id INTEGER,
              |  post_id        VARCHAR(256),
              |  save_time      TIMESTAMP,
              |  body           TEXT,
@@ -92,7 +92,7 @@ object PgSchema:
       object PostHistory extends Creatable:
         override val Create =
           """|CREATE TABLE post_history (
-             |  destination_id           VARCHAR(256),
+             |  destination_id           INTEGER,
              |  post_id                  VARCHAR(256),
              |  update_time              TIMESTAMP,
              |  save_time                TIMESTAMP,
@@ -102,4 +102,9 @@ object PgSchema:
              |)""".stripMargin
       end PostHistory
     end Table
+    object Sequence:
+      object DestinationId extends Creatable:
+        protected val Create = "CREATE SEQUENCE destination_seq AS INTEGER"
+      end DestinationId
+    end Sequence
   end V1
