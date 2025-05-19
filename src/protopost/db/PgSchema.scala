@@ -44,13 +44,22 @@ object PgSchema:
       object User extends Creatable:
         override val Create = "CREATE TABLE user ( id VARCHAR(256) PRIMARY KEY, full_name VARCHAR(2048), auth CHAR(60) )"
       end User
+      object DestinationUser extends Creatable:
+        override val Create =
+          """|CREATE TABLE destination_user (
+             |  destination_id INTEGER,
+             |  user_id        VARCHAR(256)
+             |  PRIMARY KEY ( destination_id, user_id ),
+             |  FOREIGN KEY ( destination_id ) references destination(id),
+             |  FOREIGN KEY ( user_id ) references user(id)
+             |)""".stripMargin
+      end DestinationUser
       object Post extends Creatable:
         override val Create =
           """|CREATE TABLE post (
              |  destination_id        INTEGER,
              |  post_id               INTEGER,
              |  post_anchor           VARCHAR(256),
-             |  content_type          VARCHAR(128),
              |  title                 VARCHAR(1024),
              |  sprout                BOOLEAN,
              |  in_reply_to_href      VARCHAR(1024),
@@ -85,6 +94,7 @@ object PgSchema:
              |  destination_id INTEGER,
              |  post_id        INTEGER,
              |  save_time      TIMESTAMP,
+             |  content_type   VARCHAR(256),
              |  body           TEXT,
              |  PRIMARY KEY ( destination_id, post_id, save_time )
              |  FOREIGN KEY(destination_id, post_id) REFERENCES post(destination_id, post_id)
@@ -108,6 +118,7 @@ object PgSchema:
              |  destination_id INTEGER,
              |  post_id        INTEGER,
              |  media_name     VARCHAR(1024),
+             |  media          OID,
              |  PRIMARY KEY ( destination_id, post_id, media_name ),
              |  FOREIGN KEY(destination_id, post_id) references post(destination_id, post_id)
              |)""".stripMargin
