@@ -3,10 +3,25 @@ package build
 import mill._
 import mill.scalalib._
 
-object `package` extends RootModule with ScalaModule {
+import $ivy.`com.lihaoyi::mill-contrib-buildinfo:`
+import mill.contrib.buildinfo.BuildInfo
+
+object `package` extends RootModule with ScalaModule with BuildInfo {
+  val protopostVersion = "0.0.1-SNAPSHOT"
+
   override def scalaVersion = "3.3.6"
 
+  def buildInfoMembers = Seq(
+    BuildInfo.Value("version", protopostVersion)
+  )
+  def buildInfoPackageName = "protopost"
+
+  val SqlutilScalaVersion = "0.0.3-SNAPSHOT"
+  val LogadapterScalaVersion = "0.0.1"
   def ivyDeps = Agg(
-    ivy"com.mchange::sqlutil-scala:0.0.2-SNAPSHOT",
+    ivy"com.mchange::logadapter-scala-scribe:$LogadapterScalaVersion",
+    ivy"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
+    ivy"com.mchange::sqlutil-scala:$SqlutilScalaVersion",
+    ivy"com.mchange::sqlutil-scala-zio:$SqlutilScalaVersion",
   )
 }

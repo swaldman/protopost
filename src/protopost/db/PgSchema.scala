@@ -5,6 +5,7 @@ import java.sql.*
 import scala.util.Using
 
 import com.mchange.sc.sqlutil.*
+import com.mchange.sc.sqlutil.migrate.{Schema,MetadataKey}
 
 object PgSchema:
   object Unversioned:
@@ -31,11 +32,9 @@ object PgSchema:
             Using.resource( ps.executeQuery() ): rs =>
               zeroOrOneResult("select-metadata", rs)( _.getString(1) )
 
-  trait Base:
-    def Version : Int
-  object V0 extends Base: // contains unversioned schema only
+  object V0 extends Schema: // contains unversioned schema only
     override val Version = 0
-  object V1 extends Base:
+  object V1 extends Schema:
     override val Version = 1
     object Table:
       object Destination extends Creatable:
@@ -65,6 +64,7 @@ object PgSchema:
              |  in_reply_to_href      VARCHAR(1024),
              |  in_reply_to_mime_type VARCHAR(128),
              |  in_reply_to_guid      VARCHAR(1024),
+             |  content_type          VARCHAR(256),
              |  PRIMARY KEY ( destination_id, post_id ),
              |  FOREIGN KEY(destination_id) REFERENCES destination(id)
              |)""".stripMargin
@@ -94,7 +94,6 @@ object PgSchema:
              |  destination_id INTEGER,
              |  post_id        INTEGER,
              |  save_time      TIMESTAMP,
-             |  content_type   VARCHAR(256),
              |  body           TEXT,
              |  PRIMARY KEY ( destination_id, post_id, save_time )
              |  FOREIGN KEY(destination_id, post_id) REFERENCES post(destination_id, post_id)
@@ -108,6 +107,7 @@ object PgSchema:
              |  save_time                TIMESTAMP,
              |  update_time              TIMESTAMP,
              |  major_update_description VARCHAR(2048),
+             |  update_confirmation_time TIMESTAMP,
              |  PRIMARY KEY ( destination_id, post_id, update_time )
              |  FOREIGN KEY(destination_id, post_id, save_time) REFERENCES post_revision(destination_id, post_id, save_time)
              |)""".stripMargin

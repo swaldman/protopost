@@ -1,4 +1,4 @@
 package protopost.db
 
-enum MetadataKey:
-  case SchemaVersion
+val CoreScalaPlaceholder = "Suppress warnings about empty compilation unit. Eventually I'll put stuff here, I bet."
+
