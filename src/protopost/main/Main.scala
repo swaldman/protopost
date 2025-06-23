@@ -2,10 +2,13 @@ package protopost.main
 
 import protopost.LoggingApi.*
 
+import com.monovore.decline.Help
+
 object Main extends SelfLogging:
   private final case class Prerequisites( configPropertiesFilePath : Option[os.Path], cc : ConfiguredCommand )
 
-  private def parsePrerequisites( args : IndexedSeq[String], env : Map[String,String] ) : Either[String,Prerequisites] = ???
+  private def parsePrerequisites( args : IndexedSeq[String], env : Map[String,String] ) : Either[Help,Prerequisites] =
+    Decline.protopost.parse( args, env ).map( (p, cc) => Prerequisites(p, cc) )
 
   def main( args : Array[String] ) : Unit =
     parsePrerequisites( args.toIndexedSeq, sys.env ) match

@@ -9,7 +9,7 @@ import zio.*
 
 import scala.util.Using
 
-import protopost.{ExternalConfig,MissingConfig}
+import protopost.{BuildInfo,ExternalConfig,MissingConfig}
 import protopost.LoggingApi.*
 
 class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Postgres[PgSchema.V1.type], SelfLogging:
@@ -36,12 +36,14 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
     def upMigrateFrom_New() : Task[Unit] =
       TRACE.log( "upMigrateFrom_New()" )
       withConnectionTransactional( ds ): conn =>
+        TRACE.log( "Creating metadata table..." )
         PgSchema.Unversioned.Table.Metadata.create( conn )
         insertMetadataKeys(
           conn,
           (MetadataKey.SchemaVersion, "0"),
           (MetadataKey.CreatorAppVersion, BuildInfo.version)
         )
+        TRACE.log( "Created metadata table, set version to 0." )
     def upMigrateFrom_0() : Task[Unit] =
       TRACE.log( "upMigrateFrom_0()" )
       withConnectionTransactional( ds ): conn =>

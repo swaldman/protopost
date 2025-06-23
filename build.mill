@@ -21,10 +21,13 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
   val LogadapterScalaVersion = "0.0.1"
   def ivyDeps = Agg(
     ivy"com.mchange:c3p0-loom:0.11.2",
-    ivy"com.mchange::logadapter-scala-scribe:$LogadapterScalaVersion",
+    ivy"com.mchange::logadapter-scala-log4j2:$LogadapterScalaVersion",
     ivy"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
     ivy"com.mchange::sqlutil-scala:$SqlutilScalaVersion",
     ivy"com.mchange::sqlutil-scala-zio:$SqlutilScalaVersion",
-    ivy"com.mchange::mill-daemon-util:0.1.2"
+    ivy"com.mchange::mill-daemon-util:0.1.2",
+    ivy"com.mchange::conveniences:0.0.5",
+    ivy"com.monovore::decline:2.5.0",
+    ivy"org.postgresql:postgresql:42.7.7"
   )
 }
