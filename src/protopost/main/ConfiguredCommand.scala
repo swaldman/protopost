@@ -33,5 +33,5 @@ object ConfiguredCommand extends SelfLogging:
     end zcommand
 
 sealed trait ConfiguredCommand:
-  def zcommand : ZIO[ExternalConfig & PgSchemaManager & DataSource, Throwable, Int]
+  def zcommand : ZIO[ShutdownHooks & ExternalConfig & PgSchemaManager & DataSource, Throwable, Int]
 

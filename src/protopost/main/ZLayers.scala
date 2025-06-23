@@ -7,19 +7,23 @@ import zio.*
 import protopost.{ExternalConfig,InsecureConfigurationPropertiesFile,MissingConfig}
 
 import com.mchange.conveniences.javautil.*
+import com.mchange.v2.c3p0.*
+import javax.sql.DataSource
+
+import com.mchange.milldaemon.util.PidFileManager
+
+import protopost.db.PgSchemaManager
 
 object ZLayers:
-  
-  val AcceptableConfigPropertiesPerms =
+
+  private val AcceptableConfigPropertiesPerms =
     val acceptablePermStrings = Set("r--------","rw-------")
     acceptablePermStrings.map( os.PermSet.fromString )
 
-  val DefaultConfigPropertiesFileName    : String = "protopost.properties"
-  
-  val DefaultConfigPropertiesSearchPaths : List[os.Path] =
-    ((os.pwd / DefaultConfigPropertiesFileName).toString :: s"/etc/protopost/${DefaultConfigPropertiesFileName}" :: s"/usr/local/etc/protopost/${DefaultConfigPropertiesFileName}" :: Nil).map( os.Path.apply )
+  private val DefaultConfigPropertiesFileName    : String = "protopost.properties"
 
-  def shutdownHooks() : ZLayer[Any, Throwable, ShutdownHooks] = ???
+  private val DefaultConfigPropertiesSearchPaths : List[os.Path] =
+    ((os.pwd / DefaultConfigPropertiesFileName).toString :: s"/etc/protopost/${DefaultConfigPropertiesFileName}" :: s"/usr/local/etc/protopost/${DefaultConfigPropertiesFileName}" :: Nil).map( os.Path.apply )
 
   private def loadConfigProperties(configPropertiesFilePath : Option[os.Path]) : ConfigProperties =
     val existing =
@@ -36,8 +40,26 @@ object ZLayers:
       val ap = AcceptableConfigPropertiesPerms.map(str => s"'${str}'").mkString(", ")
       throw new InsecureConfigurationPropertiesFile( s"Configuraton properties file '${existing}' is insecure. It has permissions '${perms}', must be one of ${ap}" )
 
-  def configProperties(configPropertiesFilePath : Option[os.Path]) : ZLayer[Option[os.Path], Throwable, ConfigProperties] = ZLayer.fromFunction( loadConfigProperties _ )
+  private def createDataSource( configProperties : ConfigProperties ) : DataSource =
+    val nascent = new ComboPooledDataSource()
+    DataSources.overwriteC3P0PrefixedProperties( nascent, configProperties.props )
+    nascent
 
-  def externalConfig(configProperties : ConfigProperties) : ZLayer[ConfigProperties, Throwable, ExternalConfig] = ZLayer.fromFunction( (cp : ConfigProperties) => ExternalConfig.fromProperties(cp.props) )
+  private def createPgSchemaManager( externalConfig : ExternalConfig ) : PgSchemaManager = new PgSchemaManager( externalConfig )
+
+  def configProperties( configPropertiesFilePath : Option[os.Path] ) : ZLayer[Any, Throwable, ConfigProperties] =
+    ZLayer.fromZIO:
+      ZIO.attempt(loadConfigProperties(configPropertiesFilePath))
+
+  val shutdownHooks : ZLayer[Any, Throwable, ShutdownHooks] =
+    ZLayer.fromZIO:
+      ZIO.attempt( PidFileManager.installShutdownHookCarefulDelete() ) *> ZIO.succeed( new ShutdownHooks() )
+
+  val externalConfig : ZLayer[ConfigProperties, Throwable, ExternalConfig] = ZLayer.fromFunction( (cp : ConfigProperties) => ExternalConfig.fromProperties(cp.props) )
+
+  val dataSource : ZLayer[ConfigProperties, Throwable, DataSource] = ZLayer.fromFunction( createDataSource _ )
+
+  val pgSchemaManager : ZLayer[ExternalConfig, Throwable, PgSchemaManager] = ZLayer.fromFunction( createPgSchemaManager _ )
+
 
 

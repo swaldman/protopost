@@ -10,18 +10,21 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
   val protopostVersion = "0.0.1-SNAPSHOT"
 
   override def scalaVersion = "3.3.6"
+  override def scalacOptions = Seq("-deprecation")
 
   def buildInfoMembers = Seq(
     BuildInfo.Value("version", protopostVersion)
   )
   def buildInfoPackageName = "protopost"
 
-  val SqlutilScalaVersion = "0.0.4-SNAPSHOT"
+  val SqlutilScalaVersion = "0.0.4"
   val LogadapterScalaVersion = "0.0.1"
   def ivyDeps = Agg(
+    ivy"com.mchange:c3p0-loom:0.11.2",
     ivy"com.mchange::logadapter-scala-scribe:$LogadapterScalaVersion",
     ivy"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
     ivy"com.mchange::sqlutil-scala:$SqlutilScalaVersion",
     ivy"com.mchange::sqlutil-scala-zio:$SqlutilScalaVersion",
+    ivy"com.mchange::mill-daemon-util:0.1.2"
   )
 }
