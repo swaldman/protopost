@@ -28,5 +28,5 @@ object Main extends SelfLogging:
         val completionValue =
           Unsafe.unsafely:
             Runtime.default.unsafe.run(task).getOrThrow()
-        TRACE.log(s"Feedletter process ended with completion value: ${completionValue}")
+        TRACE.log(s"protopost process ended with completion value: ${completionValue}")
 end Main

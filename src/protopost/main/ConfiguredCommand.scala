@@ -4,7 +4,7 @@ import javax.sql.DataSource
 
 import zio.*
 import protopost.LoggingApi.*
-import protopost.ExternalConfig
+import protopost.{ExternalConfig,ProtopostException}
 import protopost.db.PgSchemaManager
 
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus
@@ -16,20 +16,12 @@ object ConfiguredCommand extends SelfLogging:
         case DbVersionStatus.SchemaMetadataNotFound => // as expected, the database is not initialized
           for
             _ <- INFO.zlog("Initializing protopost database.")
-            _ <- sm.upMigrate( ds, from=None )
+            _ <- sm.migrate( ds )
           yield 0
-        case DbVersionStatus.SchemaMetadataDisordered( message : String ) =>
-          for
-            _ <- FATAL.zlog(s"Unexpected or broken schema: ${message}")
-          yield 10
-        case DbVersionStatus.ConnectionFailed =>
-          for
-            _ <- FATAL.zlog(s"Could not connect to the database.")
-          yield 11
-        case _ =>
-          for
-            _ <- INFO.zlog("The database appears already to be initialized.")
-          yield 0
+        case DbVersionStatus.Current(_) =>
+          INFO.zlog("The database is already initialized and up-to-date." ) *> ZIO.succeed(0)
+        case other =>
+          other.errMessage.fold( SEVERE.zlog( s"Could not initialize the database, status: ${vstatus}" ) )(msg => SEVERE.zlog(msg)) *> ZIO.succeed(10)
     def zcommand =
       for
         sm      <- ZIO.service[PgSchemaManager]
