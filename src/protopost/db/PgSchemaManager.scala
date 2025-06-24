@@ -32,10 +32,10 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
 
   val TargetSchemaVersion = LatestSchema.Version
 
-  override def upMigrate(ds: javax.sql.DataSource, from: Option[Int]): zio.Task[Unit] =
+  override def upMigrate(conn : Connection, from : Option[Int]): zio.Task[Unit] =
     def upMigrateFrom_New() : Task[Unit] =
-      TRACE.log( "upMigrateFrom_New()" )
-      withConnectionTransactional( ds ): conn =>
+      ZIO.attemptBlocking:
+        TRACE.log( "upMigrateFrom_New()" )
         TRACE.log( "Creating metadata table..." )
         PgSchema.Unversioned.Table.Metadata.create( conn )
         insertMetadataKeys(
@@ -45,8 +45,8 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
         )
         TRACE.log( "Created metadata table, set version to 0." )
     def upMigrateFrom_0() : Task[Unit] =
-      TRACE.log( "upMigrateFrom_0()" )
-      withConnectionTransactional( ds ): conn =>
+      ZIO.attemptBlocking:
+        TRACE.log( "upMigrateFrom_0()" )
         Using.resource( conn.createStatement() ): stmt =>
           PgSchema.V1.Table.Destination.create( stmt )
           PgSchema.V1.Table.Poster.create( stmt )

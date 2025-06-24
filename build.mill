@@ -17,7 +17,7 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
   )
   def buildInfoPackageName = "protopost"
 
-  val SqlutilScalaVersion = "0.0.4"
+  val SqlutilScalaVersion = "0.0.5-SNAPSHOT"
   val LogadapterScalaVersion = "0.0.1"
   def ivyDeps = Agg(
     ivy"com.mchange:c3p0-loom:0.11.2",

@@ -1,5 +1,6 @@
 package protopost.main
 
+import java.sql.Connection
 import javax.sql.DataSource
 
 import zio.*
@@ -11,12 +12,12 @@ import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
 object ConfiguredCommand extends SelfLogging:
   object DbInit extends ConfiguredCommand:
-    private def taskForStatus( sm : PgSchemaManager, ds : DataSource, vstatus : DbVersionStatus ) : Task[Int] =
+    private def taskForStatus( sm : PgSchemaManager, conn : Connection, vstatus : DbVersionStatus ) : Task[Int] =
       vstatus match
         case DbVersionStatus.SchemaMetadataNotFound => // as expected, the database is not initialized
           for
             _ <- INFO.zlog("Initializing protopost database.")
-            _ <- sm.migrate( ds )
+            _ <- sm.migrate( conn )
           yield 0
         case DbVersionStatus.Current(_) =>
           INFO.zlog("The database is already initialized and up-to-date." ) *> ZIO.succeed(0)
@@ -26,8 +27,9 @@ object ConfiguredCommand extends SelfLogging:
       for
         sm      <- ZIO.service[PgSchemaManager]
         ds      <- ZIO.service[DataSource]
-        vstatus <- sm.dbVersionStatus(ds)
-        code    <- taskForStatus( sm, ds, vstatus )
+        conn    =  ds.getConnection()
+        vstatus <- sm.dbVersionStatus(conn)
+        code    <- taskForStatus( sm, conn, vstatus )
       yield code
     end zcommand
 
