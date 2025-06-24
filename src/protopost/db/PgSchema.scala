@@ -40,19 +40,19 @@ object PgSchema:
       object Destination extends Creatable:
         override val Create = "CREATE TABLE destination ( id INTEGER PRIMARY KEY, seismic_host VARCHAR(1024), seismic_port INTEGER, seismic_auth CHAR(60) )"
       end Destination
-      object User extends Creatable:
-        override val Create = "CREATE TABLE user ( id VARCHAR(256) PRIMARY KEY, full_name VARCHAR(2048), auth CHAR(60) )"
-      end User
-      object DestinationUser extends Creatable:
+      object Poster extends Creatable:
+        override val Create = "CREATE TABLE poster ( id VARCHAR(256) PRIMARY KEY, full_name VARCHAR(2048), auth CHAR(60) )"
+      end Poster
+      object DestinationPoster extends Creatable:
         override val Create =
-          """|CREATE TABLE destination_user (
+          """|CREATE TABLE destination_poster (
              |  destination_id INTEGER,
-             |  user_id        VARCHAR(256)
-             |  PRIMARY KEY ( destination_id, user_id ),
+             |  poster_id      VARCHAR(256),
+             |  PRIMARY KEY ( destination_id, poster_id ),
              |  FOREIGN KEY ( destination_id ) references destination(id),
-             |  FOREIGN KEY ( user_id ) references user(id)
+             |  FOREIGN KEY ( poster_id ) references poster(id)
              |)""".stripMargin
-      end DestinationUser
+      end DestinationPoster
       object Post extends Creatable:
         override val Create =
           """|CREATE TABLE post (
@@ -72,19 +72,19 @@ object PgSchema:
       object PostAuthor extends Creatable:
         /*
          *  Note that though the types match, full_name is NOT a
-         *  foreign key referencing user.full_name. As a convenience,
-         *  we may default to assuming that users are (first) author,
-         *  but users are free to collaborate or publish on behalf of others.
+         *  foreign key referencing poster.full_name. As a convenience,
+         *  we may default to assuming that posters are (first) author,
+         *  but posters are free to collaborate or publish on behalf of others.
          *  So there can be multiple authors not associated with registered
-         *  users.
+         *  posters.
          */
         override val Create =
           """|CREATE TABLE post_author (
              |  destination_id           INTEGER,
              |  post_id                  INTEGER,
-             |  order                    INTEGER,
+             |  placement                INTEGER,
              |  full_name                VARCHAR(2048),
-             |  PRIMARY KEY ( destination_id, post_id, order ),
+             |  PRIMARY KEY ( destination_id, post_id, placement ),
              |  FOREIGN KEY(destination_id, post_id) REFERENCES post(destination_id, post_id)
              |)""".stripMargin
       end PostAuthor
@@ -95,7 +95,7 @@ object PgSchema:
              |  post_id        INTEGER,
              |  save_time      TIMESTAMP,
              |  body           TEXT,
-             |  PRIMARY KEY ( destination_id, post_id, save_time )
+             |  PRIMARY KEY ( destination_id, post_id, save_time ),
              |  FOREIGN KEY(destination_id, post_id) REFERENCES post(destination_id, post_id)
              |)""".stripMargin
       end PostRevision
@@ -108,7 +108,7 @@ object PgSchema:
              |  update_time              TIMESTAMP,
              |  major_update_description VARCHAR(2048),
              |  update_confirmation_time TIMESTAMP,
-             |  PRIMARY KEY ( destination_id, post_id, update_time )
+             |  PRIMARY KEY ( destination_id, post_id, update_time ),
              |  FOREIGN KEY(destination_id, post_id, save_time) REFERENCES post_revision(destination_id, post_id, save_time)
              |)""".stripMargin
       end PostPublicationHistory

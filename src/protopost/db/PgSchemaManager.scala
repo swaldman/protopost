@@ -49,8 +49,8 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
       withConnectionTransactional( ds ): conn =>
         Using.resource( conn.createStatement() ): stmt =>
           PgSchema.V1.Table.Destination.create( stmt )
-          PgSchema.V1.Table.User.create( stmt )
-          PgSchema.V1.Table.DestinationUser.create( stmt )
+          PgSchema.V1.Table.Poster.create( stmt )
+          PgSchema.V1.Table.DestinationPoster.create( stmt )
           PgSchema.V1.Table.Post.create( stmt )
           PgSchema.V1.Table.PostAuthor.create( stmt )
           PgSchema.V1.Table.PostRevision.create( stmt )
