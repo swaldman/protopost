@@ -11,7 +11,7 @@ import protopost.db.PgSchemaManager
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
 object ConfiguredCommand extends SelfLogging:
-  object DbInit extends ConfiguredCommand:
+  case object DbInit extends ConfiguredCommand:
     private def taskForStatus( sm : PgSchemaManager, conn : Connection, vstatus : DbVersionStatus ) : Task[Int] =
       vstatus match
         case DbVersionStatus.SchemaMetadataNotFound => // as expected, the database is not initialized

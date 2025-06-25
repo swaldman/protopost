@@ -1,5 +1,7 @@
 package protopost.main
 
+import zio.*
+
 import protopost.LoggingApi.*
 
 import com.monovore.decline.Help
@@ -14,9 +16,8 @@ object Main extends SelfLogging:
     parsePrerequisites( args.toIndexedSeq, sys.env ) match
       case Left(help) =>
         println(help)
-        System.exit(1)
+        java.lang.System.exit(1)
       case Right( Prerequisites( configPropertiesFilePath : Option[os.Path], cc : ConfiguredCommand ) ) =>
-        import zio.*
         val task =
           cc.zcommand.provide(
             ZLayers.configProperties( configPropertiesFilePath ),
@@ -29,4 +30,5 @@ object Main extends SelfLogging:
           Unsafe.unsafely:
             Runtime.default.unsafe.run(task).getOrThrow()
         TRACE.log(s"protopost process ended with completion value: ${completionValue}")
+        java.lang.System.exit( completionValue )
 end Main
