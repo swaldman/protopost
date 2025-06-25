@@ -26,7 +26,7 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
   override def hasMetadataTable( conn : Connection ) : Boolean = Using.resource( conn.getMetaData().getTables(null,null,PgSchema.Unversioned.Table.Metadata.Name,null) )( _.next() )
 
   override def fetchDumpDir(conn: java.sql.Connection): zio.Task[Option[os.Path]] = ZIO.attemptBlocking:
-    Some( os.Path( externalConfig.get( ExternalConfig.Key.`protopost.DatabaseDumpDir` ).getOrElse( throw new MissingConfig( s"Cannot find database dump dir; '${ExternalConfig.Key.`protopost.DatabaseDumpDir`}' not configured." ) ) ) )
+    Some( os.Path( externalConfig.get( ExternalConfig.Key.`protopost.database-dump-dir` ).getOrElse( throw new MissingConfig( s"Cannot find database dump dir; '${ExternalConfig.Key.`protopost.database-dump-dir`}' not configured." ) ) ) )
 
   override def runDump( ds : DataSource, mbDbName : Option[String], dumpFile : os.Path ) : Task[Unit] = simpleLocalRunDump( ds, mbDbName, dumpFile )
 
