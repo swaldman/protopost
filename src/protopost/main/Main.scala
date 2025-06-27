@@ -7,7 +7,7 @@ import protopost.LoggingApi.*
 import com.monovore.decline.Help
 
 object Main extends SelfLogging:
-  private final case class Prerequisites( configPropertiesFilePath : Option[os.Path], cc : ConfiguredCommand )
+  private final case class Prerequisites( configPropertiesFilePath : Option[os.Path], command : Precommand | ConfiguredCommand )
 
   private def parsePrerequisites( args : IndexedSeq[String], env : Map[String,String] ) : Either[Help,Prerequisites] =
     Decline.protopost.parse( args, env ).map( (p, cc) => Prerequisites(p, cc) )
@@ -17,6 +17,8 @@ object Main extends SelfLogging:
       case Left(help) =>
         println(help)
         java.lang.System.exit(1)
+      case Right( Prerequisites( configPropertiesFilePath : Option[os.Path], pc : Precommand ) ) =>
+        java.lang.System.exit( pc.execute() )
       case Right( Prerequisites( configPropertiesFilePath : Option[os.Path], cc : ConfiguredCommand ) ) =>
         val task =
           cc.zcommand.provide(

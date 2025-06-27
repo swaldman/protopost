@@ -20,6 +20,10 @@ object Decline:
         val help = "Force migration even if the application can find no recent database dump."
         Opts.flag("force",help=help,short="f").orFalse.map( force => ConfiguredCommand.DbMigrate(force) )
       Command("db-migrate", header=header )( opts )
+    val version =
+      val header = "Print the version of protopost, then exit."
+      val opts = Opts( Precommand.Version )
+      Command("version", header=header )( opts )
   end Subcommand
 
   val protopost =
@@ -32,7 +36,8 @@ object Decline:
       val subcommands = Opts.subcommands(
         Subcommand.dbDump,
         Subcommand.dbInit,
-        Subcommand.dbMigrate
+        Subcommand.dbMigrate,
+        Subcommand.version
       )
       ( config, subcommands ).mapN( (c,sc) => Tuple2( c, sc ) )
     Command(name="protopost", header="Accept and manage web-based posts to Seismic-managed static-site generators.")( opts )  
