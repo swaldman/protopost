@@ -27,7 +27,17 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
     ivy"com.mchange::sqlutil-scala-zio:$SqlutilScalaVersion",
     ivy"com.mchange::mill-daemon-util:0.1.2",
     ivy"com.mchange::conveniences:0.0.5",
+    ivy"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
     ivy"com.monovore::decline:2.5.0",
-    ivy"org.postgresql:postgresql:42.7.7"
+    ivy"org.postgresql:postgresql:42.7.7",
+    ivy"org.bouncycastle:bcprov-jdk18on:1.81"
   )
+
+  object `test-scalacheck` extends ScalaTests with TestModule.ScalaCheck {
+    def ivyDeps = Agg(
+      //ivy"com.lihaoyi::utest:0.8.5",
+      ivy"org.scalacheck::scalacheck:1.18.1",
+    )
+    //def testFramework = "utest.runner.Framework"
+  }
 }
