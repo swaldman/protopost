@@ -22,8 +22,17 @@ object BouncyCastleSecp256r1:
   private val Params = SECNamedCurves.getByName(ECParamBundleName);
   private val Curve = new ECDomainParameters(Params.getCurve(), Params.getG(), Params.getN(), Params.getH());
 
-  private val SignatureAlgoName = "SHA256withPLAIN-ECDSA"
-  
+  // private val SignatureAlgoName = "SHA256withPLAIN-ECDSA"
+
+  // consistent with https://github.com/auth0/java-jwt/blob/master/lib/src/main/java/com/auth0/jwt/algorithms/Algorithm.java
+  // see
+  //   https://stackoverflow.com/questions/39385718/der-decode-ecdsa-signature-in-java/78555671#78555671
+  //   https://stackoverflow.com/questions/34063694/fixed-length-64-bytes-ec-p-256-signature-with-jce
+  // for decoding
+
+  // these signatures do not have a constant length
+  private val SignatureAlgoName = "SHA256withECDSA" 
+
 
   // modified from consuela
   private val ECParamSpec =
@@ -79,5 +88,7 @@ object BouncyCastleSecp256r1:
     val verifier = Signature.getInstance(SignatureAlgoName, Provider)
     verifier.initVerify(publicKey)
     verifier.update(message)
-    verifier.verify(signature)    
+    verifier.verify(signature)
 
+  def sign[T : Byteable]( message : T, privateKey : ECPrivateKey ) : SignatureSHA256withECDSA = SignatureSHA256withECDSA(signToByteArray( message.toByteArray, privateKey ))
+  def verify[T : Byteable]( message : T, signature : SignatureSHA256withECDSA, publicKey : ECPublicKey ) : Boolean = verifySignatureAsByteArray( message.toByteArray, signature.bytes, publicKey )

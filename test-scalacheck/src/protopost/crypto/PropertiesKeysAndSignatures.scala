@@ -28,14 +28,14 @@ object PropertiesKeysAndSignatures extends Properties("Keys And Signatures"):
     BouncyCastleSecp256r1.publicKeyFromS( keyPair(0).getS() ) == keyPair(1)
 
   property("message signatures verify") = forAll: (pvtKeyMessage : (ECPrivateKey, Array[Byte], Array[Byte])) =>
-    val signature = BouncyCastleSecp256r1.signToByteArray( pvtKeyMessage(1), pvtKeyMessage(0) )
+    val signature = BouncyCastleSecp256r1.sign( pvtKeyMessage(1), pvtKeyMessage(0) )
     val publicKey = BouncyCastleSecp256r1.publicKeyFromPrivate( pvtKeyMessage(0) )
-    BouncyCastleSecp256r1.verifySignatureAsByteArray( pvtKeyMessage(1), signature, publicKey )
+    BouncyCastleSecp256r1.verify( pvtKeyMessage(1), signature, publicKey )
 
   property("other message, signatures do not verify") = forAll: (pvtKeyMessage : (ECPrivateKey, Array[Byte], Array[Byte])) =>
-    val signature = BouncyCastleSecp256r1.signToByteArray( pvtKeyMessage(1), pvtKeyMessage(0) )
+    val signature = BouncyCastleSecp256r1.sign( pvtKeyMessage(1), pvtKeyMessage(0) )
     val publicKey = BouncyCastleSecp256r1.publicKeyFromPrivate( pvtKeyMessage(0) )
-    !BouncyCastleSecp256r1.verifySignatureAsByteArray( pvtKeyMessage(2), signature, publicKey )
+    !BouncyCastleSecp256r1.verify( pvtKeyMessage(2), signature, publicKey )
 
 
 
