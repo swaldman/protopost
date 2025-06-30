@@ -30,7 +30,8 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
     ivy"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
     ivy"com.monovore::decline:2.5.0",
     ivy"org.postgresql:postgresql:42.7.7",
-    ivy"org.bouncycastle:bcprov-jdk18on:1.81"
+    ivy"org.bouncycastle:bcprov-jdk18on:1.81",
+    ivy"com.auth0:java-jwt:4.5.0"
   )
 
   object `test-scalacheck` extends ScalaTests with TestModule.ScalaCheck {
