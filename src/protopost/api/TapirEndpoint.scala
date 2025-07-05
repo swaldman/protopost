@@ -1,7 +1,12 @@
 package protopost.api
 
+import zio.*
+
 import sttp.model.StatusCode
 import sttp.tapir.ztapir.*
+import sttp.tapir.json.jsoniter.*
+
+import protopost.{ExternalConfig,Server}
 
 object TapirEndpoint:
 
@@ -13,7 +18,21 @@ object TapirEndpoint:
 
   val Base = endpoint.errorOut(either404or500)
 
-  val Jwks = Base.in("jwks.json")
-  val WellKnownJwks = Base.in(".well-known").in("jwks.json")
+  val RootJwks = Base.in("jwks.json").out(jsonBody[Jwks])
+  val WellKnownJwks = Base.in(".well-known").in("jwks.json").out(jsonBody[Jwks])
+
+  def jwks( externalConfig : ExternalConfig )(u : Unit) : ZOut[Jwks] =
+    val task =
+      ZIO.attempt:
+        val identity = Server.Identity( externalConfig )
+        val jwk = Jwk( identity.publicKey, identity.location )
+        Jwks( List( jwk ) )
+    mapPlainError( task )
+
+  def serverEndpoints( externalConfig : ExternalConfig ) : List[ZServerEndpoint[Any,Any]] =
+    List (
+      RootJwks.zServerLogic( jwks( externalConfig ) ),
+      WellKnownJwks.zServerLogic( jwks( externalConfig ) ),
+    )
 
 end TapirEndpoint

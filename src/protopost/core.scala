@@ -21,7 +21,7 @@ object Server:
   object Identity:
     def apply( ecfg : ExternalConfig ) : Identity =
       val pvtKeyHexKey = ExternalConfig.Key.`protopost.server.private-key-hex`
-      val hex = ecfg.get(pvtKeyHexKey).getOrElse( throw new MissingConfig(s"Cannot establish server identity with config key '$pvtKeyHexKey' unset.") )
+      val hex = ecfg.get(pvtKeyHexKey).getOrElse( throw new MissingConfig(s"Please set config key '$pvtKeyHexKey'. Cannot establish server identity with '$pvtKeyHexKey' unset.") )
       val privateKey = BouncyCastleSecp256r1.privateKeyFromHex( hex )
       val publicKey = BouncyCastleSecp256r1.publicKeyFromPrivate( privateKey )
       val location = 

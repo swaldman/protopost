@@ -19,6 +19,11 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
 
   val LogadapterScalaVersion = "0.0.1"
   val TapirVersion           = "1.11.35"
+  val JsoniterVersion        = "2.36.6"
+
+  def compileIvyDeps = Agg(
+    ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${JsoniterVersion}",
+  )
 
   def ivyDeps = Agg(
     ivy"com.mchange:c3p0-loom:0.11.2",
@@ -35,6 +40,7 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
     ivy"com.softwaremill.sttp.tapir::tapir-core:$TapirVersion",
     ivy"com.softwaremill.sttp.tapir::tapir-zio-http-server:$TapirVersion",
     ivy"com.softwaremill.sttp.tapir::tapir-jsoniter-scala:$TapirVersion",
+    ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${JsoniterVersion}",
   )
 
   object `test-scalacheck` extends ScalaTests with TestModule.ScalaCheck {

@@ -21,7 +21,11 @@ object Main extends SelfLogging:
         java.lang.System.exit( pc.execute() )
       case Right( Prerequisites( configPropertiesFilePath : Option[os.Path], cc : ConfiguredCommand ) ) =>
         val task =
-          cc.zcommand.provide(
+          cc.zcommand.tapError( t =>
+            FATAL.zlog("protopost failed with an error", t)
+          ).tapDefect( c =>
+            FATAL.zlog( s"protopost experienced an unexpected failure: " + c )
+          ).provide(
             ZLayers.configProperties( configPropertiesFilePath ),
             ZLayers.shutdownHooks,
             ZLayers.externalConfig,

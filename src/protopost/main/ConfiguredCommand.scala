@@ -4,13 +4,36 @@ import java.sql.Connection
 import javax.sql.DataSource
 
 import zio.*
+import zio.http.Server as ZServer
+
+
+import sttp.tapir.server.ziohttp.ZioHttpInterpreter
+
+
+import protopost.{ExternalConfig,ProtopostException,Server}
 import protopost.LoggingApi.*
-import protopost.{ExternalConfig,ProtopostException}
+import protopost.api.TapirEndpoint
 import protopost.db.PgSchemaManager
 
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
 object ConfiguredCommand extends SelfLogging:
+  case class Daemon( port : Option[Int] ) extends ConfiguredCommand:
+    override def zcommand =
+      for
+        ec       <- ZIO.service[ExternalConfig]
+        p        =  port.getOrElse( Server.Identity(ec).location.port )
+        seps     =  TapirEndpoint.serverEndpoints(ec)
+        httpApp  =  ZioHttpInterpreter().toHttp(seps)
+        _        <- INFO.zlog( s"Serving protopost API on port $p" )
+        exitCode <- ZServer
+                      .serve(httpApp)
+                      .tapDefect( c => FATAL.zlog("API web server failed unexpectedly, cause: " + c ) )
+                      .provide(ZLayer.succeed(ZServer.Config.default.port(p)), ZServer.live)
+                      .exitCode
+      yield
+        exitCode.code
+    end zcommand
   case object DbDump extends ConfiguredCommand:
     override def zcommand =
       for

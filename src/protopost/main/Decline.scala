@@ -6,6 +6,12 @@ import java.nio.file.{Path as JPath}
 
 object Decline:
   object Subcommand:
+    val daemon =
+      val header = "Run a daemon process that serves the protopost API."
+      val opts =
+        val help = "The port on which the daemon process should serve the API (perhaps only internally, if the API is proxied)."
+        Opts.option[Int]("port",help=help).orNone.map( port => ConfiguredCommand.Daemon(port) )
+      Command("daemon", header=header )( opts )
     val dbDump =
       val header = "Dump a backup of the database into a configured directory."
       val opts = Opts( ConfiguredCommand.DbDump )
@@ -38,6 +44,7 @@ object Decline:
         val env  = Opts.env[JPath]("PROTOPOST_CONFIG", help=help).map( os.Path.apply )
         (opt orElse env).orNone
       val subcommands = Opts.subcommands(
+        Subcommand.daemon,
         Subcommand.dbDump,
         Subcommand.dbInit,
         Subcommand.dbMigrate,

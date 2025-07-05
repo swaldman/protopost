@@ -10,7 +10,7 @@ object Precommand:
       import protopost.crypto.BouncyCastleSecp256r1
       val keypair = BouncyCastleSecp256r1.generateKeyPair()
       val S = keypair(0).getS()
-      println( BouncyCastleSecp256r1.fieldValueToHex(S) )
+      println( BouncyCastleSecp256r1.fieldValueToHex0x(S) )
       0
 sealed trait Precommand:
   def execute() : Int
