@@ -17,21 +17,24 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
   )
   def buildInfoPackageName = "protopost"
 
-  val SqlutilScalaVersion = "0.0.5-SNAPSHOT"
   val LogadapterScalaVersion = "0.0.1"
+  val TapirVersion           = "1.11.35"
+
   def ivyDeps = Agg(
     ivy"com.mchange:c3p0-loom:0.11.2",
     ivy"com.mchange::logadapter-scala-log4j2:$LogadapterScalaVersion",
     ivy"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
-    ivy"com.mchange::sqlutil-scala:$SqlutilScalaVersion",
-    ivy"com.mchange::sqlutil-scala-zio:$SqlutilScalaVersion",
+    ivy"com.mchange::sqlutil-scala-zio:0.0.5-SNAPSHOT",
     ivy"com.mchange::mill-daemon-util:0.1.2",
     ivy"com.mchange::conveniences:0.0.5",
     ivy"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
     ivy"com.monovore::decline:2.5.0",
     ivy"org.postgresql:postgresql:42.7.7",
     ivy"org.bouncycastle:bcprov-jdk18on:1.81",
-    ivy"com.auth0:java-jwt:4.5.0"
+    ivy"com.auth0:java-jwt:4.5.0",
+    ivy"com.softwaremill.sttp.tapir::tapir-core:$TapirVersion",
+    ivy"com.softwaremill.sttp.tapir::tapir-zio-http-server:$TapirVersion",
+    ivy"com.softwaremill.sttp.tapir::tapir-jsoniter-scala:$TapirVersion",
   )
 
   object `test-scalacheck` extends ScalaTests with TestModule.ScalaCheck {

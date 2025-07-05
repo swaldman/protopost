@@ -1,5 +1,7 @@
 package protopost.crypto
 
+import java.math.BigInteger
+
 import java.security.interfaces.ECPublicKey
 import java.security.interfaces.ECPrivateKey
 import java.security.spec.{ECParameterSpec,ECGenParameterSpec,ECPublicKeySpec,ECPrivateKeySpec}
@@ -21,6 +23,8 @@ object BouncyCastleSecp256r1:
   private val ECGenParamSpec = new ECGenParameterSpec(ECParamBundleName)
   private val Params = SECNamedCurves.getByName(ECParamBundleName);
   private val Curve = new ECDomainParameters(Params.getCurve(), Params.getG(), Params.getN(), Params.getH());
+
+  private val entropy = new SecureRandom()
 
   // private val SignatureAlgoName = "SHA256withPLAIN-ECDSA"
 
@@ -44,7 +48,7 @@ object BouncyCastleSecp256r1:
   // modified from https://stackoverflow.com/questions/42639620/generate-ecpublickey-from-ecprivatekey
   def generateKeyPair() : ( ECPrivateKey, ECPublicKey ) =
     val keyPairGenerator = KeyPairGenerator.getInstance(KeyAlgoNameSpecific, ProviderName)
-    keyPairGenerator.initialize(ECGenParamSpec, new SecureRandom())
+    keyPairGenerator.initialize(ECGenParamSpec, entropy)
     val pair = keyPairGenerator.generateKeyPair()
     (pair.getPrivate().asInstanceOf[ECPrivateKey], pair.getPublic().asInstanceOf[ECPublicKey])
 
@@ -55,10 +59,14 @@ object BouncyCastleSecp256r1:
     val privSpec = new ECPrivateKeySpec( s.bigInteger, ECParamSpec );
     kf.generatePrivate( privSpec ).asInstanceOf[ECPrivateKey];
 
+  def privateKeyFromHex( hex : String ) : ECPrivateKey =
+    val bytes = hex.decodeHexToArray
+    privateKeyFromS( bytes.toUnsignedBigInt )
+
   /**
    *  @return a 64 byte / 512 bit byte array which is the concatenation of the byte representations
    *          of two 256 bit big-endian ints X and Y
-   */ 
+   */
   def computePublicKeyBytes( privateKeyS : java.math.BigInteger ) : Array[Byte] = // modified from consuela
     val rawKey = Curve.getG().multiply( privateKeyS ).getEncoded( false );
     assert( rawKey(0) == 0x04 && rawKey.length == 65, "Computed public key is not in the expected uncompressed format." );
@@ -92,3 +100,8 @@ object BouncyCastleSecp256r1:
 
   def sign[T : Byteable]( message : T, privateKey : ECPrivateKey ) : SignatureSHA256withECDSA = SignatureSHA256withECDSA(signToByteArray( message.toByteArray, privateKey ))
   def verify[T : Byteable]( message : T, signature : SignatureSHA256withECDSA, publicKey : ECPublicKey ) : Boolean = verifySignatureAsByteArray( message.toByteArray, signature.bytes, publicKey )
+
+  def fieldValueToHex(  bi : BigInt     ) : String = bi.unsignedBytes(32).hex
+  def fieldValueToHex( jbi : BigInteger ) : String = fieldValueToHex( jbi.toBigInt )
+  def fieldValueToHex0x(  bi : BigInt     ) : String = bi.unsignedBytes(32).hex0x
+  def fieldValueToHex0x( jbi : BigInteger ) : String = fieldValueToHex0x( jbi.toBigInt )

@@ -20,6 +20,10 @@ object Decline:
         val help = "Force migration even if the application can find no recent database dump."
         Opts.flag("force",help=help,short="f").orFalse.map( force => ConfiguredCommand.DbMigrate(force) )
       Command("db-migrate", header=header )( opts )
+    val generatePrivateKey =
+      val header = "Generate and print to the console a hex value suitable for use in config as 'protopost.server.private-key-hex'"
+      val opts = Opts( Precommand.GeneratePrivateKey )
+      Command("generate-private-key", header=header )( opts )
     val version =
       val header = "Print the version of protopost, then exit."
       val opts = Opts( Precommand.Version )
@@ -37,6 +41,7 @@ object Decline:
         Subcommand.dbDump,
         Subcommand.dbInit,
         Subcommand.dbMigrate,
+        Subcommand.generatePrivateKey,
         Subcommand.version
       )
       ( config, subcommands ).mapN( (c,sc) => Tuple2( c, sc ) )
