@@ -35,6 +35,6 @@ object AuthManagers:
         val hashArr = hash.unsafeInternalArray
         val intChars = Array( hashArr(4), hashArr(5) ) // two character human-readable cost factor in bcrypt hashes
         new String( intChars ).toInt
-      forCostFactor( costFactor )  
+      forCostFactor( costFactor )
   case class AuthManagerWithStatus( authManager : AuthManager, costFactorIsCurrent : Boolean )
 

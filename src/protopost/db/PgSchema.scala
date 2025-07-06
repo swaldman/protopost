@@ -44,8 +44,33 @@ object PgSchema extends SelfLogging:
         override val Create = "CREATE TABLE destination ( id INTEGER PRIMARY KEY, seismic_host VARCHAR(1024), seismic_port INTEGER, seismic_auth CHAR(60) )"
       end Destination
       object Poster extends Creatable:
-        override val Create = "CREATE TABLE poster ( id INTEGER PRIMARY KEY, email VARCHAR(1024), full_name VARCHAR(2048), auth CHAR(60) )"
+        override val Create =
+          """|CREATE TABLE poster (
+             |  id INTEGER PRIMARY KEY,
+             |  email VARCHAR(1024),
+             |  full_name VARCHAR(2048),
+             |  auth CHAR(60),
+             |  UNIQUE(email)
+             |)""".stripMargin
         private val Insert = "INSERT INTO poster( id, email, full_name, auth ) VALUES ( ?, ?, ?, ? )"
+        private val SelectPosterWithAuthByEmail = "SELECT id, email, full_name, auth FROM poster WHERE email = ?"
+        private val SelectPosterExistsForEmail = "SELECT EXISTS(SELECT 1 FROM poster WHERE email = ?)"
+        def posterExistsForEmail( conn : Connection, email : EmailAddress ) : Boolean =
+          Using.resource( conn.prepareStatement( SelectPosterExistsForEmail ) ): ps =>
+            ps.setString(1, email.str)
+            Using.resource( ps.executeQuery() ): rs =>
+              uniqueResult("poster-exists-for-email", rs)( _.getBoolean(1) )
+        def selectPosterWithAuthByEmail( conn : Connection, email : EmailAddress ) : Option[PosterWithAuth] =
+          Using.resource( conn.prepareStatement( SelectPosterWithAuthByEmail ) ): ps =>
+            ps.setString(1, email.str)
+            Using.resource( ps.executeQuery() ): rs =>
+              zeroOrOneResult("poster-with-auth-by-email", rs): rs =>
+                PosterWithAuth(
+                  PosterId( rs.getInt(1) ),
+                  EmailAddress( rs.getString(2) ),
+                  rs.getString(3),
+                  BCryptHash( rs.getString(4).toCharArray )
+                )
         def insert( conn : Connection, id : PosterId, email : EmailAddress, fullName : String, auth : BCryptHash ) =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
             ps.setLong  (1, id.toInt)
@@ -152,4 +177,8 @@ object PgSchema extends SelfLogging:
         protected val Create = "CREATE SEQUENCE post_id_seq AS INTEGER"
       end PostId
     end Sequence
+    object Index:
+      object PosterEmail extends Creatable:
+        protected val Create = "CREATE INDEX poster_email ON poster(email)"
+    end Index
   end V1

@@ -1,8 +1,17 @@
 package protopost
 
+import java.util.Properties
+
 import scala.annotation.targetName
 
 import com.mchange.mailutil.Smtp
+
+object ConfigProperties:
+  private[protopost] def apply( p : Properties ) : ConfigProperties = p
+opaque type ConfigProperties = Properties
+
+extension( configProperties : ConfigProperties )
+  @targetName("configPropertiesProps") private[protopost] inline def props : Properties = configProperties
 
 object EmailAddress:
   private[protopost] def apply( s : String ) : EmailAddress =

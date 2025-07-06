@@ -6,22 +6,34 @@ import javax.sql.DataSource
 import zio.*
 import zio.http.Server as ZServer
 
-
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
 
-
-import protopost.{ExternalConfig,ProtopostException,Server}
+import protopost.{AppResources,EmailAddress,ExternalConfig,Password,ProtopostException,Server}
 import protopost.LoggingApi.*
 import protopost.api.TapirEndpoint
 import protopost.db.PgSchemaManager
+import protopost.auth.AuthManagers
 
+import com.mchange.sc.zsqlutil.*
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
 object ConfiguredCommand extends SelfLogging:
+  case class CreateUser( email : EmailAddress, password : Password, fullName : String ) extends ConfiguredCommand:
+    override def zcommand =
+      for
+        ar   <- ZIO.service[AppResources]
+        auth = AuthManagers.CurrentAuthManager.hashForPassword( password )
+        ds   = ar.dataSource
+        id   <- ar.database.txn.createUser( ds )( email, fullName, auth )
+      yield
+        INFO.log(s"Created new user '${fullName}' with email '${email}' and id '${id}'")
+        0
+  end CreateUser
   case class Daemon( port : Option[Int] ) extends ConfiguredCommand:
     override def zcommand =
       for
-        ec       <- ZIO.service[ExternalConfig]
+        ar       <- ZIO.service[AppResources]
+        ec       =  ar.externalConfig
         p        =  port.getOrElse( Server.Identity(ec).location.port )
         seps     =  TapirEndpoint.serverEndpoints(ec)
         httpApp  =  ZioHttpInterpreter().toHttp(seps)
@@ -37,9 +49,8 @@ object ConfiguredCommand extends SelfLogging:
   case object DbDump extends ConfiguredCommand:
     override def zcommand =
       for
-        sm  <- ZIO.service[PgSchemaManager]
-        ds  <- ZIO.service[DataSource]
-        out <- sm.dump(ds)
+        ar  <- ZIO.service[AppResources]
+        out <- ar.schemaManager.dump(ar.dataSource)
       yield
         INFO.log(s"The database was successfully dumped to '${out}'.")
         0
@@ -56,20 +67,24 @@ object ConfiguredCommand extends SelfLogging:
           INFO.zlog("The database is already initialized and up-to-date." ) *> ZIO.succeed(0)
         case other =>
           other.errMessage.fold( SEVERE.zlog( s"Could not initialize the database, status: ${vstatus}" ) )(msg => SEVERE.zlog(msg)) *> ZIO.succeed(10)
+    private def dbInitTask( ar : AppResources ) : Task[Int] =
+      withConnectionTransactionalZIO( ar.dataSource ): conn =>
+        for
+          vstatus <- ar.schemaManager.dbVersionStatus(conn)
+          code    <- taskForStatus( ar.schemaManager, conn, vstatus )
+        yield code
     def zcommand =
       for
-        sm      <- ZIO.service[PgSchemaManager]
-        ds      <- ZIO.service[DataSource]
-        conn    =  ds.getConnection()
-        vstatus <- sm.dbVersionStatus(conn)
-        code    <- taskForStatus( sm, conn, vstatus )
+        ar      <- ZIO.service[AppResources]
+        code    <- dbInitTask( ar )
       yield code
     end zcommand
   case class DbMigrate( force : Boolean ) extends ConfiguredCommand:
     override def zcommand =
       for
-        sm <- ZIO.service[PgSchemaManager]
-        ds <- ZIO.service[DataSource]
+        ar <- ZIO.service[AppResources]
+        sm =  ar.schemaManager
+        ds =  ar.dataSource
         _  <- if force then sm.migrate(ds) else sm.cautiousMigrate(ds)
       yield
         // migrate functions log internally, no need for additional messages here
@@ -77,5 +92,5 @@ object ConfiguredCommand extends SelfLogging:
     end zcommand
 
 sealed trait ConfiguredCommand:
-  def zcommand : ZIO[ShutdownHooks & ExternalConfig & PgSchemaManager & DataSource, Throwable, Int]
+  def zcommand : ZIO[ShutdownHooks & AppResources, Throwable, Int]
 

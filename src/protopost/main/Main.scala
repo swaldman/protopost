@@ -28,9 +28,7 @@ object Main extends SelfLogging:
           ).provide(
             ZLayers.configProperties( configPropertiesFilePath ),
             ZLayers.shutdownHooks,
-            ZLayers.externalConfig,
-            ZLayers.dataSource,
-            ZLayers.pgSchemaManager
+            ZLayers.appResources
           )
         val completionValue =
           Unsafe.unsafely:

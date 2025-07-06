@@ -8,15 +8,20 @@ import protopost.{BCryptHash, EmailAddress, Password}
 
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.zsqlutil.*
+import protopost.EmailIsAlreadyRegistered
 
 class PgDatabase( val SchemaManager : PgSchemaManager ):
   val Schema = SchemaManager.LatestSchema
 
-  object Transaction:
-    def createUser( ds : DataSource )( email : EmailAddress, fullName : String, auth : BCryptHash ) : Task[Unit] =
+  object txn:
+    def createUser( ds : DataSource )( email : EmailAddress, fullName : String, auth : BCryptHash ) : Task[PosterId] =
       withConnectionTransactional( ds ): conn =>
-        val posterId = Schema.Sequence.PosterId.selectNext( conn )
-        Schema.Table.Poster.insert( conn, posterId, email, fullName, auth )
-
-  end Transaction
+        val alreadyExists = Schema.Table.Poster.posterExistsForEmail( conn, email )
+        if alreadyExists then
+          throw new EmailIsAlreadyRegistered(s"Email '$email' is already registered by an existing user!")
+        else
+          val posterId = Schema.Sequence.PosterId.selectNext( conn )
+          Schema.Table.Poster.insert( conn, posterId, email, fullName, auth )
+          posterId
+  end txn
 end PgDatabase
