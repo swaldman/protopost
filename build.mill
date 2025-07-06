@@ -33,6 +33,8 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
     ivy"com.mchange::mill-daemon-util:0.1.2",
     ivy"com.mchange::conveniences:0.0.5",
     ivy"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
+    ivy"com.mchange::mailutil:0.0.5",
+    ivy"at.favre.lib:bcrypt:0.10.2",
     ivy"com.monovore::decline:2.5.0",
     ivy"org.postgresql:postgresql:42.7.7",
     ivy"org.bouncycastle:bcprov-jdk18on:1.81",

@@ -7,7 +7,10 @@ import scala.util.Using
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.sqlutil.migrate.{Schema,MetadataKey}
 
-object PgSchema:
+import protopost.*
+import protopost.LoggingApi.*
+
+object PgSchema extends SelfLogging:
   object Unversioned:
     object Table:
       object Metadata extends Creatable: // Creatable is now defined in sqlutil
@@ -41,13 +44,22 @@ object PgSchema:
         override val Create = "CREATE TABLE destination ( id INTEGER PRIMARY KEY, seismic_host VARCHAR(1024), seismic_port INTEGER, seismic_auth CHAR(60) )"
       end Destination
       object Poster extends Creatable:
-        override val Create = "CREATE TABLE poster ( id VARCHAR(256) PRIMARY KEY, full_name VARCHAR(2048), auth CHAR(60) )"
+        override val Create = "CREATE TABLE poster ( id INTEGER PRIMARY KEY, email VARCHAR(1024), full_name VARCHAR(2048), auth CHAR(60) )"
+        private val Insert = "INSERT INTO poster( id, email, full_name, auth ) VALUES ( ?, ?, ?, ? )"
+        def insert( conn : Connection, id : PosterId, email : EmailAddress, fullName : String, auth : BCryptHash ) =
+          Using.resource( conn.prepareStatement( Insert ) ): ps =>
+            ps.setLong  (1, id.toInt)
+            ps.setString(2, email.str)
+            ps.setString(3, fullName)
+            ps.setString(4, new String(auth.unsafeInternalArray))
+            val rowsInserted = ps.executeUpdate()
+            TRACE.log(s"Inserted into poster, seqnum ${id.toInt}, ${rowsInserted} rows inserted.")
       end Poster
       object DestinationPoster extends Creatable:
         override val Create =
           """|CREATE TABLE destination_poster (
              |  destination_id INTEGER,
-             |  poster_id      VARCHAR(256),
+             |  poster_id      INTEGER,
              |  PRIMARY KEY ( destination_id, poster_id ),
              |  FOREIGN KEY ( destination_id ) references destination(id),
              |  FOREIGN KEY ( poster_id ) references poster(id)
@@ -128,6 +140,14 @@ object PgSchema:
       object DestinationId extends Creatable:
         protected val Create = "CREATE SEQUENCE destination_id_seq AS INTEGER"
       end DestinationId
+      object PosterId extends Creatable:
+        protected val Create = "CREATE SEQUENCE poster_id_seq AS INTEGER"
+        private val SelectNext = "SELECT nextval('poster_id_seq')"
+        def selectNext( conn : Connection ) : protopost.db.PosterId =
+          Using.resource( conn.prepareStatement(SelectNext) ): ps =>
+            Using.resource( ps.executeQuery() ): rs =>
+              uniqueResult("select-next-poster-id-seq", rs)( rs => protopost.db.PosterId( rs.getInt(1) ) )
+      end PosterId
       object PostId extends Creatable:
         protected val Create = "CREATE SEQUENCE post_id_seq AS INTEGER"
       end PostId
