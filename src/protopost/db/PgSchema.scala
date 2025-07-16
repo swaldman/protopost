@@ -58,13 +58,11 @@ object PgSchema extends SelfLogging:
         private val SelectPosterWithAuthByEmail = "SELECT id, email, full_name, auth FROM poster WHERE email = ?"
         private val SelectPosterExistsForEmail = "SELECT EXISTS(SELECT 1 FROM poster WHERE email = ?)"
         def posterExistsForEmail( conn : Connection, email : EmailAddress ) : Boolean =
-          import protopost.str
           Using.resource( conn.prepareStatement( SelectPosterExistsForEmail ) ): ps =>
             ps.setString(1, email.str)
             Using.resource( ps.executeQuery() ): rs =>
               uniqueResult("poster-exists-for-email", rs)( _.getBoolean(1) )
         def selectPosterWithAuthByEmail( conn : Connection, email : EmailAddress ) : Option[PosterWithAuth] =
-          import protopost.str
           Using.resource( conn.prepareStatement( SelectPosterWithAuthByEmail ) ): ps =>
             ps.setString(1, email.str)
             Using.resource( ps.executeQuery() ): rs =>
@@ -77,7 +75,6 @@ object PgSchema extends SelfLogging:
                 )
         def insert( conn : Connection, id : PosterId, email : EmailAddress, fullName : String, auth : Option[BCryptHash] ) =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
-            import protopost.str
             ps.setLong  (1, id.int)
             ps.setString(2, email.str)
             ps.setString(3, fullName)

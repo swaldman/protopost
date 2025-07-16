@@ -13,7 +13,7 @@ import mill.contrib.buildinfo.BuildInfo
 object `package` extends ScalaModule with BuildInfo {
   val protopostVersion = "0.0.1-SNAPSHOT"
 
-  override def scalaVersion = "3.3.6"
+  override def scalaVersion = "3.7.1"
   override def scalacOptions = Seq("-deprecation")
 
   def buildInfoMembers = Seq(
