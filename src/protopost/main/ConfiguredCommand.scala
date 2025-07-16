@@ -8,11 +8,12 @@ import zio.http.Server as ZServer
 
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
 
-import protopost.{AppResources,EmailAddress,ExternalConfig,Password,ProtopostException,Server}
+import protopost.{AppResources,EmailAddress,ExternalConfig,ProtopostException,Server}
 import protopost.LoggingApi.*
 import protopost.api.TapirEndpoint
 import protopost.db.PgSchemaManager
-import protopost.auth.AuthManagers
+
+import com.mchange.reauth.*
 
 import com.mchange.sc.zsqlutil.*
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus
@@ -22,9 +23,8 @@ object ConfiguredCommand extends SelfLogging:
     override def zcommand =
       for
         ar   <- ZIO.service[AppResources]
-        auth = AuthManagers.CurrentAuthManager.hashForPassword( password )
         ds   = ar.dataSource
-        id   <- ar.database.txn.createUser( ds )( email, fullName, auth )
+        id   <- ar.database.txn.createUser( ds, ar.authManager )( email, fullName, password )
       yield
         INFO.log(s"Created new user '${fullName}' with email '${email}' and id '${id}'")
         0

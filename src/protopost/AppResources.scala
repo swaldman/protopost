@@ -16,3 +16,14 @@ class AppResources( val configProperties : ConfigProperties ):
   lazy val schemaManager : PgSchemaManager = new PgSchemaManager( externalConfig )
 
   lazy val database : PgDatabase = new PgDatabase( schemaManager )
+
+  lazy val entropy = new java.security.SecureRandom
+
+  lazy val authManager =
+    import com.mchange.reauth.*
+    val currentSpec = AuthManager.Spec( Authenticator.BCryptVersion.Version2A, 12 )
+    val longPasswordStrategyForCurrentOrHistoricalSpec = Map (
+      AuthManager.Spec( Authenticator.BCryptVersion.Version2A, 12 ) -> Authenticator.LongPasswordStrategy.Strict
+    )
+    AuthManager[PosterId](currentSpec, longPasswordStrategyForCurrentOrHistoricalSpec, entropy)
+

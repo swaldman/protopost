@@ -4,7 +4,9 @@ import com.monovore.decline.*
 import cats.implicits.* // for mapN
 import java.nio.file.{Path as JPath}
 
-import protopost.{EmailAddress,Password}
+import protopost.EmailAddress
+
+import com.mchange.reauth.Password
 
 object Decline:
   object Subcommand:

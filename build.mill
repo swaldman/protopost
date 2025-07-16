@@ -38,6 +38,7 @@ object `package` extends ScalaModule with BuildInfo {
     mvn"com.mchange::conveniences:0.0.5",
     mvn"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
     mvn"com.mchange::mailutil:0.0.5",
+    mvn"com.mchange::reauth:0.0.1-SNAPSHOT",
     mvn"at.favre.lib:bcrypt:0.10.2",
     mvn"com.monovore::decline:2.5.0",
     mvn"org.postgresql:postgresql:42.7.7",

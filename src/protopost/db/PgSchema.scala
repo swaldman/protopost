@@ -7,6 +7,8 @@ import scala.util.Using
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.sqlutil.migrate.{Schema,MetadataKey}
 
+import com.mchange.reauth.{*,given}
+
 import protopost.*
 import protopost.LoggingApi.*
 
@@ -56,11 +58,13 @@ object PgSchema extends SelfLogging:
         private val SelectPosterWithAuthByEmail = "SELECT id, email, full_name, auth FROM poster WHERE email = ?"
         private val SelectPosterExistsForEmail = "SELECT EXISTS(SELECT 1 FROM poster WHERE email = ?)"
         def posterExistsForEmail( conn : Connection, email : EmailAddress ) : Boolean =
+          import protopost.str
           Using.resource( conn.prepareStatement( SelectPosterExistsForEmail ) ): ps =>
             ps.setString(1, email.str)
             Using.resource( ps.executeQuery() ): rs =>
               uniqueResult("poster-exists-for-email", rs)( _.getBoolean(1) )
         def selectPosterWithAuthByEmail( conn : Connection, email : EmailAddress ) : Option[PosterWithAuth] =
+          import protopost.str
           Using.resource( conn.prepareStatement( SelectPosterWithAuthByEmail ) ): ps =>
             ps.setString(1, email.str)
             Using.resource( ps.executeQuery() ): rs =>
@@ -71,12 +75,15 @@ object PgSchema extends SelfLogging:
                   rs.getString(3),
                   BCryptHash( rs.getString(4).toCharArray )
                 )
-        def insert( conn : Connection, id : PosterId, email : EmailAddress, fullName : String, auth : BCryptHash ) =
+        def insert( conn : Connection, id : PosterId, email : EmailAddress, fullName : String, auth : Option[BCryptHash] ) =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
+            import protopost.str
             ps.setLong  (1, id.int)
             ps.setString(2, email.str)
             ps.setString(3, fullName)
-            ps.setString(4, new String(auth.unsafeInternalArray))
+            auth match
+              case Some( bch ) => ps.setString(4, new String(bch.unsafeInternalArray))
+              case None        => ps.setNull(4, Types.CHAR)
             val rowsInserted = ps.executeUpdate()
             TRACE.log(s"Inserted into poster, seqnum ${id.int}, ${rowsInserted} rows inserted.")
       end Poster
