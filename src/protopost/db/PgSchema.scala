@@ -73,12 +73,12 @@ object PgSchema extends SelfLogging:
                 )
         def insert( conn : Connection, id : PosterId, email : EmailAddress, fullName : String, auth : BCryptHash ) =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
-            ps.setLong  (1, id.toInt)
+            ps.setLong  (1, id.int)
             ps.setString(2, email.str)
             ps.setString(3, fullName)
             ps.setString(4, new String(auth.unsafeInternalArray))
             val rowsInserted = ps.executeUpdate()
-            TRACE.log(s"Inserted into poster, seqnum ${id.toInt}, ${rowsInserted} rows inserted.")
+            TRACE.log(s"Inserted into poster, seqnum ${id.int}, ${rowsInserted} rows inserted.")
       end Poster
       object DestinationPoster extends Creatable:
         override val Create =
@@ -168,10 +168,10 @@ object PgSchema extends SelfLogging:
       object PosterId extends Creatable:
         protected val Create = "CREATE SEQUENCE poster_id_seq AS INTEGER"
         private val SelectNext = "SELECT nextval('poster_id_seq')"
-        def selectNext( conn : Connection ) : protopost.db.PosterId =
+        def selectNext( conn : Connection ) : protopost.PosterId =
           Using.resource( conn.prepareStatement(SelectNext) ): ps =>
             Using.resource( ps.executeQuery() ): rs =>
-              uniqueResult("select-next-poster-id-seq", rs)( rs => protopost.db.PosterId( rs.getInt(1) ) )
+              uniqueResult("select-next-poster-id-seq", rs)( rs => protopost.PosterId( rs.getInt(1) ) )
       end PosterId
       object PostId extends Creatable:
         protected val Create = "CREATE SEQUENCE post_id_seq AS INTEGER"

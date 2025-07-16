@@ -41,4 +41,9 @@ extension( bchash : BCryptHash )
   @targetName("bcryptHashUnsafeInternalArray") private[protopost] inline def unsafeInternalArray : Array[Char] = bchash
 
 
+object PosterId:
+  private[protopost] inline def apply( i : Int ) : PosterId = i
+opaque type PosterId = Int
 
+extension( pid : PosterId )
+  @targetName("posterIdToInt") private[protopost] inline def int : Int = pid

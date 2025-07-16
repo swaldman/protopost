@@ -1,12 +1,16 @@
+//| mill-version: 1.0.0
+//| mill-jvm-version: 17
+//| mvnDeps: ["com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
+//+---------------------------------------------------------------
+
 package build
 
 import mill._
 import mill.scalalib._
 
-import $ivy.`com.lihaoyi::mill-contrib-buildinfo:`
 import mill.contrib.buildinfo.BuildInfo
 
-object `package` extends RootModule with ScalaModule with BuildInfo {
+object `package` extends ScalaModule with BuildInfo {
   val protopostVersion = "0.0.1-SNAPSHOT"
 
   override def scalaVersion = "3.3.6"
@@ -21,34 +25,34 @@ object `package` extends RootModule with ScalaModule with BuildInfo {
   val TapirVersion           = "1.11.35"
   val JsoniterVersion        = "2.36.6"
 
-  def compileIvyDeps = Agg(
-    ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${JsoniterVersion}",
+  def compileMvnDeps = Seq(
+    mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${JsoniterVersion}",
   )
 
-  def ivyDeps = Agg(
-    ivy"com.mchange:c3p0-loom:0.11.2",
-    ivy"com.mchange::logadapter-scala-log4j2:$LogadapterScalaVersion",
-    ivy"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
-    ivy"com.mchange::sqlutil-scala-zio:0.0.5-SNAPSHOT",
-    ivy"com.mchange::mill-daemon-util:0.1.2",
-    ivy"com.mchange::conveniences:0.0.5",
-    ivy"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
-    ivy"com.mchange::mailutil:0.0.5",
-    ivy"at.favre.lib:bcrypt:0.10.2",
-    ivy"com.monovore::decline:2.5.0",
-    ivy"org.postgresql:postgresql:42.7.7",
-    ivy"org.bouncycastle:bcprov-jdk18on:1.81",
-    ivy"com.auth0:java-jwt:4.5.0",
-    ivy"com.softwaremill.sttp.tapir::tapir-core:$TapirVersion",
-    ivy"com.softwaremill.sttp.tapir::tapir-zio-http-server:$TapirVersion",
-    ivy"com.softwaremill.sttp.tapir::tapir-jsoniter-scala:$TapirVersion",
-    ivy"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${JsoniterVersion}",
+  def mvnDeps = Seq(
+    mvn"com.mchange:c3p0-loom:0.11.2",
+    mvn"com.mchange::logadapter-scala-log4j2:$LogadapterScalaVersion",
+    mvn"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
+    mvn"com.mchange::sqlutil-scala-zio:0.0.5-SNAPSHOT",
+    mvn"com.mchange::mill-daemon-util:0.1.2",
+    mvn"com.mchange::conveniences:0.0.5",
+    mvn"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
+    mvn"com.mchange::mailutil:0.0.5",
+    mvn"at.favre.lib:bcrypt:0.10.2",
+    mvn"com.monovore::decline:2.5.0",
+    mvn"org.postgresql:postgresql:42.7.7",
+    mvn"org.bouncycastle:bcprov-jdk18on:1.81",
+    mvn"com.auth0:java-jwt:4.5.0",
+    mvn"com.softwaremill.sttp.tapir::tapir-core:$TapirVersion",
+    mvn"com.softwaremill.sttp.tapir::tapir-zio-http-server:$TapirVersion",
+    mvn"com.softwaremill.sttp.tapir::tapir-jsoniter-scala:$TapirVersion",
+    mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${JsoniterVersion}",
   )
 
   object `test-scalacheck` extends ScalaTests with TestModule.ScalaCheck {
-    def ivyDeps = Agg(
-      //ivy"com.lihaoyi::utest:0.8.5",
-      ivy"org.scalacheck::scalacheck:1.18.1",
+    def mvnDeps = Seq(
+      //mvn"com.lihaoyi::utest:0.8.5",
+      mvn"org.scalacheck::scalacheck:1.18.1",
     )
     //def testFramework = "utest.runner.Framework"
   }

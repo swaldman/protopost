@@ -4,7 +4,7 @@ import zio.*
 
 import javax.sql.DataSource
 
-import protopost.{BCryptHash, EmailAddress, Password}
+import protopost.{BCryptHash, EmailAddress, Password, PosterId}
 
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.zsqlutil.*
