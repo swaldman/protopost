@@ -69,7 +69,7 @@ object BouncyCastleSecp256r1:
    */
   def computePublicKeyBytes( privateKeyS : java.math.BigInteger ) : Array[Byte] = // modified from consuela
     val rawKey = Curve.getG().multiply( privateKeyS ).getEncoded( false );
-    assert( rawKey(0) == 0x04 && rawKey.length == 65, "Computed public key is not in the expected uncompressed format." );
+    assert( rawKey(0) == 0x04 && rawKey.length == 65, "Computed public key is not in the expected uncompressed format." )
     rawKey.drop(1)  // drop the header byte 0x04 that signifies an uncompressed concatenation of values
 
   def publicKeyPointFromS( s : BigInt ) : ECPoint =
@@ -99,7 +99,25 @@ object BouncyCastleSecp256r1:
     verifier.verify(signature)
 
   def sign[T : Byteable]( message : T, privateKey : ECPrivateKey ) : SignatureSHA256withECDSA = SignatureSHA256withECDSA(signToByteArray( message.toByteArray, privateKey ))
-  def verify[T : Byteable]( message : T, signature : SignatureSHA256withECDSA, publicKey : ECPublicKey ) : Boolean = verifySignatureAsByteArray( message.toByteArray, signature.bytes, publicKey )
+  def verify[T : Byteable]( message : T, signature : SignatureSHA256withECDSA, publicKey : ECPublicKey ) : Boolean = verifySignatureAsByteArray( message.toByteArray, signature.unsafeInternalArray, publicKey )
+
+  def publicKeyToUncompressedFormatBytes( publicKey : ECPublicKey ) : Array[Byte] =
+    val w = publicKey.getW()
+    val xBytes = w.getAffineX().unsignedBytes(32)
+    val yBytes = w.getAffineY().unsignedBytes(32)
+    val out = Array.ofDim[Byte](65)
+    out(0) = 0x04 // header
+    Array.copy(xBytes,0,out,1,32)
+    Array.copy(yBytes,0,out,33,32)
+    out
+
+  def publicKeyFromUncompressedFormatBytes( bytes : Array[Byte] ) : ECPublicKey =
+    require( bytes(0) == 0x04 && bytes.length == 65, "Public key is not in the expected uncompressed format." )
+    val ( xBytes, yBytes ) = bytes.drop(1).splitAt(32)
+    assert( xBytes.length == 32 && yBytes.length == 32 )
+    val point = ECPoint( xBytes.toUnsignedBigInteger, yBytes.toUnsignedBigInteger )
+    val spec = ECPublicKeySpec(point, ECParamSpec)
+    KeyFactory.getInstance(KeyAlgoNameSpecific, ProviderName).generatePublic(spec).asInstanceOf[ECPublicKey]
 
   def fieldValueToHex(  bi : BigInt     ) : String = bi.unsignedBytes(32).hex
   def fieldValueToHex( jbi : BigInteger ) : String = fieldValueToHex( jbi.toBigInt )
