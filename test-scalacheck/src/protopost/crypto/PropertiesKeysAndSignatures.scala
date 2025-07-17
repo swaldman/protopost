@@ -37,6 +37,10 @@ object PropertiesKeysAndSignatures extends Properties("Keys And Signatures"):
     val publicKey = BouncyCastleSecp256r1.publicKeyFromPrivate( pvtKeyMessage(0) )
     !BouncyCastleSecp256r1.verify( pvtKeyMessage(2), signature, publicKey )
 
+  property("public keys convert to uncompressed bytes and back") = forAll: (keyPair : (java.security.interfaces.ECPrivateKey, java.security.interfaces.ECPublicKey)) =>
+    import BouncyCastleSecp256r1.*
+    publicKeyFromUncompressedFormatBytes( publicKeyToUncompressedFormatBytes( keyPair(1) ) ) == keyPair(1)
+
 
 
 
