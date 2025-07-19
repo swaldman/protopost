@@ -32,7 +32,7 @@ object TapirEndpoint:
   val RootJwks = Base.in("jwks.json").out(jsonBody[Jwks])
   val WellKnownJwks = Base.in(".well-known").in("jwks.json").out(jsonBody[Jwks])
 
-  val Login = Base.in("login").in(jsonBody[EmailPassword]).out(jsonBody[Jwts])
+  val Login = Base.post.in("login").in(jsonBody[EmailPassword]).out(jsonBody[Jwts])
 
   def jwks( appResources : AppResources )(u : Unit) : ZOut[Jwks] =
     val task =
