@@ -5,6 +5,8 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 
+import protopost.{Jwt,str}
+
 enum SecurityLevel:
   case high, low
 
@@ -13,19 +15,21 @@ object Claims:
     case securityLevel
 case class Claims( subject : String, issuedAt : Instant, expiration : Instant, securityLevel : SecurityLevel )
 
-def createSignJwt( privateKey : ECPrivateKey )( subject : String, issuedAt : Instant, expiration : Instant, securityLevel : SecurityLevel ) : String =
+def createSignJwt( privateKey : ECPrivateKey )( subject : String, issuedAt : Instant, expiration : Instant, securityLevel : SecurityLevel ) : Jwt =
   val algorithm = Algorithm.ECDSA256( null, privateKey )
-  JWT
-    .create()
-    .withSubject( subject )
-    .withIssuedAt( issuedAt )
-    .withExpiresAt( expiration )
-    .withClaim( Claims.Key.securityLevel.toString, securityLevel.toString() )
-    .sign( algorithm )
+  val raw =
+    JWT
+      .create()
+      .withSubject( subject )
+      .withIssuedAt( issuedAt )
+      .withExpiresAt( expiration )
+      .withClaim( Claims.Key.securityLevel.toString, securityLevel.toString() )
+      .sign( algorithm )
+  Jwt( raw )  
 
-def decodeVerifyJwt( publicKey : ECPublicKey )( token : String ) : Claims =
+def decodeVerifyJwt( publicKey : ECPublicKey )( token : Jwt ) : Claims =
   val algorithm = Algorithm.ECDSA256( publicKey, null )
-  val decodedJwt = JWT.require(algorithm).build().verify( token )
+  val decodedJwt = JWT.require(algorithm).build().verify( token.str )
   Claims (
     subject = decodedJwt.getSubject(),
     issuedAt = decodedJwt.getIssuedAtAsInstant(),

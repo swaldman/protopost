@@ -2,9 +2,10 @@ package protopost.db
 
 import zio.*
 
+import java.sql.Connection
 import javax.sql.DataSource
 
-import protopost.{EmailAddress, PosterId}
+import protopost.{EmailAddress, PosterWithAuth, PosterId}
 
 import com.mchange.reauth.*
 
@@ -14,6 +15,13 @@ import protopost.EmailIsAlreadyRegistered
 
 class PgDatabase( val SchemaManager : PgSchemaManager ):
   val Schema = SchemaManager.LatestSchema
+
+  def fetchHashForPoster( conn : Connection, posterId : PosterId ) : Option[BCryptHash] =
+    Schema.Table.Poster.select( conn, posterId ).map( _.auth )
+  def updateHashForPoster( conn : Connection, posterId : PosterId, hash : BCryptHash ) : Unit =
+    Schema.Table.Poster.updateHash( conn, posterId, hash )
+  def posterWithAuthForEmail( conn : Connection, email : EmailAddress ) : Option[PosterWithAuth] =
+    Schema.Table.Poster.selectPosterWithAuthByEmail( conn, email )
 
   object txn:
     def createUser( ds : DataSource, authManager : AuthManager[PosterId] )( email : EmailAddress, fullName : String, password : Password ) : Task[PosterId] =

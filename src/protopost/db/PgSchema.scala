@@ -7,7 +7,7 @@ import scala.util.Using
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.sqlutil.migrate.{Schema,MetadataKey}
 
-import com.mchange.reauth.{*,given}
+import com.mchange.reauth.*
 
 import protopost.*
 import protopost.LoggingApi.*
@@ -55,14 +55,43 @@ object PgSchema extends SelfLogging:
              |  UNIQUE(email)
              |)""".stripMargin
         private val Insert = "INSERT INTO poster( id, email, full_name, auth ) VALUES ( ?, ?, ?, ? )"
+        private val Select = "SELECT id, email, full_name, auth FROM poster WHERE id = ?"
         private val SelectPosterWithAuthByEmail = "SELECT id, email, full_name, auth FROM poster WHERE email = ?"
         private val SelectPosterExistsForEmail = "SELECT EXISTS(SELECT 1 FROM poster WHERE email = ?)"
+        private val UpdateHash = "UPDATE poster SET hash = ? WHERE id = ?"
+        def updateHash( conn : Connection, posterId : PosterId, hash : BCryptHash ) : Unit =
+          import com.mchange.reauth.str
+          val count =
+            Using.resource( conn.prepareStatement( UpdateHash ) ): ps =>
+              ps.setString(1, new String(hash.unsafeInternalArray))
+              ps.setInt(2, posterId.int)
+              ps.executeUpdate()
+          if count == 0 then
+            throw new PosterUnknown( s"Poster with ID ${posterId} not found." )
+          else if count == 1 then
+            ()
+          else
+            throw new InternalError( s"id is poster primary key, should reference zero or one row, found ${count}." )
+        def select( conn : Connection, posterId : PosterId ) : Option[PosterWithAuth] =
+          import protopost.str
+          Using.resource( conn.prepareStatement( Select ) ): ps =>
+            ps.setInt(1, posterId.int)
+            Using.resource( ps.executeQuery() ): rs =>
+              zeroOrOneResult("select-poster", rs): rs =>
+                PosterWithAuth(
+                  PosterId( rs.getInt(1) ),
+                  EmailAddress( rs.getString(2) ),
+                  rs.getString(3),
+                  BCryptHash( rs.getString(4).toCharArray )
+                )
         def posterExistsForEmail( conn : Connection, email : EmailAddress ) : Boolean =
+          import protopost.str
           Using.resource( conn.prepareStatement( SelectPosterExistsForEmail ) ): ps =>
             ps.setString(1, email.str)
             Using.resource( ps.executeQuery() ): rs =>
               uniqueResult("poster-exists-for-email", rs)( _.getBoolean(1) )
         def selectPosterWithAuthByEmail( conn : Connection, email : EmailAddress ) : Option[PosterWithAuth] =
+          import protopost.str
           Using.resource( conn.prepareStatement( SelectPosterWithAuthByEmail ) ): ps =>
             ps.setString(1, email.str)
             Using.resource( ps.executeQuery() ): rs =>
@@ -74,6 +103,7 @@ object PgSchema extends SelfLogging:
                   BCryptHash( rs.getString(4).toCharArray )
                 )
         def insert( conn : Connection, id : PosterId, email : EmailAddress, fullName : String, auth : Option[BCryptHash] ) =
+          import protopost.str
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
             ps.setLong  (1, id.int)
             ps.setString(2, email.str)

@@ -35,7 +35,7 @@ object ConfiguredCommand extends SelfLogging:
         ar       <- ZIO.service[AppResources]
         ec       =  ar.externalConfig
         p        =  port.getOrElse( Server.Identity(ec).location.port )
-        seps     =  TapirEndpoint.serverEndpoints(ec)
+        seps     =  TapirEndpoint.serverEndpoints(ar)
         httpApp  =  ZioHttpInterpreter().toHttp(seps)
         _        <- INFO.zlog( s"Serving protopost API on port $p" )
         exitCode <- ZServer

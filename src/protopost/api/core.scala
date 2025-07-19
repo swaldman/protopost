@@ -2,7 +2,7 @@ package protopost.api
 
 import zio.*
 
-import protopost.{Server,SignatureDoesNotVerify}
+import protopost.{Jwt,EmailAddress,Server,SignatureDoesNotVerify,str}
 import protopost.crypto.{*,given}
 //import protopost.crypto.unsafeInternalArray
 
@@ -18,6 +18,8 @@ import java.security.interfaces.ECPrivateKey
 import java.util.Base64
 
 import scala.collection.immutable
+
+import com.mchange.reauth.{Password,str}
 
 // stealing some utilities from https://github.com/swaldman/hotsauce-devilla
 
@@ -59,18 +61,44 @@ object Envelope:
     else
       throw new SignatureDoesNotVerify( s"The signature of " + envelope + " does not verify." )
 
-  case class Envelope( messageBase64 : String, signatureBase64 : String, signerBase64 : String ):
-    lazy val message : immutable.ArraySeq[Byte] = immutable.ArraySeq.ofByte( Base64.getDecoder().decode( messageBase64 ) )
-    lazy val signature : SignatureSHA256withECDSA = SignatureSHA256withECDSA( Base64.getDecoder().decode( signatureBase64 ) )
-    lazy val signer : ECPublicKey = BouncyCastleSecp256r1.publicKeyFromUncompressedFormatBytes( Base64.getDecoder().decode( signerBase64 ) )
-    lazy val hash : Hash.SHA3_256 = Hash.SHA3_256.hash( message.toArray ++ signature.unsafeInternalArray ++ BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(signer) )
-    override def toString = s"Envelope[${hash.hex0x}]"
+case class Envelope( messageBase64 : String, signatureBase64 : String, signerBase64 : String ):
+  lazy val message : immutable.ArraySeq[Byte] = immutable.ArraySeq.ofByte( Base64.getDecoder().decode( messageBase64 ) )
+  lazy val signature : SignatureSHA256withECDSA = SignatureSHA256withECDSA( Base64.getDecoder().decode( signatureBase64 ) )
+  lazy val signer : ECPublicKey = BouncyCastleSecp256r1.publicKeyFromUncompressedFormatBytes( Base64.getDecoder().decode( signerBase64 ) )
+  lazy val hash : Hash.SHA3_256 = Hash.SHA3_256.hash( message.toArray ++ signature.unsafeInternalArray ++ BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(signer) )
+  override def toString = s"Envelope[${hash.hex0x}]"
+
+case class Jwts( highSecurity : Jwt, lowSecurity : Jwt )
+
+case class EmailPassword( email : EmailAddress, password : Password )
 
 // json codecs -- jsoniter-scala
-given JsonValueCodec[Jwk]  = JsonCodecMaker.make
-given JsonValueCodec[Jwks] = JsonCodecMaker.make
+given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:
+  def decodeValue(in : JsonReader, default : EmailAddress) : EmailAddress = EmailAddress(in.readString(null))
+  def encodeValue(x : EmailAddress, out: JsonWriter): Unit = out.writeVal(x.str)
+  def nullValue : EmailAddress = null.asInstanceOf[EmailAddress]
+given JsonValueCodec[Password] = new JsonValueCodec[Password]:
+  def decodeValue(in : JsonReader, default : Password) : Password = Password(in.readString(null))
+  def encodeValue(x : Password, out: JsonWriter): Unit = out.writeVal(x.str)
+  def nullValue : Password = null.asInstanceOf[Password]
+given JsonValueCodec[Jwt] = new JsonValueCodec[Jwt]:
+  def decodeValue(in: JsonReader, default: Jwt): Jwt = Jwt(in.readString(null))
+  def encodeValue(x: Jwt, out: JsonWriter): Unit     = out.writeVal(x.str)
+  def nullValue: Jwt                                 = null.asInstanceOf[Jwt]
+
+given JsonValueCodec[Jwk]           = JsonCodecMaker.make
+given JsonValueCodec[Jwks]          = JsonCodecMaker.make
+given JsonValueCodec[Jwts]          = JsonCodecMaker.make
+given JsonValueCodec[Envelope]      = JsonCodecMaker.make
+given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 
 // json codecs -- tapir
-given Schema[Jwk]  = Schema.derived
-given Schema[Jwks] = Schema.derived
+given Schema[EmailAddress]  = Schema.string.map((s : String) => Some(EmailAddress(s)))(addr => addr.str)
+given Schema[Password]      = Schema.string.map((s : String) => Some(Password(s)))(pw => pw.str)
+given Schema[Jwt]           = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => jwt.str)
+given Schema[Jwk]           = Schema.derived
+given Schema[Jwks]          = Schema.derived
+given Schema[Jwts]          = Schema.derived
+given Schema[Envelope]      = Schema.derived
+given Schema[EmailPassword] = Schema.derived
 

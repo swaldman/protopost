@@ -1,7 +1,10 @@
 package protopost
 
 import javax.sql.DataSource
+import protopost.crypto.BouncyCastleSecp256r1
 import protopost.db.{PgDatabase,PgSchemaManager}
+import java.security.interfaces.ECPrivateKey
+import java.security.interfaces.ECPublicKey
 
 class AppResources( val configProperties : ConfigProperties ):
 
@@ -27,3 +30,8 @@ class AppResources( val configProperties : ConfigProperties ):
     )
     AuthManager[PosterId](currentSpec, longPasswordStrategyForCurrentOrHistoricalSpec, entropy)
 
+  lazy val keyPair : ( ECPrivateKey, ECPublicKey ) =
+    val hex = externalConfig.get( ExternalConfig.Key.`protopost.server.private-key-hex` ).getOrElse( throw new MissingConfig( s"${ExternalConfig.Key.`protopost.server.private-key-hex`} required, not set." ) )
+    val privateKey = BouncyCastleSecp256r1.privateKeyFromHex( hex )
+    val publicKey  = BouncyCastleSecp256r1.publicKeyFromPrivate( privateKey )
+    ( privateKey, publicKey )

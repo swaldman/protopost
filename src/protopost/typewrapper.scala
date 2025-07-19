@@ -7,14 +7,14 @@ import scala.annotation.targetName
 import com.mchange.mailutil.Smtp
 
 object ConfigProperties:
-  private[protopost] def apply( p : Properties ) : ConfigProperties = p
+  private[protopost] inline def apply( p : Properties ) : ConfigProperties = p
 opaque type ConfigProperties = Properties
 
 extension( configProperties : ConfigProperties )
   @targetName("configPropertiesProps") private[protopost] inline def props : Properties = configProperties
 
 object EmailAddress:
-  private[protopost] def apply( s : String ) : EmailAddress =
+  private[protopost] def apply( s : String ) : EmailAddress = // don't inline with check
     val address = Smtp.Address.parseSingle( s, strict = true )
     require( address.displayName == None, "Only simple e-mail addresses, e.g. 'user@subhost.host.tld', without display names, are supported, not " + address.rendered )
     s
@@ -29,3 +29,10 @@ opaque type PosterId = Int
 
 extension( pid : PosterId )
   @targetName("posterIdToInt") private[protopost] inline def int : Int = pid
+
+object Jwt:
+  private[protopost] inline def apply( s : String ) : Jwt = s
+opaque type Jwt = String
+
+extension( jwt : Jwt )
+  @targetName("jwtToString") private[protopost] inline def str : String = jwt
