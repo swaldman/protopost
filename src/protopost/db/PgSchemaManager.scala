@@ -55,6 +55,8 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
           PgSchema.V1.Table.PostAuthor.create( stmt )
           PgSchema.V1.Table.PostRevision.create( stmt )
           PgSchema.V1.Table.PostPublicationHistory.create( stmt )
+          PgSchema.V1.Table.PostDeleteHistory.create( stmt )
+          PgSchema.V1.Table.PostUndeleteHistory.create( stmt )
           PgSchema.V1.Table.PostMedia.create( stmt )
           PgSchema.V1.Sequence.DestinationId.create( stmt )
           PgSchema.V1.Sequence.PosterId.create( stmt )

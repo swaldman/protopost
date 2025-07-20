@@ -174,16 +174,36 @@ object PgSchema extends SelfLogging:
       object PostPublicationHistory extends Creatable:
         override val Create =
           """|CREATE TABLE post_publication_history (
-             |  destination_id           INTEGER,
-             |  post_id                  INTEGER,
-             |  save_time                TIMESTAMP,
-             |  update_time              TIMESTAMP,
-             |  major_update_description VARCHAR(2048),
-             |  update_confirmation_time TIMESTAMP,
+             |  destination_id            INTEGER,
+             |  post_id                   INTEGER,
+             |  save_time                 TIMESTAMP,
+             |  update_time               TIMESTAMP,
+             |  major_update_description  VARCHAR(2048),
+             |  update_confirmation_state VARCHAR(128),
              |  PRIMARY KEY ( destination_id, post_id, update_time ),
              |  FOREIGN KEY(destination_id, post_id, save_time) REFERENCES post_revision(destination_id, post_id, save_time)
              |)""".stripMargin
       end PostPublicationHistory
+      object PostDeleteHistory extends Creatable:
+        override val Create =
+          """|CREATE TABLE post_delete_history (
+             |  destination_id            INTEGER,
+             |  post_id                   INTEGER,
+             |  delete_time               TIMESTAMP,
+             |  delete_confirmation_state VARCHAR(128),
+             |  PRIMARY KEY ( destination_id, post_id, delete_time )
+             |)""".stripMargin
+      end PostDeleteHistory
+      object PostUndeleteHistory extends Creatable:
+        override val Create =
+          """|CREATE TABLE post_undelete_history (
+             |  destination_id              INTEGER,
+             |  post_id                     INTEGER,
+             |  undelete_time               TIMESTAMP,
+             |  undelete_confirmation_state VARCHAR(128),
+             |  PRIMARY KEY ( destination_id, post_id, undelete_time )
+             |)""".stripMargin
+      end PostUndeleteHistory
       object PostMedia extends Creatable:
         override val Create =
           """|CREATE TABLE post_media (
