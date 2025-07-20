@@ -2,9 +2,9 @@ package protopost.api
 
 import zio.*
 
-import protopost.{Jwt,EmailAddress,Server,SignatureDoesNotVerify,str}
+import protopost.{EmailAddress,Server,SignatureDoesNotVerify,str}
 import protopost.crypto.{*,given}
-//import protopost.crypto.unsafeInternalArray
+import protopost.jwt.{Jwk,Jwks,Jwt,str}
 
 import com.mchange.conveniences.throwable.*
 import com.mchange.cryptoutil.*
@@ -31,24 +31,6 @@ def mapMaybeError[U]( task : Task[Option[U]] ) : ZOut[U] =
   mapPlainError( task ).flatMap:
     case Some( u ) => ZIO.succeed( u )
     case None      => ZIO.fail[Option[String]]( None )
-
-object Jwk:
-  val DefaultKty = "EC"
-  val DefaultCrv = "P-256"
-  val DefaultAlg = "ES256"
-  val DefaultUse = "sig"
-  def apply( publicKey : ECPublicKey, location : Server.Location ) : Jwk =
-    Jwk(
-      x = BouncyCastleSecp256r1.fieldValueToBase64Url( publicKey.getW().getAffineX() ),
-      y = BouncyCastleSecp256r1.fieldValueToBase64Url( publicKey.getW().getAffineY() ),
-      kid = location.toUrl,
-      kty = DefaultKty,
-      crv = DefaultCrv,
-      alg = DefaultAlg,
-      use = DefaultUse
-    )
-case class Jwk( x : String, y : String, kid : String, kty : String, crv : String, alg : String, use : String )
-case class Jwks( keys : List[Jwk] )
 
 object Envelope:
   def apply( messageBytes : Array[Byte], privateKey : ECPrivateKey ) : Envelope =

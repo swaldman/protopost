@@ -7,6 +7,7 @@ import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
 import protopost.{AppResources,ExternalConfig,MissingConfig,PosterId,Server,jwt}
+import protopost.jwt.{Jwk,Jwks}
 
 import protopost.db.PgDatabase
 
@@ -75,14 +76,14 @@ object TapirEndpoint:
           .getOrElse( throw new MissingConfig( ExternalConfig.Key.`protopost.token.security.low.validity.minutes`.toString ) )
       val highSecurityExpiration = issuedAt.plus( highSecurityMinutes, ChronoUnit.MINUTES )
       val lowSecurityExpiration = issuedAt.plus( lowSecurityMinutes, ChronoUnit.MINUTES )
-      val highSecurityJwt = jwt.createSignJwt( appResources.keyPair(0) )(
+      val highSecurityJwt = jwt.createSignJwt( appResources.serverIdentity.privateKey )(
         keyId = identity.location.toUrl,
         subject = email.str,
         issuedAt = issuedAt,
         expiration = highSecurityExpiration,
         securityLevel = jwt.SecurityLevel.high
       )
-      val lowSecurityJwt = jwt.createSignJwt( appResources.keyPair(0) )(
+      val lowSecurityJwt = jwt.createSignJwt( appResources.serverIdentity.privateKey )(
         keyId = identity.location.toUrl,
         subject = email.str,
         issuedAt = issuedAt,
