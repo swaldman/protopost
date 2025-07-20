@@ -38,7 +38,7 @@ object `package` extends ScalaModule with BuildInfo {
     mvn"com.mchange::conveniences:0.0.5",
     mvn"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
     mvn"com.mchange::mailutil:0.0.5",
-    mvn"com.mchange::reauth:0.0.1-SNAPSHOT",
+    mvn"com.mchange::rehash:0.0.1-SNAPSHOT",
     mvn"at.favre.lib:bcrypt:0.10.2",
     mvn"com.monovore::decline:2.5.0",
     mvn"org.postgresql:postgresql:42.7.7",
@@ -57,4 +57,12 @@ object `package` extends ScalaModule with BuildInfo {
     )
     //def testFramework = "utest.runner.Framework"
   }
+
+  /*
+  object `test-console` extends ScalaModule {
+    def moduleDeps = Seq(build)
+    def scalaVersion = "3.7.1"
+    def mvnDeps = Seq(mvn"com.auth0:jwks-rsa:0.22.2")
+  }
+  */
 }

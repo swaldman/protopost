@@ -13,13 +13,14 @@ enum SecurityLevel:
 object Claims:
   enum Key:
     case securityLevel
-case class Claims( subject : String, issuedAt : Instant, expiration : Instant, securityLevel : SecurityLevel )
+case class Claims( keyId : String, subject : String, issuedAt : Instant, expiration : Instant, securityLevel : SecurityLevel )
 
-def createSignJwt( privateKey : ECPrivateKey )( subject : String, issuedAt : Instant, expiration : Instant, securityLevel : SecurityLevel ) : Jwt =
+def createSignJwt( privateKey : ECPrivateKey )( keyId : String, subject : String, issuedAt : Instant, expiration : Instant, securityLevel : SecurityLevel ) : Jwt =
   val algorithm = Algorithm.ECDSA256( null, privateKey )
   val raw =
     JWT
       .create()
+      .withKeyId(keyId)
       .withSubject( subject )
       .withIssuedAt( issuedAt )
       .withExpiresAt( expiration )
@@ -31,6 +32,7 @@ def decodeVerifyJwt( publicKey : ECPublicKey )( token : Jwt ) : Claims =
   val algorithm = Algorithm.ECDSA256( publicKey, null )
   val decodedJwt = JWT.require(algorithm).build().verify( token.str )
   Claims (
+    keyId = decodedJwt.getKeyId(),
     subject = decodedJwt.getSubject(),
     issuedAt = decodedJwt.getIssuedAtAsInstant(),
     expiration = decodedJwt.getExpiresAtAsInstant(),

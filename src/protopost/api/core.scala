@@ -19,7 +19,7 @@ import java.util.Base64
 
 import scala.collection.immutable
 
-import com.mchange.reauth.{Password,str}
+import com.mchange.rehash.{Password,str}
 
 // stealing some utilities from https://github.com/swaldman/hotsauce-devilla
 
@@ -35,15 +35,19 @@ def mapMaybeError[U]( task : Task[Option[U]] ) : ZOut[U] =
 object Jwk:
   val DefaultKty = "EC"
   val DefaultCrv = "P-256"
+  val DefaultAlg = "ES256"
+  val DefaultUse = "sig"
   def apply( publicKey : ECPublicKey, location : Server.Location ) : Jwk =
     Jwk(
-      x = BouncyCastleSecp256r1.fieldValueToHex( publicKey.getW().getAffineX() ),
-      y = BouncyCastleSecp256r1.fieldValueToHex( publicKey.getW().getAffineY() ),
+      x = BouncyCastleSecp256r1.fieldValueToBase64Url( publicKey.getW().getAffineX() ),
+      y = BouncyCastleSecp256r1.fieldValueToBase64Url( publicKey.getW().getAffineY() ),
       kid = location.toUrl,
       kty = DefaultKty,
-      crv = DefaultCrv
+      crv = DefaultCrv,
+      alg = DefaultAlg,
+      use = DefaultUse
     )
-case class Jwk( x : String, y : String, kid : String, kty : String, crv : String )
+case class Jwk( x : String, y : String, kid : String, kty : String, crv : String, alg : String, use : String )
 case class Jwks( keys : List[Jwk] )
 
 object Envelope:

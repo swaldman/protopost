@@ -1,5 +1,5 @@
 package protopost
 
-import com.mchange.reauth.BCryptHash
+import com.mchange.rehash.BCryptHash
 
 case class PosterWithAuth( id : PosterId, email : EmailAddress, fullName : String, auth : BCryptHash )

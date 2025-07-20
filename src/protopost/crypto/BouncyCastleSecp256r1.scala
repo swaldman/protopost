@@ -12,6 +12,7 @@ import org.bouncycastle.asn1.sec.SECNamedCurves
 import org.bouncycastle.crypto.params.ECDomainParameters
 
 import com.mchange.cryptoutil.{*,given}
+import java.util.Base64
 
 object BouncyCastleSecp256r1:
   private val Provider            = BouncyCastle.Provider
@@ -123,3 +124,7 @@ object BouncyCastleSecp256r1:
   def fieldValueToHex( jbi : BigInteger ) : String = fieldValueToHex( jbi.toBigInt )
   def fieldValueToHex0x(  bi : BigInt     ) : String = bi.unsignedBytes(32).hex0x
   def fieldValueToHex0x( jbi : BigInteger ) : String = fieldValueToHex0x( jbi.toBigInt )
+  def fieldValueToBase64Url( bi : BigInt ) : String = Base64.getUrlEncoder.encodeToString(bi.unsignedBytes(32))
+  def fieldValueToBase64Url( jbi : BigInteger ) : String = fieldValueToBase64Url( jbi.toBigInt )
+
+

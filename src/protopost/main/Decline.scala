@@ -6,7 +6,7 @@ import java.nio.file.{Path as JPath}
 
 import protopost.EmailAddress
 
-import com.mchange.reauth.Password
+import com.mchange.rehash.Password
 
 object Decline:
   object Subcommand:

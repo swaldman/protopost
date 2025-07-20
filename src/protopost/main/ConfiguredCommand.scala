@@ -13,7 +13,7 @@ import protopost.LoggingApi.*
 import protopost.api.TapirEndpoint
 import protopost.db.PgSchemaManager
 
-import com.mchange.reauth.*
+import com.mchange.rehash.*
 
 import com.mchange.sc.zsqlutil.*
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus

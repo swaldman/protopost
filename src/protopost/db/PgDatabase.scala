@@ -7,7 +7,7 @@ import javax.sql.DataSource
 
 import protopost.{EmailAddress, PosterWithAuth, PosterId}
 
-import com.mchange.reauth.*
+import com.mchange.rehash.*
 
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.zsqlutil.*

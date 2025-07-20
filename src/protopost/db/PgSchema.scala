@@ -7,7 +7,7 @@ import scala.util.Using
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.sqlutil.migrate.{Schema,MetadataKey}
 
-import com.mchange.reauth.*
+import com.mchange.rehash.*
 
 import protopost.*
 import protopost.LoggingApi.*
@@ -60,7 +60,7 @@ object PgSchema extends SelfLogging:
         private val SelectPosterExistsForEmail = "SELECT EXISTS(SELECT 1 FROM poster WHERE email = ?)"
         private val UpdateHash = "UPDATE poster SET hash = ? WHERE id = ?"
         def updateHash( conn : Connection, posterId : PosterId, hash : BCryptHash ) : Unit =
-          import com.mchange.reauth.str
+          import com.mchange.rehash.str
           val count =
             Using.resource( conn.prepareStatement( UpdateHash ) ): ps =>
               ps.setString(1, new String(hash.unsafeInternalArray))

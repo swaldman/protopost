@@ -10,7 +10,7 @@ import protopost.{AppResources,ExternalConfig,MissingConfig,PosterId,Server,jwt}
 
 import protopost.db.PgDatabase
 
-import com.mchange.reauth.*
+import com.mchange.rehash.*
 
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -43,12 +43,13 @@ object TapirEndpoint:
     mapPlainError( task )
 
   def login( appResources : AppResources )( emailPassword : EmailPassword ) : ZOut[Jwts] =
-    import com.mchange.reauth.str, protopost.str
+    import com.mchange.rehash.str, protopost.str
     def throwNoPosterEmail = throw new BadCredentials( s"No poster found with e-mail '${emailPassword.email}'." )
 
     val email = emailPassword.email
     val password = emailPassword.password
     val database = appResources.database
+    val identity = Server.Identity( appResources.externalConfig )
 
     val checkCredentials =
       withConnectionTransactionalZIO( appResources.dataSource ): conn =>
@@ -75,12 +76,14 @@ object TapirEndpoint:
       val highSecurityExpiration = issuedAt.plus( highSecurityMinutes, ChronoUnit.MINUTES )
       val lowSecurityExpiration = issuedAt.plus( lowSecurityMinutes, ChronoUnit.MINUTES )
       val highSecurityJwt = jwt.createSignJwt( appResources.keyPair(0) )(
+        keyId = identity.location.toUrl,
         subject = email.str,
         issuedAt = issuedAt,
         expiration = highSecurityExpiration,
         securityLevel = jwt.SecurityLevel.high
       )
       val lowSecurityJwt = jwt.createSignJwt( appResources.keyPair(0) )(
+        keyId = identity.location.toUrl,
         subject = email.str,
         issuedAt = issuedAt,
         expiration = lowSecurityExpiration,

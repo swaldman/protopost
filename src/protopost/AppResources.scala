@@ -23,7 +23,7 @@ class AppResources( val configProperties : ConfigProperties ):
   lazy val entropy = new java.security.SecureRandom
 
   lazy val authManager =
-    import com.mchange.reauth.*
+    import com.mchange.rehash.*
     val currentSpec = AuthManager.Spec( Authenticator.BCryptVersion.Version2A, 12 )
     val longPasswordStrategyForCurrentOrHistoricalSpec = Map (
       AuthManager.Spec( Authenticator.BCryptVersion.Version2A, 12 ) -> Authenticator.LongPasswordStrategy.Strict
