@@ -136,6 +136,7 @@ object PgSchema extends SelfLogging:
              |  in_reply_to_mime_type VARCHAR(128),
              |  in_reply_to_guid      VARCHAR(1024),
              |  content_type          VARCHAR(256),
+             |  UNIQUE ( destination_id, post_anchor ),
              |  PRIMARY KEY ( destination_id, post_id ),
              |  FOREIGN KEY(destination_id) REFERENCES destination(id)
              |)""".stripMargin
