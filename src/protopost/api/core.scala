@@ -23,14 +23,11 @@ import com.mchange.rehash.{Password,str}
 
 // stealing some utilities from https://github.com/swaldman/hotsauce-devilla
 
-type ZOut[T] = ZIO[Any,Option[String],T]
+case class ReconstructableThrowable( throwableClass : Option[Class[?]], fullStackTrace : String )
 
-def mapPlainError[U]( task : Task[U] ) : ZOut[U] = task.mapError( t => Some( t.fullStackTrace ) )
-
-def mapMaybeError[U]( task : Task[Option[U]] ) : ZOut[U] =
-  mapPlainError( task ).flatMap:
-    case Some( u ) => ZIO.succeed( u )
-    case None      => ZIO.fail[Option[String]]( None )
+object ZOut:
+  def fromTask[U]( task : Task[U] ) : ZOut[U] = task.mapError( t => ReconstructableThrowable( Some(t.getClass()), t.fullStackTrace ) )
+type ZOut[T] = ZIO[Any,ReconstructableThrowable,T]
 
 object Envelope:
   def apply( messageBytes : Array[Byte], privateKey : ECPrivateKey ) : Envelope =
