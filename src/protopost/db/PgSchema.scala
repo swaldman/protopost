@@ -43,7 +43,7 @@ object PgSchema extends SelfLogging:
     override val Version = 1
     object Table:
       object Destination extends Creatable:
-        override val Create = "CREATE TABLE destination ( id INTEGER PRIMARY KEY, seismic_host VARCHAR(1024), seismic_port INTEGER, seismic_auth CHAR(60) )"
+        override val Create = "CREATE TABLE destination ( id INTEGER PRIMARY KEY, seismic_host VARCHAR(1024), seismic_port INTEGER, seismic_id VARCHAR(256) )"
       end Destination
       object Poster extends Creatable:
         override val Create =
