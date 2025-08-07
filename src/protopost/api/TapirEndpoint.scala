@@ -81,14 +81,14 @@ object TapirEndpoint:
           .getOrElse( throw new MissingConfig( ExternalConfig.Key.`protopost.token.security.low.validity.minutes`.toString ) )
       val highSecurityExpiration = issuedAt.plus( highSecurityMinutes, ChronoUnit.MINUTES )
       val lowSecurityExpiration = issuedAt.plus( lowSecurityMinutes, ChronoUnit.MINUTES )
-      val highSecurityJwt = jwt.createSignJwt( appResources.serverIdentity.privateKey )(
+      val highSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
         keyId = identity.location.toUrl,
         subject = email.str,
         issuedAt = issuedAt,
         expiration = highSecurityExpiration,
         securityLevel = jwt.SecurityLevel.high
       )
-      val lowSecurityJwt = jwt.createSignJwt( appResources.serverIdentity.privateKey )(
+      val lowSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
         keyId = identity.location.toUrl,
         subject = email.str,
         issuedAt = issuedAt,
