@@ -38,7 +38,7 @@ object Envelope:
     Envelope( messageBase64, signatureBase64, signerBase64 )
   def wrap[T : JsonValueCodec]( messageThang : T, privateKey : ECPrivateKey ) : Envelope = this.apply( writeToArray(messageThang), privateKey )
   def verifyUnwrap[T : JsonValueCodec]( envelope : Envelope ) : T =
-    val messageBytes = envelope.message.toArray  // XXX: should I use unsfaeArray?
+    val messageBytes = envelope.message.toArray  // XXX: should I use unsafeArray?
     if BouncyCastleSecp256r1.verify( messageBytes, envelope.signature, envelope.signer ) then
       readFromArray[T]( messageBytes )
     else
