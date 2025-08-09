@@ -32,7 +32,7 @@ case class Location( protocol : Protocol, host : String, port : Int ):
     if port == protocol.defaultPort then s"${protocol}://${host}/" else s"${protocol}://${host}:${port}/"
 
 object PublicIdentity:
-  val LocationWithIdentifierRegex = """^([^#]+)#([^:]+):\[([^>]+)>([^\]]+)\]$""".r
+  val LocationWithIdentifierRegex = """^([^#]+)#([^\[]+)\[([^\]]+)\](.+)$""".r
   def fromLocationWithIdentifier( s : String ) : PublicIdentity[?] =
     s match
       case LocationWithIdentifierRegex( location, service, algocrv, pkey ) =>
@@ -40,7 +40,7 @@ object PublicIdentity:
         val s = Service.valueOf(service)
         algocrv.toUpperCase match
           case "ES256(P-256)" =>
-            val uncompressedFormatPublicKey = pkey.decodeBase64url
+            val uncompressedFormatPublicKey = pkey.decodeHex
             ES256PublicIdentity(l, s, BouncyCastleSecp256r1.publicKeyFromUncompressedFormatBytes(uncompressedFormatPublicKey))
           case _ => throw new UnknownAlgorithmOrCurve(algocrv)
       case _ => throw new BadLocationWithIdentifierFormat(s)
@@ -61,8 +61,8 @@ trait LocalIdentity[KPVT,KPUB]:
 
 case class ES256PublicIdentity(val location : Location, val service : Service, val publicKey : ECPublicKey) extends PublicIdentity[ECPublicKey]:
   def toIdentifier: String =
-    val publicKeyBase64Url = BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(publicKey).base64url
-    s"${service}:[ES256(P-256)>${publicKeyBase64Url}]"
+    val publicKeyHex = BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(publicKey).hex0x
+    s"${service}[ES256(P-256)]${publicKeyHex}"
   def toLocationWithIdentifier = s"${location.toUrl}#${this.toIdentifier}"
 
 case class ES256LocalIdentity(val location : Location, val service : Service, val privateKey : ECPrivateKey, val publicKey : ECPublicKey) extends LocalIdentity[ECPrivateKey,ECPublicKey]:
