@@ -12,7 +12,7 @@ enum Service:
   case protopost, seismic;
 
 enum Protocol( val defaultPort : Int ):
-  case http extends Protocol(80)
+  case http  extends Protocol(80)  // for testing only! auth credentials are sent "in the clear", so only https should be used in production
   case https extends Protocol(443)
 
 object Location:
@@ -32,10 +32,10 @@ case class Location( protocol : Protocol, host : String, port : Int ):
     if port == protocol.defaultPort then s"${protocol}://${host}/" else s"${protocol}://${host}:${port}/"
 
 object PublicIdentity:
-  val LocationWithIdentifierRegex = """^([^#]+)#([^\[]+)\[([^\]]+)\](.+)$""".r
-  def fromLocationWithIdentifier( s : String ) : PublicIdentity[?] =
+  val IdentifierWithLocationRegex = """^([^\[]+)\[([^\]]+)\]([^\:]+)\:(.+)$""".r
+  def fromIdentifierWithLocation( s : String ) : PublicIdentity[?] =
     s match
-      case LocationWithIdentifierRegex( location, service, algocrv, pkey ) =>
+      case IdentifierWithLocationRegex( service, algocrv, pkey, location ) =>
         val l = Location(location)
         val s = Service.valueOf(service)
         algocrv.toUpperCase match
@@ -50,7 +50,7 @@ trait PublicIdentity[KPUB]:
   def service   : Service
   def publicKey : KPUB
   def toIdentifier : String
-  def toLocationWithIdentifier : String
+  def toIdentifierWithLocation : String
   
 trait LocalIdentity[KPVT,KPUB]:
   def location   : Location
@@ -63,7 +63,7 @@ case class ES256PublicIdentity(val location : Location, val service : Service, v
   def toIdentifier: String =
     val publicKeyHex = BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(publicKey).hex0x
     s"${service}[ES256(P-256)]${publicKeyHex}"
-  def toLocationWithIdentifier = s"${location.toUrl}#${this.toIdentifier}"
+  def toIdentifierWithLocation = s"${this.toIdentifier}:${location.toUrl}"
 
 case class ES256LocalIdentity(val location : Location, val service : Service, val privateKey : ECPrivateKey, val publicKey : ECPublicKey) extends LocalIdentity[ECPrivateKey,ECPublicKey]:
   lazy val toPublicIdentity : ES256PublicIdentity = ES256PublicIdentity(location, service, publicKey)

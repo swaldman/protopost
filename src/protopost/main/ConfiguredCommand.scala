@@ -37,7 +37,7 @@ object ConfiguredCommand extends SelfLogging:
         p        =  port.getOrElse( ec( ExternalConfig.Key.`protopost.api.port` ).toInt )
         seps     =  TapirEndpoint.serverEndpoints(ar)
         httpApp  =  ZioHttpInterpreter().toHttp(seps)
-        _        <- INFO.zlog( s"Serving protopost API on port $p, location with identity '${ar.localIdentity.toPublicIdentity.toLocationWithIdentifier}'" )
+        _        <- INFO.zlog( s"Serving protopost API on port $p, location with identity '${ar.localIdentity.toPublicIdentity.toIdentifierWithLocation}'" )
         exitCode <- ZServer
                       .serve(httpApp)
                       .tapDefect( c => FATAL.zlog("API web server failed unexpectedly, cause: " + c ) )
