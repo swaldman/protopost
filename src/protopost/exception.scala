@@ -10,3 +10,5 @@ final class EmailIsAlreadyRegistered( message : String, cause : Throwable = null
 final class SignatureDoesNotVerify( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class BadCredentials( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class PosterUnknown( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
+final class UnknownAlgorithmOrCurve( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
+final class BadLocationWithIdentifierFormat( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )

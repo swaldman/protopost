@@ -2,12 +2,13 @@ package protopost.api
 
 import zio.*
 
-import protopost.{EmailAddress,Server,SignatureDoesNotVerify,str}
+import protopost.{EmailAddress,SignatureDoesNotVerify,str}
 import protopost.crypto.{*,given}
+
 import protopost.jwt.{Jwk,Jwks,Jwt,str}
 
 import com.mchange.conveniences.throwable.*
-import com.mchange.cryptoutil.*
+import com.mchange.cryptoutil.{*,given}
 
 import java.security.interfaces.ECPublicKey
 
@@ -32,10 +33,8 @@ type ZOut[T] = ZIO[Any,ReconstructableThrowable,T]
 object Envelope:
   def apply( messageBytes : Array[Byte], privateKey : ECPrivateKey ) : Envelope =
     val signature = BouncyCastleSecp256r1.sign( messageBytes, privateKey )
-    val messageBase64 = Base64.getEncoder().encodeToString(messageBytes)
-    val signatureBase64 = Base64.getEncoder().encodeToString(signature.unsafeInternalArray)
-    val signerBase64 = Base64.getEncoder().encodeToString(BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(BouncyCastleSecp256r1.publicKeyFromPrivate(privateKey)))
-    Envelope( messageBase64, signatureBase64, signerBase64 )
+    val signer = BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(BouncyCastleSecp256r1.publicKeyFromPrivate(privateKey))
+    Envelope( messageBytes.base64url, signature.unsafeInternalArray.base64url, signer.base64url )
   def wrap[T : JsonValueCodec]( messageThang : T, privateKey : ECPrivateKey ) : Envelope = this.apply( writeToArray(messageThang), privateKey )
   def verifyUnwrap[T : JsonValueCodec]( envelope : Envelope ) : T =
     val messageBytes = envelope.message.toArray  // XXX: should I use unsafeArray?
@@ -44,10 +43,10 @@ object Envelope:
     else
       throw new SignatureDoesNotVerify( s"The signature of " + envelope + " does not verify." )
 
-case class Envelope( messageBase64 : String, signatureBase64 : String, signerBase64 : String ):
-  lazy val message : immutable.ArraySeq[Byte] = immutable.ArraySeq.ofByte( Base64.getDecoder().decode( messageBase64 ) )
-  lazy val signature : SignatureSHA256withECDSA = SignatureSHA256withECDSA( Base64.getDecoder().decode( signatureBase64 ) )
-  lazy val signer : ECPublicKey = BouncyCastleSecp256r1.publicKeyFromUncompressedFormatBytes( Base64.getDecoder().decode( signerBase64 ) )
+case class Envelope( messageBase64url : String, signatureBase64url : String, signerBase64url : String ):
+  lazy val message : immutable.ArraySeq[Byte] = immutable.ArraySeq.ofByte( Base64.getUrlDecoder().decode( messageBase64url ) )
+  lazy val signature : SignatureSHA256withECDSA = SignatureSHA256withECDSA( Base64.getUrlDecoder().decode( signatureBase64url ) )
+  lazy val signer : ECPublicKey = BouncyCastleSecp256r1.publicKeyFromUncompressedFormatBytes( Base64.getUrlDecoder().decode( signerBase64url ) )
   lazy val hash : Hash.SHA3_256 = Hash.SHA3_256.hash( message.toArray ++ signature.unsafeInternalArray ++ BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(signer) )
   override def toString = s"Envelope[${hash.hex0x}]"
 

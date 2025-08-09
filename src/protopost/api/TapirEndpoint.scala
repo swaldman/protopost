@@ -6,7 +6,7 @@ import sttp.model.StatusCode
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.{AppResources,ExternalConfig,MissingConfig,PosterId,Server,jwt}
+import protopost.{AppResources,ExternalConfig,MissingConfig,PosterId,jwt}
 import protopost.jwt.{Jwk,Jwks}
 
 import protopost.db.PgDatabase
@@ -42,8 +42,8 @@ object TapirEndpoint:
   def jwks( appResources : AppResources )(u : Unit) : ZOut[Jwks] =
     ZOut.fromTask:
       ZIO.attempt:
-        val identity = Server.Identity( appResources.externalConfig )
-        val jwk = Jwk( identity.publicKey, identity.location )
+        val identity = appResources.localIdentity
+        val jwk = Jwk( identity.publicKey, identity.service )
         Jwks( List( jwk ) )
 
   def login( appResources : AppResources )( emailPassword : EmailPassword ) : ZOut[Jwts] =
@@ -52,7 +52,7 @@ object TapirEndpoint:
     val email = emailPassword.email
     val password = emailPassword.password
     val database = appResources.database
-    val identity = Server.Identity( appResources.externalConfig )
+    val identity = appResources.localIdentity
 
     val checkCredentials =
       withConnectionTransactionalZIO( appResources.dataSource ): conn =>

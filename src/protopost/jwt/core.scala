@@ -5,7 +5,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 
-import protopost.Server
+import protopost.identity.Service
 import protopost.crypto.BouncyCastleSecp256r1
 
 enum SecurityLevel:
@@ -21,11 +21,11 @@ object Jwk:
   val DefaultCrv = "P-256"
   val DefaultAlg = "ES256"
   val DefaultUse = "sig"
-  def apply( publicKey : ECPublicKey, location : Server.Location ) : Jwk =
+  def apply( publicKey : ECPublicKey, service : Service ) : Jwk =
     Jwk(
       x = BouncyCastleSecp256r1.fieldValueToBase64Url( publicKey.getW().getAffineX() ),
       y = BouncyCastleSecp256r1.fieldValueToBase64Url( publicKey.getW().getAffineY() ),
-      kid = location.toUrl,
+      kid = service.toString,
       kty = DefaultKty,
       crv = DefaultCrv,
       alg = DefaultAlg,
