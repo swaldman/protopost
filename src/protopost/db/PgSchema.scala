@@ -42,8 +42,17 @@ object PgSchema extends SelfLogging:
   object V1 extends Schema:
     override val Version = 1
     object Table:
+      object SeismicNode extends Creatable:
+        override val Create = "CREATE TABLE seismic_node ( id INTEGER PRIMARY KEY, seismic_identifier_with_location VARCHAR(1024) )"
+      end SeismicNode
       object Destination extends Creatable:
-        override val Create = "CREATE TABLE destination ( id INTEGER PRIMARY KEY, seismic_identifier_with_location VARCHAR(1024), destination_name VARCHAR(256) )"
+        override val Create =
+          """|CREATE TABLE destination (
+             |  id INTEGER PRIMARY KEY,
+             |  seismic_node_id INTEGER,
+             |  name VARCHAR(256),
+             |  FOREIGN KEY (seismic_node_id) REFERENCES seismic_node(id)
+             |)""".stripMargin
       end Destination
       object Poster extends Creatable:
         override val Create =
@@ -217,6 +226,9 @@ object PgSchema extends SelfLogging:
       end PostMedia
     end Table
     object Sequence:
+      object SeismicNodeId extends Creatable:
+        protected val Create = "CREATE SEQUENCE seismic_node_id_seq AS INTEGER"
+      end SeismicNodeId
       object DestinationId extends Creatable:
         protected val Create = "CREATE SEQUENCE destination_id_seq AS INTEGER"
       end DestinationId

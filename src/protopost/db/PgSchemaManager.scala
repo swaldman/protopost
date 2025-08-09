@@ -48,6 +48,7 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
       ZIO.attemptBlocking:
         TRACE.log( "upMigrateFrom_0()" )
         Using.resource( conn.createStatement() ): stmt =>
+          PgSchema.V1.Table.SeismicNode.create( stmt )
           PgSchema.V1.Table.Destination.create( stmt )
           PgSchema.V1.Table.Poster.create( stmt )
           PgSchema.V1.Table.DestinationPoster.create( stmt )
@@ -58,6 +59,7 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
           PgSchema.V1.Table.PostDeleteHistory.create( stmt )
           PgSchema.V1.Table.PostUndeleteHistory.create( stmt )
           PgSchema.V1.Table.PostMedia.create( stmt )
+          PgSchema.V1.Sequence.SeismicNodeId.create( stmt )
           PgSchema.V1.Sequence.DestinationId.create( stmt )
           PgSchema.V1.Sequence.PosterId.create( stmt )
           PgSchema.V1.Sequence.PostId.create( stmt )
