@@ -34,7 +34,7 @@ class AppResources( val configProperties : ConfigProperties ):
   lazy val localIdentity =
     val location =
       externalConfig.get(ExternalConfig.Key.`protopost.server.url`) match
-        case Some(url) => Location.assertSimple(Location(url))
+        case Some(url) => Location.Simple(url)
         case None      => Location.DefaultProtopost
     val pvtKeyHexKey = ExternalConfig.Key.`protopost.server.private-key-hex`
     val hex =

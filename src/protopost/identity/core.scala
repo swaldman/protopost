@@ -18,8 +18,8 @@ enum Protocol( val defaultPort : Int ):
 object Location:
   val DefaultProtopost = Location.Simple(Protocol.http,"localhost",Protocol.http.defaultPort)
   val UrlRegex = """^(\w+)\:\/\/(localhost|(?:(?:[a-zA-Z_0-9]\.)+[a-zA-Z_0-9]+))(?:\:(\d+))?(\/.*)?$""".r
-  def apply( putativeProtopostUrl : String ) : Location =
-    putativeProtopostUrl match
+  def apply( url : String ) : Location =
+    url match
       case UrlRegex( p, host, portStr, path ) =>
         val protocol = try Protocol.valueOf(p.toLowerCase) catch { case t : Throwable => throw new UnsupportedProtocol(p, t) }
         val port = if portStr.nullOrEmpty then protocol.defaultPort else portStr.toInt
@@ -27,13 +27,21 @@ object Location:
           Location.Simple( protocol, host, port )
         else
           Location.WithPath( protocol, host, port, path.substring(1) )
-      case _ => throw new BadServiceUrl( s"'${putativeProtopostUrl}' is not a valid service URL, which should look like '<protocol>://<host>/' or '<protocol>://<host>:<port>/'" )
-  def assertSimple( location : Location ) : Location.Simple =
-    location match
-      case simple : Location.Simple => simple
-      case _ => throw new BadLocation(s"Expected a simple location, host and maybe port, but no path. Found '${location.toUrl}'")
+      case _ => throw new BadServiceUrl( s"'${url}' is not a valid service URL, which should look like '<protocol>://<host>/<optional-path>' or '<protocol>://<host>:<port>/<optional-path>'" )
+  object Simple:
+    def assert( location : Location ) : Location.Simple =
+      location match
+        case simple : Location.Simple => simple
+        case _ => throw new BadLocation(s"Expected a simple location, host and maybe port, but no path. Found '${location.toUrl}'")
+    def apply( url : String ) : Location.Simple = assert( Location(url) )
   case class Simple( protocol : Protocol, host : String, port : Int ) extends Location:
     lazy val toUrl : String = if port == protocol.defaultPort then s"${protocol}://${host}/" else s"${protocol}://${host}:${port}/"
+  object WithPath:
+    def assert( location : Location ) : Location.WithPath =
+      location match
+        case wp : Location.WithPath => wp
+        case _ => throw new BadLocation(s"Expected a location with a path, host and maybe port and also a path. No path found in '${location.toUrl}'")
+    def apply( url : String ) : Location.WithPath = assert( Location(url) )
   case class WithPath( protocol : Protocol, host : String, port : Int, path : String ) extends Location:
     lazy val simple = Simple( protocol, host, port )
     lazy val toUrl : String = pathJoin( simple.toUrl, path )
@@ -48,7 +56,7 @@ object PublicIdentity:
   def fromIdentifierWithLocation( s : String ) : PublicIdentity[?] =
     s match
       case IdentifierWithLocationRegex( service, algocrv, pkey, location ) =>
-        val l = Location.assertSimple(Location(location))
+        val l = Location.Simple(location)
         val s = Service.valueOf(service)
         algocrv.toUpperCase match
           case "ES256(P-256)" =>
