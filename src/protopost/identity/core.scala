@@ -22,8 +22,8 @@ object Location:
     putativeProtopostUrl match
       case UrlRegex( p, host, portStr, path ) =>
         val protocol = try Protocol.valueOf(p.toLowerCase) catch { case t : Throwable => throw new UnsupportedProtocol(p, t) }
-        val port = if portStr.nullOrBlank then protocol.defaultPort else portStr.toInt
-        if path.nullOrBlank || path.length == 1 then
+        val port = if portStr.nullOrEmpty then protocol.defaultPort else portStr.toInt
+        if path.nullOrEmpty || path.length == 1 then
           Location.Simple( protocol, host, port )
         else
           Location.WithPath( protocol, host, port, path.substring(1) )

@@ -35,7 +35,7 @@ object `package` extends ScalaModule with BuildInfo {
     mvn"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
     mvn"com.mchange::sqlutil-scala-zio:0.0.5-SNAPSHOT",
     mvn"com.mchange::mill-daemon-util:0.1.2",
-    mvn"com.mchange::conveniences:0.0.5",
+    mvn"com.mchange::conveniences:0.0.6-SNAPSHOT",
     mvn"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
     mvn"com.mchange::mailutil:0.0.5",
     mvn"com.mchange::rehash:0.0.1-SNAPSHOT",
