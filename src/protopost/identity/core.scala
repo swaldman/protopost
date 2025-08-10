@@ -35,6 +35,7 @@ object Location:
         case _ => throw new BadLocation(s"Expected a simple location, host and maybe port, but no path. Found '${location.toUrl}'")
     def apply( url : String ) : Location.Simple = assert( Location(url) )
   case class Simple( protocol : Protocol, host : String, port : Int ) extends Location:
+    def simple = this
     lazy val toUrl : String = if port == protocol.defaultPort then s"${protocol}://${host}/" else s"${protocol}://${host}:${port}/"
   object WithPath:
     def assert( location : Location ) : Location.WithPath =
@@ -49,22 +50,31 @@ trait Location:
   def protocol : Protocol
   def host : String
   def port : Int
+  def simple : Location.Simple
   def toUrl : String
 
 object PublicIdentity:
   val IdentifierWithLocationRegex = """^([^\[]+)\[([^\]]+)\]([^\:]+)\:(.+)$""".r
-  def fromIdentifierWithLocation( s : String ) : PublicIdentity[?] =
+  def fromIdentifierWithLocationAny( s : String ) : (PublicIdentity[?], Option[String]) =
     s match
       case IdentifierWithLocationRegex( service, algocrv, pkey, location ) =>
-        val l = Location.Simple(location)
+        val la = Location(location)
         val s = Service.valueOf(service)
         algocrv.toUpperCase match
           case "ES256(P-256)" =>
             val uncompressedFormatPublicKey = pkey.decodeHex
-            ES256PublicIdentity(l, s, BouncyCastleSecp256r1.publicKeyFromUncompressedFormatBytes(uncompressedFormatPublicKey))
+            val publicIdentity = ES256PublicIdentity(la.simple, s, BouncyCastleSecp256r1.publicKeyFromUncompressedFormatBytes(uncompressedFormatPublicKey))
+            val path =
+              la match
+                case lwp : Location.WithPath => Some(lwp.path)
+                case ls  : Location.Simple     => None
+            (publicIdentity, path)  
           case _ => throw new UnknownAlgorithmOrCurve(algocrv)
       case _ => throw new BadIdentifierFormat(s)
-
+  def fromIdentifierWithLocationSimple( s : String ) : PublicIdentity[?] =
+    fromIdentifierWithLocationAny( s ) match
+      case ( pi, None ) => pi
+      case _            => throw new BadIdentifierFormat("Expected a simple identifier, but found an identifier with a path component: " + s)
 trait PublicIdentity[KPUB]:
   def location  : Location.Simple
   def service   : Service
