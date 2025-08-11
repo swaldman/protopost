@@ -20,7 +20,7 @@
 
   Supported alg-crvs are:
 
-  * [ES256(P-256)]
+  * `[ES256(P-256)]`
     - Public keys are in uncompressed format, 65 bytes, beginning with 0x04, concatenated with the 32-byte x value,
       concatenated with the 32-byte y value of the public key point.
 
