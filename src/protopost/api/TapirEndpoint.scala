@@ -21,6 +21,8 @@ import protopost.BadCredentials
 
 object TapirEndpoint:
 
+  val service = protopost.identity.Service.protopost // forseeing abstracting some of this to a more abstract restack library
+
   val errorHandler =
     def errorBodyOut[T <: Throwable]( throwableClass : Class[T] ) =
       stringBody.map(fst => ReconstructableThrowable(Some(throwableClass),fst))(_.fullStackTrace)
@@ -38,6 +40,14 @@ object TapirEndpoint:
   val WellKnownJwks = Base.in(".well-known").in("jwks.json").out(jsonBody[Jwks])
 
   val Login = Base.post.in("login").in(jsonBody[EmailPassword]).out(jsonBody[Jwts])
+
+  private val JtiEntropyBytes = 32
+
+  private def newJti( appResources : AppResources ) : String =
+    import com.mchange.cryptoutil.{*,given}
+    val arr = Array.ofDim[Byte](JtiEntropyBytes)
+    appResources.entropy.nextBytes(arr)
+    arr.base64url
 
   def jwks( appResources : AppResources )(u : Unit) : ZOut[Jwks] =
     ZOut.fromTask:
@@ -81,18 +91,22 @@ object TapirEndpoint:
           .getOrElse( throw new MissingConfig( ExternalConfig.Key.`protopost.token.security.low.validity.minutes`.toString ) )
       val highSecurityExpiration = issuedAt.plus( highSecurityMinutes, ChronoUnit.MINUTES )
       val lowSecurityExpiration = issuedAt.plus( lowSecurityMinutes, ChronoUnit.MINUTES )
+      val highSecurityJti = newJti(appResources) // for eventual implementation of token revocation
+      val lowSecurityJti = newJti(appResources)  // for eventual implementation of token revocation
       val highSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
-        keyId = identity.location.toUrl,
+        keyId = service.toString,
         subject = email.str,
         issuedAt = issuedAt,
         expiration = highSecurityExpiration,
+        jti = highSecurityJti,
         securityLevel = jwt.SecurityLevel.high
       )
       val lowSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
-        keyId = identity.location.toUrl,
+        keyId = service.toString,
         subject = email.str,
         issuedAt = issuedAt,
         expiration = lowSecurityExpiration,
+        jti = lowSecurityJti,
         securityLevel = jwt.SecurityLevel.low
       )
       Jwts( highSecurityJwt, lowSecurityJwt )

@@ -14,7 +14,7 @@ enum SecurityLevel:
 object Claims:
   enum Key:
     case securityLevel
-case class Claims( keyId : String, subject : String, issuedAt : Instant, expiration : Instant, securityLevel : SecurityLevel )
+case class Claims( keyId : String, subject : String, issuedAt : Instant, expiration : Instant, jti : String, securityLevel : SecurityLevel )
 
 object Jwk:
   val DefaultKty = "EC"
@@ -34,7 +34,7 @@ object Jwk:
 case class Jwk( x : String, y : String, kid : String, kty : String, crv : String, alg : String, use : String )
 case class Jwks( keys : List[Jwk] )
 
-def createSignJwt( privateKey : ECPrivateKey )( keyId : String, subject : String, issuedAt : Instant, expiration : Instant, securityLevel : SecurityLevel ) : Jwt =
+def createSignJwt( privateKey : ECPrivateKey )( keyId : String, subject : String, issuedAt : Instant, expiration : Instant, jti : String, securityLevel : SecurityLevel ) : Jwt =
   val algorithm = Algorithm.ECDSA256( null, privateKey )
   val raw =
     JWT
@@ -43,6 +43,7 @@ def createSignJwt( privateKey : ECPrivateKey )( keyId : String, subject : String
       .withSubject( subject )
       .withIssuedAt( issuedAt )
       .withExpiresAt( expiration )
+      .withJWTId(jti)
       .withClaim( Claims.Key.securityLevel.toString, securityLevel.toString() )
       .sign( algorithm )
   Jwt( raw )  
@@ -55,6 +56,7 @@ def decodeVerifyJwt( publicKey : ECPublicKey )( token : Jwt ) : Claims =
     subject = decodedJwt.getSubject(),
     issuedAt = decodedJwt.getIssuedAtAsInstant(),
     expiration = decodedJwt.getExpiresAtAsInstant(),
+    jti = decodedJwt.getId(),
     securityLevel = SecurityLevel.valueOf( decodedJwt.getClaim(Claims.Key.securityLevel.toString).asString )
   )
 
