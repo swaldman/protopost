@@ -41,7 +41,7 @@ object TapirEndpoint:
 
   val Login = Base.post.in("login").in(jsonBody[EmailPassword]).out(jsonBody[Jwts])
 
-  private val JtiEntropyBytes = 32
+  private val JtiEntropyBytes = 16
 
   private def newJti( appResources : AppResources ) : String =
     import com.mchange.cryptoutil.{*,given}
