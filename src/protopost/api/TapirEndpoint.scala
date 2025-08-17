@@ -42,6 +42,8 @@ object TapirEndpoint:
 
   val Login = Base.post.in("login").in(jsonBody[EmailPassword]).out(jsonBody[Jwts])
 
+  val Client = Base.get.in("client").out(htmlBodyUtf8)
+
   private val JtiEntropyBytes = 16
 
   private def newJti( appResources : AppResources ) : String =
@@ -56,6 +58,9 @@ object TapirEndpoint:
         val identity = appResources.localIdentity
         val jwk = Jwk( identity.publicKey, identity.service )
         Jwks( List( jwk ) )
+
+  def client( appResources : AppResources )(unit : Unit) : ZOut[String] =
+    ZOut.fromTask( ZIO.attempt(protopost.client.client_top_html().text) )
 
   def login( appResources : AppResources )( emailPassword : EmailPassword ) : ZOut[Jwts] =
     import com.mchange.rehash.str, protopost.str
@@ -118,7 +123,8 @@ object TapirEndpoint:
     List (
       //RootJwks.zServerLogic( jwks( appResources ) ),
       WellKnownJwks.zServerLogic( jwks( appResources ) ),
-      Login.zServerLogic( login( appResources ) )
+      Login.zServerLogic( login( appResources ) ),
+      Client.zServerLogic( client( appResources ) )
     )
 
 end TapirEndpoint
