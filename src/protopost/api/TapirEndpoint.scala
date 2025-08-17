@@ -10,7 +10,8 @@ import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
 import protopost.{AppResources,ExternalConfig,MissingConfig,PosterId,jwt}
-import protopost.jwt.{Jwk,Jwks}
+import protopost.jwt.{Jwk,Jwks,decodeVerifyJwt}
+import protopost.LoggingApi.*
 
 import protopost.db.PgDatabase
 
@@ -22,9 +23,9 @@ import java.time.temporal.ChronoUnit
 import com.mchange.sc.zsqlutil.*
 import protopost.{BadCookieSettings,BadCredentials}
 import sttp.model.headers.CookieValueWithMeta
-import cats.instances.either
 
-object TapirEndpoint:
+
+object TapirEndpoint extends SelfLogging:
 
   val service = protopost.identity.Service.protopost // forseeing abstracting some of this to a more abstract restack library
 
@@ -53,6 +54,13 @@ object TapirEndpoint:
       .out(setCookie("token_security_low"))
       .out(jsonBody[LoginStatus])
 
+  val LoginStatus =
+    Base.get
+      .in("login-status")
+      .in(cookie[Option[String]]("token_security_high"))
+      .in(cookie[Option[String]]("token_security_low"))
+      .out(jsonBody[LoginStatus])
+
   val Client = Base.get.in("client").in("top.html").out(htmlBodyUtf8)
 
   val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
@@ -64,6 +72,8 @@ object TapirEndpoint:
     val arr = Array.ofDim[Byte](JtiEntropyBytes)
     appResources.entropy.nextBytes(arr)
     arr.base64url
+
+  private def toEpochSecond( instant : Instant ) = instant.toEpochMilli / 1000
 
   def jwks( appResources : AppResources )(u : Unit) : ZOut[Jwks] =
     ZOut.fromTask:
@@ -138,16 +148,36 @@ object TapirEndpoint:
             case Left( str )   => throw new BadCookieSettings( str )
             case Right( cvwm ) => cvwm
 
-        def toEpochSecond( instant : Instant ) = instant.toEpochMilli / 1000
-        ( peel(highSecurityCookieValue), peel(lowSecurityCookieValue), LoginStatus( toEpochSecond(highSecurityExpiration), toEpochSecond(lowSecurityExpiration) ) )
+        ( peel(highSecurityCookieValue), peel(lowSecurityCookieValue), protopost.api.LoginStatus( toEpochSecond(highSecurityExpiration), toEpochSecond(lowSecurityExpiration) ) )
     ZOut.fromTask:
       checkCredentials *> issueTokens
+
+  def loginStatus( appResources : AppResources )( highSecurityToken : Option[String], lowSecurityToken : Option[String] ) : ZOut[LoginStatus] =
+    ZOut.fromTask:
+      ZIO.attempt:
+        val identity = appResources.localIdentity
+
+        def extractExpiration( tokenOpt : Option[String] ) : Option[Long] =
+          tokenOpt.flatMap: tokenStr =>
+            try
+              val jwt = protopost.jwt.Jwt(tokenStr)
+              val verified = decodeVerifyJwt(identity.publicKey)(jwt)
+              Some( toEpochSecond( verified.expiration) )
+            catch
+              case t : Throwable =>
+                WARNING.log("Could not validate a JWT.", t)
+                None
+
+        val highSecurityExpires = extractExpiration(highSecurityToken).getOrElse(0L)
+        val lowSecurityExpires = extractExpiration(lowSecurityToken).getOrElse(0L)
+        protopost.api.LoginStatus(highSecurityExpires, lowSecurityExpires)
 
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     List (
       //RootJwks.zServerLogic( jwks( appResources ) ),
       WellKnownJwks.zServerLogic( jwks( appResources ) ),
       Login.zServerLogic( login( appResources ) ),
+      LoginStatus.zServerLogic( loginStatus( appResources ) ),
       Client.zServerLogic( client( appResources ) ),
       ScalaJsServerEndpoint
     )

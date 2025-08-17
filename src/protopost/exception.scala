@@ -14,3 +14,4 @@ final class UnknownAlgorithmOrCurve( message : String, cause : Throwable = null 
 final class BadLocation( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class BadIdentifierFormat( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class BadCookieSettings( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
+//final class InvalidJwt( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
