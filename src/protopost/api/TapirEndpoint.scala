@@ -33,11 +33,12 @@ object TapirEndpoint:
       oneOfVariantValueMatcher(statusCode(StatusCode.InternalServerError).and(errorBodyOutNone())){ case rt : ReconstructableThrowable if rt.throwableClass == None => true },
   )
 
-  val Base = endpoint.errorOut(errorHandler)
-  val EnvelopeBase = endpoint.in("envelope")
+  val NakedBase = endpoint.errorOut(errorHandler)
+  val Base = NakedBase.in("protopost")
+  val Envelope = Base.in("envelope")
 
-  val RootJwks = Base.in("jwks.json").out(jsonBody[Jwks])
-  val WellKnownJwks = Base.in(".well-known").in("jwks.json").out(jsonBody[Jwks])
+  //val RootJwks = Base.in("jwks.json").out(jsonBody[Jwks])
+  val WellKnownJwks = NakedBase.in(".well-known").in("jwks.json").out(jsonBody[Jwks])
 
   val Login = Base.post.in("login").in(jsonBody[EmailPassword]).out(jsonBody[Jwts])
 
@@ -115,7 +116,7 @@ object TapirEndpoint:
 
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     List (
-      RootJwks.zServerLogic( jwks( appResources ) ),
+      //RootJwks.zServerLogic( jwks( appResources ) ),
       WellKnownJwks.zServerLogic( jwks( appResources ) ),
       Login.zServerLogic( login( appResources ) )
     )
