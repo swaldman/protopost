@@ -50,8 +50,8 @@ case class Envelope( messageBase64url : String, signatureBase64url : String, sig
   lazy val hash : Hash.SHA3_256 = Hash.SHA3_256.hash( message.toArray ++ signature.unsafeInternalArray ++ BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(signer) )
   override def toString = s"Envelope[${hash.hex0x}]"
 
-case class Jwts( highSecurity : Jwt, lowSecurity : Jwt )
-//case class LoginStatus( highSecurityExpires : Long, lowSecurityExpires : Long )
+//case class Jwts( highSecurity : Jwt, lowSecurity : Jwt )
+case class LoginStatus( highSecurityExpires : Long, lowSecurityExpires : Long )
 
 case class EmailPassword( email : EmailAddress, password : Password )
 
@@ -71,7 +71,8 @@ given JsonValueCodec[Jwt] = new JsonValueCodec[Jwt]:
 
 given JsonValueCodec[Jwk]           = JsonCodecMaker.make
 given JsonValueCodec[Jwks]          = JsonCodecMaker.make
-given JsonValueCodec[Jwts]          = JsonCodecMaker.make
+//given JsonValueCodec[Jwts]          = JsonCodecMaker.make
+given JsonValueCodec[LoginStatus]   = JsonCodecMaker.make
 given JsonValueCodec[Envelope]      = JsonCodecMaker.make
 given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 
@@ -81,7 +82,8 @@ given Schema[Password]      = Schema.string.map((s : String) => Some(Password(s)
 given Schema[Jwt]           = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => jwt.str)
 given Schema[Jwk]           = Schema.derived
 given Schema[Jwks]          = Schema.derived
-given Schema[Jwts]          = Schema.derived
+//given Schema[Jwts]          = Schema.derived
+given Schema[LoginStatus]   = Schema.derived
 given Schema[Envelope]      = Schema.derived
 given Schema[EmailPassword] = Schema.derived
 

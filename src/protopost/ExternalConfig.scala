@@ -12,6 +12,7 @@ object ExternalConfig:
     case `protopost.token.security.high.validity.minutes`
     case `protopost.token.security.low.validity.minutes`
     case `protopost.api.port`
+    case `protopost.mode.production`
 
   val Defaults = Map (
     Key.`protopost.token.security.high.validity.minutes` -> 120.toString,

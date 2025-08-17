@@ -3,6 +3,8 @@ package protopost.api
 import zio.*
 
 import sttp.model.StatusCode
+import sttp.model.headers.{CookieValueWithMeta,Cookie}
+import Cookie.SameSite
 import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
@@ -18,7 +20,9 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 import com.mchange.sc.zsqlutil.*
-import protopost.BadCredentials
+import protopost.{BadCookieSettings,BadCredentials}
+import sttp.model.headers.CookieValueWithMeta
+import cats.instances.either
 
 object TapirEndpoint:
 
@@ -41,7 +45,13 @@ object TapirEndpoint:
   //val RootJwks = Base.in("jwks.json").out(jsonBody[Jwks])
   val WellKnownJwks = NakedBase.in(".well-known").in("jwks.json").out(jsonBody[Jwks])
 
-  val Login = Base.post.in("login").in(jsonBody[EmailPassword]).out(jsonBody[Jwts])
+  val Login =
+    Base.post
+      .in("login")
+      .in(jsonBody[EmailPassword])
+      .out(setCookie("token_security_high"))
+      .out(setCookie("token_security_low"))
+      .out(jsonBody[LoginStatus])
 
   val Client = Base.get.in("client").in("top.html").out(htmlBodyUtf8)
 
@@ -65,7 +75,7 @@ object TapirEndpoint:
   def client( appResources : AppResources )(unit : Unit) : ZOut[String] =
     ZOut.fromTask( ZIO.attempt(protopost.client.client_top_html().text) )
 
-  def login( appResources : AppResources )( emailPassword : EmailPassword ) : ZOut[Jwts] =
+  def login( appResources : AppResources )( emailPassword : EmailPassword ) : ZOut[(CookieValueWithMeta, CookieValueWithMeta, LoginStatus)] =
     import com.mchange.rehash.str, protopost.str
 
     val email = emailPassword.email
@@ -86,39 +96,50 @@ object TapirEndpoint:
               case UserNotFound => ZIO.fail( new BadCredentials( s"No poster found with id '${pwa.id}', despite identification of this poster by email ${email}?!?" ) )
           case None =>
             ZIO.fail( new BadCredentials( s"No poster found with e-mail '${emailPassword.email}'." ) )
-    val issueTokens = ZIO.attempt:
-      val issuedAt = Instant.now()
-      val highSecurityMinutes
-        = appResources.externalConfig
-            .get( ExternalConfig.Key.`protopost.token.security.high.validity.minutes` )
-            .map( _.toInt )
-          .getOrElse( throw new MissingConfig( ExternalConfig.Key.`protopost.token.security.high.validity.minutes`.toString ) )
-      val lowSecurityMinutes
-        = appResources.externalConfig
-            .get( ExternalConfig.Key.`protopost.token.security.low.validity.minutes` )
-            .map( _.toInt )
-          .getOrElse( throw new MissingConfig( ExternalConfig.Key.`protopost.token.security.low.validity.minutes`.toString ) )
-      val highSecurityExpiration = issuedAt.plus( highSecurityMinutes, ChronoUnit.MINUTES )
-      val lowSecurityExpiration = issuedAt.plus( lowSecurityMinutes, ChronoUnit.MINUTES )
-      val highSecurityJti = newJti(appResources) // for eventual implementation of token revocation
-      val lowSecurityJti = newJti(appResources)  // for eventual implementation of token revocation
-      val highSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
-        keyId = service.toString,
-        subject = email.str,
-        issuedAt = issuedAt,
-        expiration = highSecurityExpiration,
-        jti = highSecurityJti,
-        securityLevel = jwt.SecurityLevel.high
-      )
-      val lowSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
-        keyId = service.toString,
-        subject = email.str,
-        issuedAt = issuedAt,
-        expiration = lowSecurityExpiration,
-        jti = lowSecurityJti,
-        securityLevel = jwt.SecurityLevel.low
-      )
-      Jwts( highSecurityJwt, lowSecurityJwt )
+    val issueTokens : Task[(CookieValueWithMeta,CookieValueWithMeta,LoginStatus)] =
+      ZIO.attempt:
+        val issuedAt = Instant.now()
+        val highSecurityMinutes
+          = appResources.externalConfig
+              .get( ExternalConfig.Key.`protopost.token.security.high.validity.minutes` )
+              .map( _.toInt )
+            .getOrElse( throw new MissingConfig( ExternalConfig.Key.`protopost.token.security.high.validity.minutes`.toString ) )
+        val lowSecurityMinutes
+          = appResources.externalConfig
+              .get( ExternalConfig.Key.`protopost.token.security.low.validity.minutes` )
+              .map( _.toInt )
+            .getOrElse( throw new MissingConfig( ExternalConfig.Key.`protopost.token.security.low.validity.minutes`.toString ) )
+        val highSecurityExpiration = issuedAt.plus( highSecurityMinutes, ChronoUnit.MINUTES )
+        val lowSecurityExpiration = issuedAt.plus( lowSecurityMinutes, ChronoUnit.MINUTES )
+        val highSecurityJti = newJti(appResources) // for eventual implementation of token revocation
+        val lowSecurityJti = newJti(appResources)  // for eventual implementation of token revocation
+        val highSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
+          keyId = service.toString,
+          subject = email.str,
+          issuedAt = issuedAt,
+          expiration = highSecurityExpiration,
+          jti = highSecurityJti,
+          securityLevel = jwt.SecurityLevel.high
+        )
+        val lowSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
+          keyId = service.toString,
+          subject = email.str,
+          issuedAt = issuedAt,
+          expiration = lowSecurityExpiration,
+          jti = lowSecurityJti,
+          securityLevel = jwt.SecurityLevel.low
+        )
+        import protopost.jwt.str
+        val highSecurityCookieValue = CookieValueWithMeta.safeApply(highSecurityJwt.str, expires=Some(highSecurityExpiration), secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
+        val lowSecurityCookieValue  = CookieValueWithMeta.safeApply(lowSecurityJwt.str,  expires=Some(lowSecurityExpiration),  secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
+        
+        def peel( either : Either[String,CookieValueWithMeta] ) =
+          either match
+            case Left( str )   => throw new BadCookieSettings( str )
+            case Right( cvwm ) => cvwm
+
+        def toEpochSecond( instant : Instant ) = instant.toEpochMilli / 1000
+        ( peel(highSecurityCookieValue), peel(lowSecurityCookieValue), LoginStatus( toEpochSecond(highSecurityExpiration), toEpochSecond(lowSecurityExpiration) ) )
     ZOut.fromTask:
       checkCredentials *> issueTokens
 

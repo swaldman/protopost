@@ -23,6 +23,13 @@ class AppResources( val configProperties : ConfigProperties ):
 
   lazy val entropy = new java.security.SecureRandom
 
+  lazy val inProduction =
+    val key = ExternalConfig.Key.`protopost.mode.production`
+    externalConfig
+      .get( key )
+      .map( java.lang.Boolean.parseBoolean )
+      .getOrElse( throw new MissingConfig(s"Please set mandatory config key '$key'." ) )
+
   lazy val authManager =
     import com.mchange.rehash.*
     val currentSpec = AuthManager.Spec( Authenticator.BCryptVersion.Version2A, 12 )
