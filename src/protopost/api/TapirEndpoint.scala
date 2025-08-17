@@ -3,6 +3,7 @@ package protopost.api
 import zio.*
 
 import sttp.model.StatusCode
+import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
@@ -42,7 +43,9 @@ object TapirEndpoint:
 
   val Login = Base.post.in("login").in(jsonBody[EmailPassword]).out(jsonBody[Jwts])
 
-  val Client = Base.get.in("client").out(htmlBodyUtf8)
+  val Client = Base.get.in("client").in("top.html").out(htmlBodyUtf8)
+
+  val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
 
   private val JtiEntropyBytes = 16
 
@@ -124,7 +127,8 @@ object TapirEndpoint:
       //RootJwks.zServerLogic( jwks( appResources ) ),
       WellKnownJwks.zServerLogic( jwks( appResources ) ),
       Login.zServerLogic( login( appResources ) ),
-      Client.zServerLogic( client( appResources ) )
+      Client.zServerLogic( client( appResources ) ),
+      ScalaJsServerEndpoint
     )
 
 end TapirEndpoint

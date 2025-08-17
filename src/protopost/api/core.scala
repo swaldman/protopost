@@ -51,6 +51,7 @@ case class Envelope( messageBase64url : String, signatureBase64url : String, sig
   override def toString = s"Envelope[${hash.hex0x}]"
 
 case class Jwts( highSecurity : Jwt, lowSecurity : Jwt )
+//case class LoginStatus( highSecurityExpires : Long, lowSecurityExpires : Long )
 
 case class EmailPassword( email : EmailAddress, password : Password )
 
