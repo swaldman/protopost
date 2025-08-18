@@ -6,16 +6,19 @@
 package build
 
 import mill.*, scalalib.*, scalajslib.*
-
 import mill.scalajslib.api.ModuleKind
-
 import mill.contrib.buildinfo.BuildInfo
 import untemplate.mill.UntemplateModule
 
-object `package` extends UntemplateModule with BuildInfo {
+trait ProtopostScalaModule extends ScalaModule:
+  override def scalaVersion = "3.7.2"
+trait ProtopostScalaJSModule extends ProtopostScalaModule,ScalaJSModule:
+  override def scalaJSVersion = "1.19.0"
+
+object `package` extends UntemplateModule with ProtopostScalaModule with BuildInfo:
   val protopostVersion = "0.0.1-SNAPSHOT"
 
-  override def scalaVersion = "3.7.1"
+  override def moduleDeps = Seq(shared.jvm)
   override def scalacOptions = Seq("-deprecation")
 
   def buildInfoMembers = Seq(
@@ -26,6 +29,8 @@ object `package` extends UntemplateModule with BuildInfo {
   val LogadapterScalaVersion = "0.0.1"
   val TapirVersion           = "1.11.35"
   val JsoniterVersion        = "2.36.6"
+  val mailutilVersion        = "0.0.5"
+  val sttpVersion            = "4.0.9"
 
   def compileMvnDeps = Seq(
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${JsoniterVersion}",
@@ -41,7 +46,7 @@ object `package` extends UntemplateModule with BuildInfo {
       mvn"com.mchange::mill-daemon-util:0.1.2",
       mvn"com.mchange::conveniences:0.0.6-SNAPSHOT",
       mvn"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
-      mvn"com.mchange::mailutil:0.0.5",
+      mvn"com.mchange::mailutil:${mailutilVersion}",
       mvn"com.mchange::rehash:0.0.1-SNAPSHOT",
       mvn"at.favre.lib:bcrypt:0.10.2",
       mvn"com.monovore::decline:2.5.0",
@@ -65,29 +70,37 @@ object `package` extends UntemplateModule with BuildInfo {
     os.copy(jsPath / "main.js.map", Task.dest / "scalajs/main.js.map")
     super.resources() ++ Seq(PathRef(Task.dest))
 
-  object `scalajs-client` extends ScalaJSModule:
+  object `scalajs-client` extends ProtopostScalaJSModule:
+    override def moduleDeps = Seq(shared.js)
     override def scalaVersion = build.scalaVersion
-    override def scalaJSVersion = "1.19.0"
     //override def moduleKind = ModuleKind.ESModule
     override def mvnDeps =
       super.mvnDeps() ++
       Seq(
-        mvn"com.raquo::laminar::17.2.1"
+        mvn"com.raquo::laminar::17.2.1",
+        mvn"com.softwaremill.sttp.client4::core::${sttpVersion}",
+        mvn"com.softwaremill.sttp.client4::jsoniter::${sttpVersion}"
       )
 
-  object `test-scalacheck` extends ScalaTests with TestModule.ScalaCheck {
+  // modified from https://mill-build.org/mill/scalalib/web-examples.html
+  object shared extends Module:
+    trait SharedModule extends ProtopostScalaModule, PlatformScalaModule:
+      def compileMvnDeps = Seq(
+        mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros::${JsoniterVersion}"
+      )
+      def mvnDeps = Seq(
+        mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core::${JsoniterVersion}"
+      )
+    object jvm extends SharedModule:
+      def mvnDeps = Seq(
+        mvn"com.mchange::mailutil:${mailutilVersion}"
+      )
+    object js extends SharedModule, ProtopostScalaJSModule
+
+  object `test-scalacheck` extends ScalaTests with TestModule.ScalaCheck:
     def mvnDeps = Seq(
       //mvn"com.lihaoyi::utest:0.8.5",
       mvn"org.scalacheck::scalacheck:1.18.1",
     )
     //def testFramework = "utest.runner.Framework"
-  }
 
-  /*
-  object `test-console` extends ScalaModule {
-    def moduleDeps = Seq(build)
-    def scalaVersion = "3.7.1"
-    def mvnDeps = Seq(mvn"com.auth0:jwks-rsa:0.22.2")
-  }
-  */
-}

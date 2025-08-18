@@ -1,0 +1,21 @@
+package protopost.api
+
+import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.github.plokhotnyuk.jsoniter_scala.macros.*
+
+import protopost.{EmailAddress,Password}
+
+case class LoginStatus( highSecurityExpires : Long, lowSecurityExpires : Long )
+case class EmailPassword( email : EmailAddress, password : Password )
+
+// json codecs -- jsoniter-scala
+given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:
+  def decodeValue(in : JsonReader, default : EmailAddress) : EmailAddress = EmailAddress(in.readString(null))
+  def encodeValue(x : EmailAddress, out: JsonWriter): Unit = out.writeVal(x.toString)
+  def nullValue : EmailAddress = null.asInstanceOf[EmailAddress]
+given JsonValueCodec[Password] = new JsonValueCodec[Password]:
+  def decodeValue(in : JsonReader, default : Password) : Password = Password(in.readString(null))
+  def encodeValue(x : Password, out: JsonWriter): Unit = out.writeVal(x.toString)
+  def nullValue : Password = null.asInstanceOf[Password]
+given JsonValueCodec[LoginStatus]   = JsonCodecMaker.make
+given JsonValueCodec[EmailPassword] = JsonCodecMaker.make

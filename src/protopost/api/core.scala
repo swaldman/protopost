@@ -2,7 +2,7 @@ package protopost.api
 
 import zio.*
 
-import protopost.{EmailAddress,SignatureDoesNotVerify,str}
+import protopost.{EmailAddress,Password,SignatureDoesNotVerify,str}
 import protopost.crypto.{*,given}
 
 import protopost.jwt.{Jwk,Jwks,Jwt,str}
@@ -19,10 +19,6 @@ import java.security.interfaces.ECPrivateKey
 import java.util.Base64
 
 import scala.collection.immutable
-
-import com.mchange.rehash.{Password,str}
-
-// stealing some utilities from https://github.com/swaldman/hotsauce-devilla
 
 case class ReconstructableThrowable( throwableClass : Option[Class[?]], fullStackTrace : String )
 
@@ -51,19 +47,8 @@ case class Envelope( messageBase64url : String, signatureBase64url : String, sig
   override def toString = s"Envelope[${hash.hex0x}]"
 
 //case class Jwts( highSecurity : Jwt, lowSecurity : Jwt )
-case class LoginStatus( highSecurityExpires : Long, lowSecurityExpires : Long )
-
-case class EmailPassword( email : EmailAddress, password : Password )
 
 // json codecs -- jsoniter-scala
-given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:
-  def decodeValue(in : JsonReader, default : EmailAddress) : EmailAddress = EmailAddress(in.readString(null))
-  def encodeValue(x : EmailAddress, out: JsonWriter): Unit = out.writeVal(x.str)
-  def nullValue : EmailAddress = null.asInstanceOf[EmailAddress]
-given JsonValueCodec[Password] = new JsonValueCodec[Password]:
-  def decodeValue(in : JsonReader, default : Password) : Password = Password(in.readString(null))
-  def encodeValue(x : Password, out: JsonWriter): Unit = out.writeVal(x.str)
-  def nullValue : Password = null.asInstanceOf[Password]
 given JsonValueCodec[Jwt] = new JsonValueCodec[Jwt]:
   def decodeValue(in: JsonReader, default: Jwt): Jwt = Jwt(in.readString(null))
   def encodeValue(x: Jwt, out: JsonWriter): Unit     = out.writeVal(x.str)
@@ -72,13 +57,11 @@ given JsonValueCodec[Jwt] = new JsonValueCodec[Jwt]:
 given JsonValueCodec[Jwk]           = JsonCodecMaker.make
 given JsonValueCodec[Jwks]          = JsonCodecMaker.make
 //given JsonValueCodec[Jwts]          = JsonCodecMaker.make
-given JsonValueCodec[LoginStatus]   = JsonCodecMaker.make
 given JsonValueCodec[Envelope]      = JsonCodecMaker.make
-given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 
 // json codecs -- tapir
 given Schema[EmailAddress]  = Schema.string.map((s : String) => Some(EmailAddress(s)))(addr => addr.str)
-given Schema[Password]      = Schema.string.map((s : String) => Some(Password(s)))(pw => pw.str)
+given Schema[Password]      = Schema.string.map((s : String) => Some(Password(s)))(pw => pw.toString)
 given Schema[Jwt]           = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => jwt.str)
 given Schema[Jwk]           = Schema.derived
 given Schema[Jwks]          = Schema.derived

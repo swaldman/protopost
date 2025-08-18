@@ -9,7 +9,7 @@ import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.{AppResources,ExternalConfig,MissingConfig,PosterId,jwt}
+import protopost.{AppResources,ExternalConfig,MissingConfig,Password,PosterId,jwt}
 import protopost.jwt.{Jwk,Jwks,decodeVerifyJwt}
 import protopost.LoggingApi.*
 
@@ -85,6 +85,9 @@ object TapirEndpoint extends SelfLogging:
   def client( appResources : AppResources )(unit : Unit) : ZOut[String] =
     ZOut.fromTask( ZIO.attempt(protopost.client.client_top_html().text) )
 
+  extension ( pwd : protopost.Password )
+    def toRehash : com.mchange.rehash.Password = com.mchange.rehash.Password(Password.s(pwd))
+
   def login( appResources : AppResources )( emailPassword : EmailPassword ) : ZOut[(CookieValueWithMeta, CookieValueWithMeta, LoginStatus)] =
     import com.mchange.rehash.str, protopost.str
 
@@ -100,7 +103,7 @@ object TapirEndpoint extends SelfLogging:
           case Some( pwa ) =>
             val fetchHash : PosterId => Option[BCryptHash] = posterId => database.fetchHashForPoster( conn, posterId )
             val storeHash : ( PosterId, BCryptHash ) => Unit = ( posterId : PosterId, hash : BCryptHash ) => database.updateHashForPoster( conn, posterId, hash )
-            appResources.authManager.verifyRehash( pwa.id, password, fetchHash, storeHash ) match
+            appResources.authManager.verifyRehash( pwa.id, password.toRehash, fetchHash, storeHash ) match
               case OK => ZIO.unit
               case WrongPassword => ZIO.fail( new BadCredentials( "The password given fails to validate." ) )
               case UserNotFound => ZIO.fail( new BadCredentials( s"No poster found with id '${pwa.id}', despite identification of this poster by email ${email}?!?" ) )
