@@ -50,7 +50,7 @@ def createSignJwt( privateKey : ECPrivateKey )( keyId : String, subject : String
 
 def decodeVerifyJwt( publicKey : ECPublicKey )( token : Jwt ) : Claims =
   val algorithm = Algorithm.ECDSA256( publicKey, null )
-  val decodedJwt = JWT.require(algorithm).build().verify( token.str )
+  val decodedJwt = JWT.require(algorithm).build().verify( Jwt.s(token) )
   Claims (
     keyId = decodedJwt.getKeyId(),
     subject = decodedJwt.getSubject(),
@@ -59,4 +59,7 @@ def decodeVerifyJwt( publicKey : ECPublicKey )( token : Jwt ) : Claims =
     jti = decodedJwt.getId(),
     securityLevel = SecurityLevel.valueOf( decodedJwt.getClaim(Claims.Key.securityLevel.toString).asString )
   )
+
+case class PosterAuthInfo(highSecurityToken : Option[String], lowSecurityToken : Option[String])
+case class AuthenticatedPoster(claims : Claims, level : SecurityLevel)
 

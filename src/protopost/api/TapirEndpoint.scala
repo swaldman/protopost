@@ -9,8 +9,7 @@ import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.{AppResources,ExternalConfig,MissingConfig,Password,PosterId,jwt}
-import protopost.jwt.{Jwk,Jwks,decodeVerifyJwt}
+import protopost.{AppResources,EmailAddress,ExternalConfig,MissingConfig,Password,PosterId}
 import protopost.LoggingApi.*
 
 import protopost.db.PgDatabase
@@ -21,30 +20,38 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 import com.mchange.sc.zsqlutil.*
-import protopost.{BadCookieSettings,BadCredentials}
+import protopost.{BadCookieSettings,BadCredentials,NotLoggedIn,jwt}
 import sttp.model.headers.CookieValueWithMeta
-
 
 object TapirEndpoint extends SelfLogging:
 
   val service = protopost.identity.Service.protopost // forseeing abstracting some of this to a more abstract restack library
 
   val errorHandler =
+    def errorBodyOutNotFound() = stringBody.map(_ => None)( _ => "Resource not found." )
     def errorBodyOut[T <: Throwable]( throwableClass : Class[T] ) =
       stringBody.map(fst => ReconstructableThrowable(Some(throwableClass),fst))(_.fullStackTrace)
-    def errorBodyOutNone() =
+    def errorBodyOutLostThrowableClass() =
       stringBody.map(fst => ReconstructableThrowable(None,fst))(_.fullStackTrace)
-    oneOf[ReconstructableThrowable](
+    oneOf[ReconstructableThrowable | None.type](
+      oneOfVariantValueMatcher(statusCode(StatusCode.NotFound).and(errorBodyOutNotFound())){ case _ : None.type => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.Forbidden).and(errorBodyOut(classOf[BadCredentials]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[BadCredentials]) => true },
-      oneOfVariantValueMatcher(statusCode(StatusCode.InternalServerError).and(errorBodyOutNone())){ case rt : ReconstructableThrowable if rt.throwableClass == None => true },
+      oneOfVariantValueMatcher(statusCode(StatusCode.Unauthorized).and(errorBodyOut(classOf[NotLoggedIn]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[NotLoggedIn]) => true },
+      oneOfVariantValueMatcher(statusCode(StatusCode.InternalServerError).and(errorBodyOutLostThrowableClass())){ case rt : ReconstructableThrowable if rt.throwableClass == None => true },
   )
 
   val NakedBase = endpoint.errorOut(errorHandler)
   val Base = NakedBase.in("protopost")
+  val PosterAuthenticated = Base.securityIn(
+    cookie[Option[String]]("token_security_high")
+      .and(cookie[Option[String]]("token_security_low"))
+      .mapTo[jwt.PosterAuthInfo]
+  )
+
   val Envelope = Base.in("envelope")
 
   //val RootJwks = Base.in("jwks.json").out(jsonBody[Jwks])
-  val WellKnownJwks = NakedBase.in(".well-known").in("jwks.json").out(jsonBody[Jwks])
+  val WellKnownJwks = NakedBase.in(".well-known").in("jwks.json").out(jsonBody[jwt.Jwks])
 
   val Login =
     Base.post
@@ -63,6 +70,8 @@ object TapirEndpoint extends SelfLogging:
 
   val Client = Base.get.in("client").in("top.html").out(htmlBodyUtf8)
 
+  val PosterInfo = PosterAuthenticated.get.in("poster-info").out(jsonBody[PosterNoAuth])
+
   val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
 
   private val JtiEntropyBytes = 16
@@ -75,12 +84,54 @@ object TapirEndpoint extends SelfLogging:
 
   private def toEpochSecond( instant : Instant ) = instant.toEpochMilli / 1000
 
-  def jwks( appResources : AppResources )(u : Unit) : ZOut[Jwks] =
+  def authenticatePoster(appResources : AppResources)(authInfo : jwt.PosterAuthInfo): ZOut[jwt.AuthenticatedPoster] =
     ZOut.fromTask:
       ZIO.attempt:
         val identity = appResources.localIdentity
-        val jwk = Jwk( identity.publicKey, identity.service )
-        Jwks( List( jwk ) )
+
+        // Try high security token first, then fall back to low security token
+        val mbTokenLevel =
+          val hiTup = authInfo.highSecurityToken.map( token => (token, jwt.SecurityLevel.high) )
+          def lowTup = authInfo.lowSecurityToken.map( token => (token, jwt.SecurityLevel.low) )
+          hiTup orElse lowTup
+
+        mbTokenLevel match
+          case Some(Tuple2(token,level)) =>
+            try
+              val claims = jwt.decodeVerifyJwt(identity.publicKey)(jwt.Jwt(token))
+
+              // Check if token is expired
+              val now = Instant.now()
+              if claims.expiration.isBefore(now) then
+                throw new BadCredentials("JWT token has expired")
+
+              // verify claimed security level
+              if level != claims.securityLevel then
+                throw new BadCredentials( s"Token authenticated as security level ${claims.securityLevel} was misplaced in request as token_security_+${level}" )
+
+              jwt.AuthenticatedPoster(claims, level)
+            catch
+              case bc: BadCredentials => throw bc
+              case t: Throwable =>
+                WARNING.log("Could not validate JWT token during authentication.", t)
+                throw new BadCredentials("Invalid JWT token", t)
+          case None =>
+            throw new NotLoggedIn("No authentication token provided")
+
+  def email( aposter : jwt.AuthenticatedPoster ) : EmailAddress = EmailAddress(aposter.claims.subject)
+  
+  def posterInfo( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[PosterNoAuth] =
+    ZOut.fromOptionalTask:
+      val db = appResources.database
+      val ds = appResources.dataSource
+      db.txn.posterNoAuthByEmail( ds )( email( authenticatedPoster ) )
+
+  def jwks( appResources : AppResources )(u : Unit) : ZOut[jwt.Jwks] =
+    ZOut.fromTask:
+      ZIO.attempt:
+        val identity = appResources.localIdentity
+        val jwk = jwt.Jwk( identity.publicKey, identity.service )
+        jwt.Jwks( List( jwk ) )
 
   def client( appResources : AppResources )(unit : Unit) : ZOut[String] =
     ZOut.fromTask( ZIO.attempt(protopost.client.client_top_html( appResources.localIdentity.location.toUrl ).text) )
@@ -89,7 +140,7 @@ object TapirEndpoint extends SelfLogging:
     def toRehash : com.mchange.rehash.Password = com.mchange.rehash.Password(Password.s(pwd))
 
   def login( appResources : AppResources )( emailPassword : EmailPassword ) : ZOut[(CookieValueWithMeta, CookieValueWithMeta, LoginStatus)] =
-    import com.mchange.rehash.str, protopost.str
+    import com.mchange.rehash.str
 
     val email = emailPassword.email
     val password = emailPassword.password
@@ -111,6 +162,7 @@ object TapirEndpoint extends SelfLogging:
             ZIO.fail( new BadCredentials( s"No poster found with e-mail '${emailPassword.email}'." ) )
     val issueTokens : Task[(CookieValueWithMeta,CookieValueWithMeta,LoginStatus)] =
       ZIO.attempt:
+        import protopost.EmailAddress.s
         val issuedAt = Instant.now()
         val highSecurityMinutes
           = appResources.externalConfig
@@ -128,7 +180,7 @@ object TapirEndpoint extends SelfLogging:
         val lowSecurityJti = newJti(appResources)  // for eventual implementation of token revocation
         val highSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
           keyId = service.toString,
-          subject = email.str,
+          subject = s(email),
           issuedAt = issuedAt,
           expiration = highSecurityExpiration,
           jti = highSecurityJti,
@@ -136,15 +188,14 @@ object TapirEndpoint extends SelfLogging:
         )
         val lowSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
           keyId = service.toString,
-          subject = email.str,
+          subject = s(email),
           issuedAt = issuedAt,
           expiration = lowSecurityExpiration,
           jti = lowSecurityJti,
           securityLevel = jwt.SecurityLevel.low
         )
-        import protopost.jwt.str
-        val highSecurityCookieValue = CookieValueWithMeta.safeApply(highSecurityJwt.str, expires=Some(highSecurityExpiration), secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
-        val lowSecurityCookieValue  = CookieValueWithMeta.safeApply(lowSecurityJwt.str,  expires=Some(lowSecurityExpiration),  secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
+        val highSecurityCookieValue = CookieValueWithMeta.safeApply(jwt.Jwt.s(highSecurityJwt), expires=Some(highSecurityExpiration), secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
+        val lowSecurityCookieValue  = CookieValueWithMeta.safeApply(jwt.Jwt.s(lowSecurityJwt),  expires=Some(lowSecurityExpiration),  secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
 
         def peel( either : Either[String,CookieValueWithMeta] ) =
           either match
@@ -173,8 +224,7 @@ object TapirEndpoint extends SelfLogging:
           tokenOpt match
             case Some( tokenStr ) =>
               try
-                val jwt = protopost.jwt.Jwt(tokenStr)
-                val verified = decodeVerifyJwt(identity.publicKey)(jwt)
+                val verified = jwt.decodeVerifyJwt(identity.publicKey)(jwt.Jwt(tokenStr))
                 verified.expiration
               catch
                 case t : Throwable =>
@@ -194,6 +244,7 @@ object TapirEndpoint extends SelfLogging:
       Login.zServerLogic( login( appResources ) ),
       LoginStatus.zServerLogic( loginStatus( appResources ) ),
       Client.zServerLogic( client( appResources ) ),
+      PosterInfo.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( posterInfo(appResources) ),
       ScalaJsServerEndpoint
     )
 

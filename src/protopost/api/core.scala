@@ -2,10 +2,10 @@ package protopost.api
 
 import zio.*
 
-import protopost.{EmailAddress,Password,SignatureDoesNotVerify,str}
+import protopost.{EmailAddress,Password,PosterId,SignatureDoesNotVerify}
 import protopost.crypto.{*,given}
 
-import protopost.jwt.{Jwk,Jwks,Jwt,str}
+import protopost.jwt.{Jwk,Jwks,Jwt}
 
 import com.mchange.conveniences.throwable.*
 import com.mchange.cryptoutil.{*,given}
@@ -24,7 +24,11 @@ case class ReconstructableThrowable( throwableClass : Option[Class[?]], fullStac
 
 object ZOut:
   def fromTask[U]( task : Task[U] ) : ZOut[U] = task.mapError( t => ReconstructableThrowable( Some(t.getClass()), t.fullStackTrace ) )
-type ZOut[T] = ZIO[Any,ReconstructableThrowable,T]
+  def fromOptionalTask[U]( task : Task[Option[U]] ) : ZOut[U] =
+    fromTask(task).flatMap:
+      case Some(u) => ZIO.succeed(u)
+      case None    => ZIO.fail(None)
+type ZOut[T] = ZIO[Any,ReconstructableThrowable | None.type,T]
 
 object Envelope:
   def apply( messageBytes : Array[Byte], privateKey : ECPrivateKey ) : Envelope =
@@ -51,7 +55,7 @@ case class Envelope( messageBase64url : String, signatureBase64url : String, sig
 // json codecs -- jsoniter-scala
 given JsonValueCodec[Jwt] = new JsonValueCodec[Jwt]:
   def decodeValue(in: JsonReader, default: Jwt): Jwt = Jwt(in.readString(null))
-  def encodeValue(x: Jwt, out: JsonWriter): Unit     = out.writeVal(x.str)
+  def encodeValue(x: Jwt, out: JsonWriter): Unit     = out.writeVal(Jwt.s(x))
   def nullValue: Jwt                                 = null.asInstanceOf[Jwt]
 
 given JsonValueCodec[Jwk]           = JsonCodecMaker.make
@@ -60,13 +64,15 @@ given JsonValueCodec[Jwks]          = JsonCodecMaker.make
 given JsonValueCodec[Envelope]      = JsonCodecMaker.make
 
 // json codecs -- tapir
-given Schema[EmailAddress]  = Schema.string.map((s : String) => Some(EmailAddress(s)))(addr => addr.str)
-given Schema[Password]      = Schema.string.map((s : String) => Some(Password(s)))(pw => pw.toString)
-given Schema[Jwt]           = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => jwt.str)
+given Schema[EmailAddress]  = Schema.string.map((s : String) => Some(EmailAddress(s)))(addr => EmailAddress.s(addr))
+given Schema[Password]      = Schema.string.map((s : String) => Some(Password(s)))(pw => Password.s(pw))
+given Schema[Jwt]           = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => Jwt.s(jwt))
+given Schema[PosterId]      = Schema.schemaForInt.map( (i : Int) => Some(PosterId(i)) )(pid => PosterId.i(pid))
 given Schema[Jwk]           = Schema.derived
 given Schema[Jwks]          = Schema.derived
 //given Schema[Jwts]          = Schema.derived
 given Schema[LoginStatus]   = Schema.derived
 given Schema[Envelope]      = Schema.derived
 given Schema[EmailPassword] = Schema.derived
+given Schema[PosterNoAuth] = Schema.derived
 

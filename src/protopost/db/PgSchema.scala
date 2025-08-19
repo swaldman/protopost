@@ -12,6 +12,8 @@ import com.mchange.rehash.*
 import protopost.*
 import protopost.LoggingApi.*
 
+import EmailAddress.{s => es}
+
 object PgSchema extends SelfLogging:
   object Unversioned:
     object Table:
@@ -83,7 +85,6 @@ object PgSchema extends SelfLogging:
           else
             throw new InternalError( s"id is poster primary key, should reference zero or one row, found ${count}." )
         def select( conn : Connection, posterId : PosterId ) : Option[PosterWithAuth] =
-          import protopost.str
           import PosterId.i
           Using.resource( conn.prepareStatement( Select ) ): ps =>
             ps.setInt(1, i(posterId))
@@ -96,15 +97,13 @@ object PgSchema extends SelfLogging:
                   BCryptHash( rs.getString(4).toCharArray )
                 )
         def posterExistsForEmail( conn : Connection, email : EmailAddress ) : Boolean =
-          import protopost.str
           Using.resource( conn.prepareStatement( SelectPosterExistsForEmail ) ): ps =>
-            ps.setString(1, email.str)
+            ps.setString(1, es(email) )
             Using.resource( ps.executeQuery() ): rs =>
               uniqueResult("poster-exists-for-email", rs)( _.getBoolean(1) )
         def selectPosterWithAuthByEmail( conn : Connection, email : EmailAddress ) : Option[PosterWithAuth] =
-          import protopost.str
           Using.resource( conn.prepareStatement( SelectPosterWithAuthByEmail ) ): ps =>
-            ps.setString(1, email.str)
+            ps.setString(1, es(email))
             Using.resource( ps.executeQuery() ): rs =>
               zeroOrOneResult("poster-with-auth-by-email", rs): rs =>
                 PosterWithAuth(
@@ -117,7 +116,7 @@ object PgSchema extends SelfLogging:
           import PosterId.i
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
             ps.setLong  (1, i(id))
-            ps.setString(2, email.str)
+            ps.setString(2, es(email))
             ps.setString(3, fullName)
             auth match
               case Some( bch ) => ps.setString(4, new String(bch.unsafeInternalArray))

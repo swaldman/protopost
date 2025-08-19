@@ -5,7 +5,8 @@ import zio.*
 import java.sql.Connection
 import javax.sql.DataSource
 
-import protopost.{EmailAddress, PosterWithAuth, PosterId}
+import protopost.{EmailAddress,PosterWithAuth,PosterId}
+import protopost.api.PosterNoAuth
 
 import com.mchange.rehash.*
 
@@ -34,5 +35,10 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
           val auth = authManager.initialPasswordHash( posterId, password )
           Schema.Table.Poster.insert( conn, posterId, email, fullName, Some(auth) )
           posterId
+    def posterWithAuthByEmail( ds : DataSource )( email : EmailAddress ) : Task[Option[PosterWithAuth]] =      
+      withConnectionTransactional( ds ): conn =>
+        Schema.Table.Poster.selectPosterWithAuthByEmail(conn, email)
+    def posterNoAuthByEmail( ds : DataSource )( email : EmailAddress ) : Task[Option[PosterNoAuth]] =      
+      posterWithAuthByEmail(ds)(email).map( _.map( _.toPosterNoAuth ) )
   end txn
 end PgDatabase

@@ -11,6 +11,3 @@ object EmailAddress:
   private[protopost] def s( email : EmailAddress ) : String = email  
 opaque type EmailAddress = String
 
-extension( email : EmailAddress )
-  @targetName("emailAddressToString") private[protopost] inline def str : String = email
-
