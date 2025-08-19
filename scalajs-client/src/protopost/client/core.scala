@@ -18,5 +18,6 @@ object UserLocation:
   object TableOfContents extends UserLocation
   object NewPostLaunchpad extends UserLocation
   case class ExistingPost( id : Int ) extends UserLocation
+  object Profile extends UserLocation
 sealed trait UserLocation  
 
