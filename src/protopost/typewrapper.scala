@@ -11,10 +11,4 @@ opaque type ConfigProperties = Properties
 extension( configProperties : ConfigProperties )
   @targetName("configPropertiesProps") private[protopost] inline def props : Properties = configProperties
 
-object PosterId:
-  private[protopost] inline def apply( i : Int ) : PosterId = i
-opaque type PosterId = Int
-
-extension( pid : PosterId )
-  @targetName("posterIdToInt") private[protopost] inline def int : Int = pid
 

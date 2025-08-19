@@ -70,10 +70,11 @@ object PgSchema extends SelfLogging:
         private val UpdateHash = "UPDATE poster SET hash = ? WHERE id = ?"
         def updateHash( conn : Connection, posterId : PosterId, hash : BCryptHash ) : Unit =
           import com.mchange.rehash.str
+          import PosterId.i
           val count =
             Using.resource( conn.prepareStatement( UpdateHash ) ): ps =>
               ps.setString(1, new String(hash.unsafeInternalArray))
-              ps.setInt(2, posterId.int)
+              ps.setInt(2, i(posterId))
               ps.executeUpdate()
           if count == 0 then
             throw new PosterUnknown( s"Poster with ID ${posterId} not found." )
@@ -83,8 +84,9 @@ object PgSchema extends SelfLogging:
             throw new InternalError( s"id is poster primary key, should reference zero or one row, found ${count}." )
         def select( conn : Connection, posterId : PosterId ) : Option[PosterWithAuth] =
           import protopost.str
+          import PosterId.i
           Using.resource( conn.prepareStatement( Select ) ): ps =>
-            ps.setInt(1, posterId.int)
+            ps.setInt(1, i(posterId))
             Using.resource( ps.executeQuery() ): rs =>
               zeroOrOneResult("select-poster", rs): rs =>
                 PosterWithAuth(
@@ -112,16 +114,16 @@ object PgSchema extends SelfLogging:
                   BCryptHash( rs.getString(4).toCharArray )
                 )
         def insert( conn : Connection, id : PosterId, email : EmailAddress, fullName : String, auth : Option[BCryptHash] ) =
-          import protopost.str
+          import PosterId.i
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
-            ps.setLong  (1, id.int)
+            ps.setLong  (1, i(id))
             ps.setString(2, email.str)
             ps.setString(3, fullName)
             auth match
               case Some( bch ) => ps.setString(4, new String(bch.unsafeInternalArray))
               case None        => ps.setNull(4, Types.CHAR)
             val rowsInserted = ps.executeUpdate()
-            TRACE.log(s"Inserted into poster, seqnum ${id.int}, ${rowsInserted} rows inserted.")
+            TRACE.log(s"Inserted into poster, seqnum ${i(id)}, ${rowsInserted} rows inserted.")
       end Poster
       object DestinationPoster extends Creatable:
         override val Create =

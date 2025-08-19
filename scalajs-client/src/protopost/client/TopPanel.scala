@@ -17,7 +17,7 @@ import protopost.api.{LoginStatus, given}
 import protopost.client.util.epochSecondsNow
 
 object TopPanel:
-  private val LoginStatusUpdateIntervalMsecs = 6000
+  private val LoginStatusUpdateIntervalMsecs         = 6000
   private val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
   
   def create(protopostLocation : Uri) : HtmlElement =
