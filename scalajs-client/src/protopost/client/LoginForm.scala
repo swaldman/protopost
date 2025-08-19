@@ -16,11 +16,12 @@ import protopost.api.{EmailPassword,LoginStatus,given}
 import protopost.{EmailAddress,Password}
 import org.scalajs.dom.KeyboardEvent
 
-import protopost.client.util.sttp.rawBodyToLoginLevelOrThrow
+import protopost.client.util.epochSecondsNow
+import protopost.client.util.sttp.rawBodyToLoginStatusOrThrow
 import protopost.client.util.laminar.onEnterPress
 
 object LoginForm:
-  def create(protopostLocation : Uri, loginLevelVar : Var[Option[LoginLevel]]) : HtmlElement =
+  def create(protopostLocation : Uri, loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[Option[LoginLevel]]) : HtmlElement =
     val emailVar = Var[String]("")
     val passwordVar = Var[String]("")
     val emailPasswordSignal = emailVar.signal.combineWith(passwordVar)
@@ -36,8 +37,8 @@ object LoginForm:
     val submitter = Observer[(KeyboardEvent, String, String)]: tuptup =>
 
       def refreshLoginStatus() : Unit =
-        loginLevelVar.set(None)
-        protopost.client.util.sttp.updateLoginStatus(protopostLocation, Client.backend, loginLevelVar)
+        loginStatusVar.set(None)
+        protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, Client.backend, loginStatusVar)
         
       def extractErrorBody[T]( response : Response[Either[ResponseException[String],T]] ) : String =
         response.body match
@@ -54,6 +55,7 @@ object LoginForm:
 
       try
         val ( _, e, p) = tuptup
+        require( p.nonEmpty, "No password has been provided." )
         val email = EmailAddress(e)
         val password = Password(p)
         val emailPassword = EmailPassword(email,password)
@@ -70,8 +72,8 @@ object LoginForm:
               loginFormMessage.set( "Authentification failed: " + trimErrorBody( extractErrorBody(response) ) )
               refreshLoginStatus()
             else if response.code.isSuccess then
-              val ll = rawBodyToLoginLevelOrThrow(response.body)
-              loginLevelVar.set(Some(ll))
+              val ls = rawBodyToLoginStatusOrThrow(response.body)
+              loginStatusVar.set(Some(Tuple2(ls,epochSecondsNow())))
             else
               loginFormMessage.set( "Something went wrong:" + trimErrorBody( extractErrorBody(response) ) )
               refreshLoginStatus()
@@ -80,12 +82,12 @@ object LoginForm:
             refreshLoginStatus()
       catch
         case e : Exception =>
-          loginFormMessage.set(e.toString())
+          loginFormMessage.set(e.getMessage())
 
     end submitter
 
     val disabledSignal : Signal[Boolean] =
-      loginLevelVar.signal.map:
+      loginLevelSignal.map:
         case None => true
         case Some( LoginLevel.high ) => true
         case _ => false
@@ -98,7 +100,7 @@ object LoginForm:
           input(
             placeholder("e-mail address"),
             disabled <-- disabledSignal,
-            onInput.mapToValue --> emailVar,
+            onInput.mapToValue.map( _.trim ) --> emailVar, //e-mail addresses (without display part) contain no whitespaces
             onInput.mapTo("") --> loginFormMessage,
             cls <-- emailBackgroundStream,
             onEnterPress.compose( _.withCurrentValueOf(emailPasswordSignal) ) --> submitter,

@@ -2,8 +2,7 @@ package protopost.client.util
 
 import scala.concurrent.ExecutionContext
 
-
-
+def epochSecondsNow() : Long = System.currentTimeMillis()/1000
 
 object laminar:
   import org.scalajs.dom
@@ -22,26 +21,27 @@ object sttp:
   import protopost.client.LoginLevel
   import scala.util.{Success,Failure}
 
+  /*
   def rawBodyToLoginLevelOrThrow( rawBody : Either[ResponseException[String], LoginStatus] ) : LoginLevel =
     rawBody match
       case Left( oops ) => throw oops //new Exception( oops.toString() )
-      case Right( loginStatus ) =>
-        //println( loginStatus.toString )
-        if loginStatus.highSecuritySecondsRemaining > 0 then
-          LoginLevel.high
-        else if loginStatus.lowSecuritySecondsRemaining > 0 then
-          LoginLevel.low
-        else
-          LoginLevel.none
+      case Right( loginStatus ) => LoginLevel.fromLoginStatus( loginStatus )
+  */
 
-  def updateLoginStatus(protopostLocation : Uri, backend : WebSocketBackend[scala.concurrent.Future], loginLevelVar : com.raquo.laminar.api.L.Var[Option[LoginLevel]])(using ec : ExecutionContext) : Unit =
+  def rawBodyToLoginStatusOrThrow( rawBody : Either[ResponseException[String], LoginStatus] ) : LoginStatus =
+    rawBody match
+      case Left( oops ) => throw oops //new Exception( oops.toString() )
+      case Right( loginStatus ) => loginStatus
+
+  def hardUpdateLoginStatus(protopostLocation : Uri, backend : WebSocketBackend[scala.concurrent.Future], loginStatusVar : com.raquo.laminar.api.L.Var[Option[(LoginStatus,Long)]])(using ec : ExecutionContext) : Unit =
+    //println("hardUpdateLoginStatus()");
     val request = basicRequest
       .get(protopostLocation.addPath("protopost", "login-status")) // uri"http://localhost:8025/protopost/login-status"
       .response(asJson[LoginStatus])
-    val future = request.send(backend).map( _.body ).map( rawBodyToLoginLevelOrThrow )
+    val future = request.send(backend).map( _.body ).map( rawBodyToLoginStatusOrThrow )
 
     future.onComplete:
-      case Success(ll) => loginLevelVar.set(Some(ll))
+      case Success(ls) => loginStatusVar.set(Some((ls,epochSecondsNow())))
       case Failure(t) =>
         t.printStackTrace
-        loginLevelVar.set(None)
+        loginStatusVar.set(None)

@@ -14,24 +14,46 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import scala.scalajs.js.timers.*
 
 import protopost.api.{LoginStatus, given}
-import protopost.client.util.sttp.rawBodyToLoginLevelOrThrow
+import protopost.client.util.epochSecondsNow
 
 object TopPanel:
+  private val LoginStatusUpdateIntervalMsecs = 6000
+  private val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
+  
   def create(protopostLocation : Uri) : HtmlElement =
 
-    val loginLevelVar : Var[Option[LoginLevel]] = Var( None )  
+    val loginStatusVar : Var[Option[(LoginStatus, Long)]] = Var(None)
     var loginStatusHandle : Option[SetIntervalHandle] = None
 
-    val loginForm = LoginForm.create(protopostLocation, loginLevelVar)
+    val loginLevelSignal : Signal[Option[LoginLevel]] = loginStatusVar.signal.map( _.map( (ls,_) => LoginLevel.fromLoginStatus(ls) ) )
+
+    val loginForm = LoginForm.create(protopostLocation, loginStatusVar, loginLevelSignal)
 
     def updateLoginStatus() : Unit =
-      protopost.client.util.sttp.updateLoginStatus(protopostLocation, Client.backend, loginLevelVar)
+      // on initial mount, the update seems sometimes to skip,
+      // perhaps a race condition as mount is not completed?
+      //
+      // so we default to a hard update if update doesn't work out.
+      var hardUpdate = true 
+      loginStatusVar.update: optTup =>
+        optTup match
+          case Some(Tuple2(ls,lastUpdated)) =>
+            val now = epochSecondsNow()
+            val elapsedSeconds = now - lastUpdated
+            val newStatus = LoginStatus( ls.highSecuritySecondsRemaining - elapsedSeconds, ls.lowSecuritySecondsRemaining - elapsedSeconds )
+            hardUpdate = math.random < LoginStatusUpdateHardUpdateProbability
+            Some(Tuple2(newStatus, now))
+          case None =>
+            hardUpdate = true
+            None
+      if hardUpdate then
+        protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, Client.backend, loginStatusVar)
 
     def maintainLoginStatus() : Unit =
       updateLoginStatus()
       if loginStatusHandle == None then
         val handle =
-          setInterval(60000):
+          setInterval(LoginStatusUpdateIntervalMsecs):
             updateLoginStatus()
         loginStatusHandle = Some( handle )
 
@@ -44,7 +66,7 @@ object TopPanel:
       onMountCallback { _ => maintainLoginStatus() },
       onUnmountCallback { _ => retireLoginStatus() },
       idAttr("top"),
-      cls <-- loginLevelVar.signal.map( _.fold("logged-in-unknown")( _.colorClass ) ),
+      cls <-- loginLevelSignal.map( _.fold("logged-in-unknown")( _.colorClass ) ),
       loginForm
     )
 

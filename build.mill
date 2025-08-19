@@ -26,7 +26,7 @@ object `package` extends UntemplateModule with ProtopostScalaModule with BuildIn
   )
   def buildInfoPackageName = "protopost"
 
-  val LogadapterScalaVersion = "0.0.1"
+  val LogadapterScalaVersion = "0.0.2-SNAPSHOT"
   val TapirVersion           = "1.11.35"
   val JsoniterVersion        = "2.36.6"
   val mailutilVersion        = "0.0.5"
