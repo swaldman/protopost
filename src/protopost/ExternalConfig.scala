@@ -3,6 +3,7 @@ package protopost
 import java.util.Properties
 import scala.jdk.CollectionConverters.*
 import protopost.MissingConfig
+import protopost.identity.Location
 
 object ExternalConfig:
   enum Key:
@@ -11,13 +12,13 @@ object ExternalConfig:
     case `protopost.server.url`
     case `protopost.token.security.high.validity.minutes`
     case `protopost.token.security.low.validity.minutes`
-    case `protopost.api.port`
+    case `protopost.api.local.port`
     case `protopost.mode.production`
 
   val Defaults = Map (
     Key.`protopost.token.security.high.validity.minutes` -> 120.toString,
     Key.`protopost.token.security.low.validity.minutes`  -> (2 * 24 * 60).toString,
-    Key.`protopost.api.port`                             -> 8025.toString,
+    Key.`protopost.api.local.port`                       -> Location.DefaultApiLocalPort.toString,
   )
 
   def fromProperties( props : Properties ) : ExternalConfig = new ExternalConfig:

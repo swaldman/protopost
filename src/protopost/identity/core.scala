@@ -16,7 +16,9 @@ enum Protocol( val defaultPort : Int ):
   case https extends Protocol(443)
 
 object Location:
+  val DefaultApiLocalPort = 8025
   val DefaultProtopost = Location.Simple(Protocol.http,"localhost",Protocol.http.defaultPort)
+  //val DefaultProtopost = Location.Simple(Protocol.http,"localhost",Protocol.http.defaultPort)
   val UrlRegex = """^(\w+)\:\/\/(localhost|(?:(?:[a-zA-Z_0-9]\.)+[a-zA-Z_0-9]+))(?:\:(\d+))?(\/.*)?$""".r
   def apply( url : String ) : Location =
     url match

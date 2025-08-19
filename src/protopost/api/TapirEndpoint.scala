@@ -83,7 +83,7 @@ object TapirEndpoint extends SelfLogging:
         Jwks( List( jwk ) )
 
   def client( appResources : AppResources )(unit : Unit) : ZOut[String] =
-    ZOut.fromTask( ZIO.attempt(protopost.client.client_top_html().text) )
+    ZOut.fromTask( ZIO.attempt(protopost.client.client_top_html( appResources.localIdentity.location.toUrl ).text) )
 
   extension ( pwd : protopost.Password )
     def toRehash : com.mchange.rehash.Password = com.mchange.rehash.Password(Password.s(pwd))
@@ -145,35 +145,47 @@ object TapirEndpoint extends SelfLogging:
         import protopost.jwt.str
         val highSecurityCookieValue = CookieValueWithMeta.safeApply(highSecurityJwt.str, expires=Some(highSecurityExpiration), secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
         val lowSecurityCookieValue  = CookieValueWithMeta.safeApply(lowSecurityJwt.str,  expires=Some(lowSecurityExpiration),  secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
-        
+
         def peel( either : Either[String,CookieValueWithMeta] ) =
           either match
             case Left( str )   => throw new BadCookieSettings( str )
             case Right( cvwm ) => cvwm
 
-        ( peel(highSecurityCookieValue), peel(lowSecurityCookieValue), protopost.api.LoginStatus( toEpochSecond(highSecurityExpiration), toEpochSecond(lowSecurityExpiration) ) )
+        ( peel(highSecurityCookieValue), peel(lowSecurityCookieValue), loginStatusFromExpirations(highSecurityExpiration, lowSecurityExpiration) )
+
     ZOut.fromTask:
       checkCredentials *> issueTokens
+
+  private def loginStatusFromExpirations( highSecurityExpiration : Instant, lowSecurityExpiration : Instant ) : protopost.api.LoginStatus =
+    val nowEpochSecond = java.lang.System.currentTimeMillis() / 1000
+    val highSecuritySecondsRemaining = math.max(toEpochSecond(highSecurityExpiration) - nowEpochSecond, 0L)
+    val lowSecuritySecondsRemaining = math.max(toEpochSecond(lowSecurityExpiration) - nowEpochSecond, 0L)
+    protopost.api.LoginStatus( highSecuritySecondsRemaining, lowSecuritySecondsRemaining )
 
   def loginStatus( appResources : AppResources )( highSecurityToken : Option[String], lowSecurityToken : Option[String] ) : ZOut[LoginStatus] =
     ZOut.fromTask:
       ZIO.attempt:
         val identity = appResources.localIdentity
 
-        def extractExpiration( tokenOpt : Option[String] ) : Option[Long] =
-          tokenOpt.flatMap: tokenStr =>
-            try
-              val jwt = protopost.jwt.Jwt(tokenStr)
-              val verified = decodeVerifyJwt(identity.publicKey)(jwt)
-              Some( toEpochSecond( verified.expiration) )
-            catch
-              case t : Throwable =>
-                WARNING.log("Could not validate a JWT.", t)
-                None
+        // absent a time machine, expiry at the UNIX epoch date means
+        // a token has already expired
+        def extractExpirationOrEpoch( tokenOpt : Option[String] ) : Instant =
+          tokenOpt match
+            case Some( tokenStr ) =>
+              try
+                val jwt = protopost.jwt.Jwt(tokenStr)
+                val verified = decodeVerifyJwt(identity.publicKey)(jwt)
+                verified.expiration
+              catch
+                case t : Throwable =>
+                  WARNING.log("Could not validate a JWT.", t)
+                  Instant.EPOCH
+            case None =>      
+                  Instant.EPOCH
 
-        val highSecurityExpires = extractExpiration(highSecurityToken).getOrElse(0L)
-        val lowSecurityExpires = extractExpiration(lowSecurityToken).getOrElse(0L)
-        protopost.api.LoginStatus(highSecurityExpires, lowSecurityExpires)
+        val highSecurityExpiration = extractExpirationOrEpoch(highSecurityToken)
+        val lowSecurityExpiration = extractExpirationOrEpoch(lowSecurityToken)
+        loginStatusFromExpirations( highSecurityExpiration, lowSecurityExpiration )
 
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     List (

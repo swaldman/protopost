@@ -1,35 +1,65 @@
+( protopostLocation : String )[]~()>
 <html>
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+      const protopostLocation = "<( protopostLocation )>"
+    </script>  
     <style>
       * {
           font-family: sans-serif;
       }
-      .logged-in-high {
+      #root {
+          width: 100%;
+          height: 100%;
+      }
+      #top {
+          width: 100%;
+          height: 100%;
+          border-style: solid;
+          border-width: 3px;
+      }
+      #top.logged-in-high {
+          border-color: green;
+      }
+      #top.logged-in-low {
+          border-color: cyan;
+      }
+      #top.logged-in-none {
+          border-color: red;
+      }
+      #top.logged-in-unknown {
+        border-color: gray;
+      }
+      .login-form {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-direction: column;
+      }
+      .login-form-inputs {
+      }
+      .login-form-message {
+          margin-top:0.5em;
+          color: red;
+          font-size: 8pt;
+          height: 1.5em;
+      }
+      .good-field {
         background-color: #aaddaa;
       }
-      .logged-in-low {
-        background-color: #ffff66;
-      }
-      .logged-in-none {
+      .bad-field {
         background-color: #ffaaaa;
       }
-      .logged-in-unknown {
-        background-color: white;
-      }
       @media screen and (max-width: 700px) {
-        body {
-            margin-top: 0;
-            margin-left: 1rem;
-            margin-right: 1rem;
-        }
       }
     </style>
     <title>Protopost</title>
   </head>
   <body>
-    <h1>Hello, world!</h1>
     <div id="root"></div>
   </body>
   <script src="scalajs/main.js"></script>

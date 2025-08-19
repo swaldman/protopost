@@ -63,7 +63,11 @@ object `package` extends UntemplateModule with ProtopostScalaModule with BuildIn
   // modified from https://mill-build.org/mill/scalalib/web-examples.html
   override def resources = Task:
     os.makeDir(Task.dest / "scalajs")
-    val jsPath = `scalajs-client`.fullLinkJS().dest.path
+
+    // switch back to fullLinkJS() when not actively developing the client
+    //val jsPath = `scalajs-client`.fullLinkJS().dest.path
+    val jsPath = `scalajs-client`.fastLinkJS().dest.path
+    
     // Move main.js[.map]into the proper filesystem position
     // in the resource folder for the web server code to pick up
     os.copy(jsPath / "main.js", Task.dest / "scalajs/main.js")

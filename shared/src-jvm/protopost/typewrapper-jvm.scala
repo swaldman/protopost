@@ -8,6 +8,7 @@ object EmailAddress:
     val address = Smtp.Address.parseSingle( s, strict = true )
     require( address.displayName == None, "Only simple e-mail addresses, e.g. 'user@subhost.host.tld', without display names, are supported, not " + address.rendered )
     s
+  private[protopost] def s( email : EmailAddress ) : String = email  
 opaque type EmailAddress = String
 
 extension( email : EmailAddress )

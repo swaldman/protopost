@@ -42,7 +42,11 @@ class AppResources( val configProperties : ConfigProperties ):
     val location =
       externalConfig.get(ExternalConfig.Key.`protopost.server.url`) match
         case Some(url) => Location.Simple(url)
-        case None      => Location.DefaultProtopost
+        case None if inProduction => Location.DefaultProtopost
+        case None =>
+          val key = ExternalConfig.Key.`protopost.api.local.port`
+          val localApiPort = externalConfig.get( key ).getOrElse( throw MissingConfig( key.toString ) ).toInt
+          Location.DefaultProtopost.copy( port = localApiPort )
     val pvtKeyHexKey = ExternalConfig.Key.`protopost.server.private-key-hex`
     val hex =
       externalConfig

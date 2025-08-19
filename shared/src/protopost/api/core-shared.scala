@@ -5,7 +5,7 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
 import protopost.{EmailAddress,Password}
 
-case class LoginStatus( highSecurityExpires : Long, lowSecurityExpires : Long )
+case class LoginStatus( highSecuritySecondsRemaining : Long, lowSecuritySecondsRemaining : Long )
 case class EmailPassword( email : EmailAddress, password : Password )
 
 // json codecs -- jsoniter-scala
