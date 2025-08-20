@@ -21,6 +21,11 @@ import protopost.client.util.sttp.rawBodyToLoginStatusOrThrow
 import protopost.client.util.laminar.onEnterPress
 
 object LoginForm:
+
+  object Color:
+    val GoodField = "#aaddaa"
+    val BadField  = "#ffaaaa"
+  
   def create(protopostLocation : Uri, loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[Option[LoginLevel]]) : HtmlElement =
     val emailVar = Var[String]("")
     val passwordVar = Var[String]("")
@@ -31,15 +36,15 @@ object LoginForm:
       emailVar.signal.changes /* .debounce(300) */
         .map: s =>
           if s.isEmpty then ""
-          else if EmailAddress.isValidEmail(s) then "good-field"
-          else "bad-field"
+          else if EmailAddress.isValidEmail(s) then Color.GoodField
+          else Color.BadField
 
     val submitter = Observer[(KeyboardEvent, String, String)]: tuptup =>
 
       def refreshLoginStatus() : Unit =
         loginStatusVar.set(None)
         protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, Client.backend, loginStatusVar)
-        
+
       def extractErrorBody[T]( response : Response[Either[ResponseException[String],T]] ) : String =
         response.body match
           case Left( re : ResponseException[String] ) =>
@@ -101,8 +106,14 @@ object LoginForm:
             placeholder("e-mail address"),
             disabled <-- disabledSignal,
             onInput.mapToValue.map( _.trim ) --> emailVar, //e-mail addresses (without display part) contain no whitespaces
+
+            // trying to make the color change on autocomplete, but it looks like Brave's internal stylesheet
+            // insists upon its post-autofill color
+            //onChange.mapToValue.map( _.trim ) --> emailVar, // can't seem to handle autofill properly
+            //onBlur.mapToValue.map( _.trim ) --> emailVar, // can't seem to handle autofill properly
+            
             onInput.mapTo("") --> loginFormMessage,
-            cls <-- emailBackgroundStream,
+            backgroundColor <-- emailBackgroundStream,
             onEnterPress.compose( _.withCurrentValueOf(emailPasswordSignal) ) --> submitter,
             size(32),
           )
