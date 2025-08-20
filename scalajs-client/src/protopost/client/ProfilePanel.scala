@@ -17,9 +17,10 @@ object ProfilePanel:
       util.sttp.setOptionalVarFromApiResult[PosterNoAuth]( protopostLocation.addPath("protopost", "poster-info"), Client.backend, posterNoAuthVar )
 
     div(
-      backgroundColor("#ccccff"),
+      //backgroundColor("#ccccff"),
       width("100%"),
       height("100%"),
+      margin("1.5rem"),
       div(
         idAttr := "profile-name-pane",
         fontSize("18pt"),
