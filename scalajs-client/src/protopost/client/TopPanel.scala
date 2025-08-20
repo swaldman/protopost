@@ -19,7 +19,7 @@ import protopost.client.util.epochSecondsNow
 object TopPanel:
   private val LoginStatusUpdateIntervalMsecs         = 6000
   private val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
-  
+
   def create(protopostLocation : Uri) : HtmlElement =
 
     val loginStatusVar : Var[Option[(LoginStatus, Long)]] = Var(None)
@@ -27,7 +27,15 @@ object TopPanel:
 
     val loginLevelSignal : Signal[Option[LoginLevel]] = loginStatusVar.signal.map( _.map( (ls,_) => LoginLevel.fromLoginStatus(ls) ) )
 
+    val locationVar : Var[UserLocation] = Var(UserLocation.Profile)
+
+    val loggedInLocationSignal = locationVar.signal.combineWithFn(loginLevelSignal): ( loc, mbLevel ) =>
+      mbLevel match
+        case Some( LoginLevel.high | LoginLevel.low ) => Some(loc)
+        case _ => None
+
     val loginForm = LoginForm.create(protopostLocation, loginStatusVar, loginLevelSignal)
+    val profilePanel = ProfilePanel.create(protopostLocation, loginLevelSignal)
 
     def updateLoginStatus() : Unit =
       // on initial mount, the update seems sometimes to skip,
@@ -67,6 +75,11 @@ object TopPanel:
       onUnmountCallback { _ => retireLoginStatus() },
       idAttr("top"),
       cls <-- loginLevelSignal.map( _.fold("logged-in-unknown")( _.colorClass ) ),
-      loginForm
+      loginForm.amend(
+        display <-- loggedInLocationSignal.map( _.fold("flex")(_ => "none") )
+      ),
+      profilePanel.amend(
+        display <-- loggedInLocationSignal.map( opt => if opt == Some(UserLocation.Profile) then "block" else "none" )
+      )
     )
 

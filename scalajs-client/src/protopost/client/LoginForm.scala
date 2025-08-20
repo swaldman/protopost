@@ -122,5 +122,7 @@ object LoginForm:
       div(
         cls := "login-form-message",
         text <-- loginFormMessage
-      )
+      ),
+      width("100%"),
+      height("100%")
     )

@@ -1,6 +1,8 @@
 package protopost.client.util
 
 import scala.concurrent.ExecutionContext
+import scala.util.control.NonFatal
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 
 def epochSecondsNow() : Long = System.currentTimeMillis()/1000
 
@@ -33,7 +35,11 @@ object sttp:
       case Left( oops ) => throw oops //new Exception( oops.toString() )
       case Right( loginStatus ) => loginStatus
 
-  def hardUpdateLoginStatus(protopostLocation : Uri, backend : WebSocketBackend[scala.concurrent.Future], loginStatusVar : com.raquo.laminar.api.L.Var[Option[(LoginStatus,Long)]])(using ec : ExecutionContext) : Unit =
+  def hardUpdateLoginStatus(
+        protopostLocation : Uri,
+        backend : WebSocketBackend[scala.concurrent.Future],
+        loginStatusVar : com.raquo.laminar.api.L.Var[Option[(LoginStatus,Long)]]
+  )(using ec : ExecutionContext) : Unit =
     //println("hardUpdateLoginStatus()");
     val request = basicRequest
       .get(protopostLocation.addPath("protopost", "login-status")) // uri"http://localhost:8025/protopost/login-status"
@@ -45,3 +51,50 @@ object sttp:
       case Failure(t) =>
         t.printStackTrace
         loginStatusVar.set(None)
+
+  def decodeOrThrow[T]( rawBody : Either[ResponseException[String], T] ) : T =
+    rawBody match
+      case Left( oops ) => throw oops //new Exception( oops.toString() )
+      case Right( theThing ) => theThing
+
+  private val DefaultErrorHandler : Throwable => Unit = t => t.printStackTrace()    
+
+  def setVarFromApiResult[T : JsonValueCodec](
+        endpointUri : Uri,
+        backend : WebSocketBackend[scala.concurrent.Future],
+        laminarVar : com.raquo.laminar.api.L.Var[T],
+        errorHandler : Throwable => Unit = DefaultErrorHandler
+  )( using ec : ExecutionContext ) : Unit =
+    try
+      val request = basicRequest
+        .get(endpointUri)
+        .response(asJson[T])
+      val future = request.send(backend).map( _.body ).map( decodeOrThrow )
+
+      future.onComplete:
+        case Success(result) => laminarVar.set(result)
+        case Failure(t) => errorHandler(t)
+    catch
+      case NonFatal(t) => errorHandler(t)
+
+  def setOptionalVarFromApiResult[T : JsonValueCodec](
+        endpointUri : Uri,
+        backend : WebSocketBackend[scala.concurrent.Future],
+        laminarVar : com.raquo.laminar.api.L.Var[Option[T]],
+        errorHandler : Throwable => Unit = DefaultErrorHandler
+  )( using ec : ExecutionContext ) : Unit =
+    try
+      val request = basicRequest
+        .get(endpointUri)
+        .response(asJson[T])
+      val future = request.send(backend).map( _.body ).map( decodeOrThrow )
+
+      future.onComplete:
+        case Success(result) => laminarVar.set(Some(result))
+        case Failure(t) =>
+          errorHandler(t)
+          laminarVar.set(None)
+    catch
+      case NonFatal(t) =>
+        errorHandler(t)
+        laminarVar.set(None)
