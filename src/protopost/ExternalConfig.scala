@@ -13,12 +13,14 @@ object ExternalConfig:
     case `protopost.token.security.high.validity.minutes`
     case `protopost.token.security.low.validity.minutes`
     case `protopost.api.local.port`
+    case `protopost.api.root-as-client`
     case `protopost.mode.production`
 
   val Defaults = Map (
     Key.`protopost.token.security.high.validity.minutes` -> 120.toString,
     Key.`protopost.token.security.low.validity.minutes`  -> (2 * 24 * 60).toString,
     Key.`protopost.api.local.port`                       -> Location.DefaultApiLocalPort.toString,
+    Key.`protopost.api.root-as-client`                   -> true.toString,
   )
 
   def fromProperties( props : Properties ) : ExternalConfig = new ExternalConfig:

@@ -69,6 +69,7 @@ object TapirEndpoint extends SelfLogging:
       .out(jsonBody[LoginStatus])
 
   val Client = Base.get.in("client").in("top.html").out(htmlBodyUtf8)
+  val RootAsClient = NakedBase.in("").get.out(htmlBodyUtf8)
 
   val PosterInfo = PosterAuthenticated.get.in("poster-info").out(jsonBody[PosterNoAuth])
 
@@ -238,6 +239,11 @@ object TapirEndpoint extends SelfLogging:
         loginStatusFromExpirations( highSecurityExpiration, lowSecurityExpiration )
 
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
+    val rootAsClient =
+      appResources.externalConfig
+        .get( ExternalConfig.Key.`protopost.api.root-as-client` )
+        .map( java.lang.Boolean.parseBoolean )
+        .flatMap( use => if use then Some( RootAsClient.zServerLogic( client( appResources ) ) : ZServerEndpoint[Any,Any] ) else None )
     List (
       //RootJwks.zServerLogic( jwks( appResources ) ),
       WellKnownJwks.zServerLogic( jwks( appResources ) ),
@@ -246,6 +252,6 @@ object TapirEndpoint extends SelfLogging:
       Client.zServerLogic( client( appResources ) ),
       PosterInfo.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( posterInfo(appResources) ),
       ScalaJsServerEndpoint
-    )
+    ) ++ rootAsClient.toList
 
 end TapirEndpoint
