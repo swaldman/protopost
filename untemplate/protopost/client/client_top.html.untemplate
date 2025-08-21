@@ -1,3 +1,5 @@
+import com.mchange.conveniences.string.*
+
 ( protopostLocation : String )[]~()>
 <html>
   <head>
@@ -54,6 +56,6 @@
   <body>
     <div id="root"></div>
   </body>
-  <script src="scalajs/main.js"></script>
+  <script src="<( pathJoin(protopostLocation, "/protopost/client/scalajs/main.js") )>"></script>
 </html>
 
