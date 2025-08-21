@@ -1,7 +1,7 @@
 //| mill-version: 1.0.3
 //| mill-jvm-version: 17
-//| mvnDeps: ["com.mchange::untemplate-mill:0.3.0-SNAPSHOT","com.mchange::mill-daemon:0.2.0","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
-//+-------------------------------------------------------------------------------------------------------------
+//| mvnDeps: ["com.mchange::untemplate-mill:0.3.0-SNAPSHOT","com.mchange::mill-daemon:0.2.1-SNAPSHOT","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
+//+-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 package build
 
@@ -25,17 +25,7 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
   override def moduleDeps = Seq(shared.jvm)
   override def scalacOptions = Seq("-deprecation")
 
-  val pidFilePathFile = BuildCtx.workspaceRoot / ".pid-file-path"
-
-  override def runDaemonPidFile =
-    if ( os.exists( pidFilePathFile ) )
-      try Some( os.Path( os.read( pidFilePathFile ).trim ) )
-      catch {
-        case NonFatal(t) =>
-          throw new Exception( s"Could not parse absolute path of desired PID file from contents of ${pidFilePathFile}. Please repair or remove this file.", t )
-      }
-    else
-      Some( BuildCtx.workspaceRoot / "protopost.pid" )
+  override def runDaemonPidFile = defaultRunDaemonPidFile("protopost")
 
   def buildInfoMembers = Seq(
     BuildInfo.Value("version", protopostVersion)
