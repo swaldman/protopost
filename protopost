@@ -31,6 +31,10 @@ has_daemon_fork() {
                 shift 2
                 ;;
             *)
+                # note that this case includes arguments like
+                #   --config=/my/config.properties
+                # so only a single shift occurs with this
+                # style of argument, which is right.
                 shift
                 ;;
         esac
