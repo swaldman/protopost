@@ -4,18 +4,45 @@ MAINCMD="$0"
 PROTOPOST_DIR="$(dirname $MAINCMD)"
 EXECNAME="$(basename $MAINCMD)"
 
+# Function to check if daemon subcommand has --fork flag
+has_daemon_fork() {
+    local found_daemon=false
+    local has_fork=false
+    
+    # Parse through all arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --config)
+                # Skip config option and its value
+                shift 2
+                ;;
+            daemon)
+                found_daemon=true
+                shift
+                ;;
+            --fork)
+                if [[ "$found_daemon" == true ]]; then
+                    has_fork=true
+                fi
+                shift
+                ;;
+            --port)
+                # Skip port option and its value
+                shift 2
+                ;;
+            *)
+                shift
+                ;;
+        esac
+    done
+    
+    [[ "$found_daemon" == true && "$has_fork" == true ]]
+}
+
 cd "$PROTOPOST_DIR"
 
-if [[ "$1" == "--config" ]]; then
-    SUBCMD="$3"
-    FIRSTARG="$4"
-else
-    SUBCMD="$1"
-    FIRSTARG="$2"
-fi
-
 if [[ "$EXECNAME" == "protopost" ]]; then
-    if [[  "$SUBCMD" == "daemon" && "$FIRSTARG" == "--fork" ]]; then
+    if has_daemon_fork "$@"; then
         ./mill --no-server --ticker=false runDaemon "$@"
     else
         ./mill --no-server --ticker=false run "$@"
