@@ -25,9 +25,9 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
   override def moduleDeps = Seq(shared.jvm)
   override def scalacOptions = Seq("-deprecation")
 
-  val pidFilePathFile = BuildCtx.workspaceRoot / ".feedletter-pid-file-path"
+  val pidFilePathFile = BuildCtx.workspaceRoot / ".pid-file-path"
 
-  override def runDaemonPidFile = {
+  override def runDaemonPidFile =
     if ( os.exists( pidFilePathFile ) )
       try Some( os.Path( os.read( pidFilePathFile ).trim ) )
       catch {
@@ -35,8 +35,7 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
           throw new Exception( s"Could not parse absolute path of desired PID file from contents of ${pidFilePathFile}. Please repair or remove this file.", t )
       }
     else
-      Some( BuildCtx.workspaceRoot / "feedletter.pid" )
-  }
+      Some( BuildCtx.workspaceRoot / "protopost.pid" )
 
   def buildInfoMembers = Seq(
     BuildInfo.Value("version", protopostVersion)
