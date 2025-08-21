@@ -1,25 +1,42 @@
 //| mill-version: 1.0.3
 //| mill-jvm-version: 17
-//| mvnDeps: ["com.mchange::untemplate-mill:0.3.0-SNAPSHOT","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
+//| mvnDeps: ["com.mchange::untemplate-mill:0.3.0-SNAPSHOT","com.mchange::mill-daemon:0.2.0","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
 //+-------------------------------------------------------------------------------------------------------------
 
 package build
 
 import mill.*, scalalib.*, scalajslib.*
+import mill.api.BuildCtx
 import mill.scalajslib.api.ModuleKind
 import mill.contrib.buildinfo.BuildInfo
 import untemplate.mill.UntemplateModule
+import com.mchange.milldaemon.DaemonModule
+
+import scala.util.control.NonFatal
 
 trait ProtopostScalaModule extends ScalaModule:
   override def scalaVersion = "3.7.2"
 trait ProtopostScalaJSModule extends ProtopostScalaModule,ScalaJSModule:
   override def scalaJSVersion = "1.19.0"
 
-object `package` extends UntemplateModule with ProtopostScalaModule with BuildInfo:
+object `package` extends UntemplateModule with DaemonModule with ProtopostScalaModule with BuildInfo:
   val protopostVersion = "0.0.1-SNAPSHOT"
 
   override def moduleDeps = Seq(shared.jvm)
   override def scalacOptions = Seq("-deprecation")
+
+  val pidFilePathFile = BuildCtx.workspaceRoot / ".feedletter-pid-file-path"
+
+  override def runDaemonPidFile = {
+    if ( os.exists( pidFilePathFile ) )
+      try Some( os.Path( os.read( pidFilePathFile ).trim ) )
+      catch {
+        case NonFatal(t) =>
+          throw new Exception( s"Could not parse absolute path of desired PID file from contents of ${pidFilePathFile}. Please repair or remove this file.", t )
+      }
+    else
+      Some( BuildCtx.workspaceRoot / "feedletter.pid" )
+  }
 
   def buildInfoMembers = Seq(
     BuildInfo.Value("version", protopostVersion)
@@ -39,6 +56,7 @@ object `package` extends UntemplateModule with ProtopostScalaModule with BuildIn
   def mvnDeps =
     super.mvnDeps() ++
     Seq(
+      mvn"com.mchange::mill-daemon-util:0.2.0",  // don't forget to also update mill-daemon in build-level 'mvnDeps' above
       mvn"com.mchange:c3p0-loom:0.11.2",
       mvn"com.mchange::logadapter-scala-log4j2:$LogadapterScalaVersion",
       mvn"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",

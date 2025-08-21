@@ -3,6 +3,8 @@ package protopost.main
 import java.sql.Connection
 import javax.sql.DataSource
 
+import scala.util.control.NonFatal
+
 import zio.*
 import zio.http.Server as ZServer
 
@@ -18,6 +20,8 @@ import com.mchange.rehash.*
 import com.mchange.sc.zsqlutil.*
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
+import com.mchange.milldaemon.util.PidFileManager
+
 object ConfiguredCommand extends SelfLogging:
   case class CreateUser( email : EmailAddress, password : Password, fullName : String ) extends ConfiguredCommand:
     override def zcommand =
@@ -29,9 +33,14 @@ object ConfiguredCommand extends SelfLogging:
         INFO.log(s"Created new user '${fullName}' with email '${email}' and id '${id}'")
         0
   end CreateUser
-  case class Daemon( port : Option[Int] ) extends ConfiguredCommand:
+  case class Daemon( fork : Boolean, port : Option[Int] ) extends ConfiguredCommand:
+    val attemptInstallPidFileDeleteShutdownHook =
+      ZIO.attempt( PidFileManager.installShutdownHookCarefulDelete() ).catchSome: t =>
+        t match
+          case NonFatal(t) => ZIO.succeed(WARNING.log("Throwable while setting up autoremove PID file shutdown hook.", t))
     override def zcommand =
       for
+        _        <- if fork then attemptInstallPidFileDeleteShutdownHook else ZIO.unit 
         ar       <- ZIO.service[AppResources]
         ec       =  ar.externalConfig
         p        =  port.getOrElse( ec( ExternalConfig.Key.`protopost.api.local.port` ).toInt )

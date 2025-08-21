@@ -1,4 +1,28 @@
 #!/usr/bin/env bash
 
-./mill run "$@"
+MAINCMD="$0"
+PROTOPOST_DIR="$(dirname $MAINCMD)"
+EXECNAME="$(basename $MAINCMD)"
+
+cd "$PROTOPOST_DIR"
+
+if [[ "$1" == "--config" ]]; then
+    SUBCMD="$3"
+    FIRSTARG="$4"
+else
+    SUBCMD="$1"
+    FIRSTARG="$2"
+fi
+
+if [[ "$EXECNAME" == "protopost" ]]; then
+    if [[  "$SUBCMD" == "daemon" && "$FIRSTARG" == "--fork" ]]; then
+        ./mill --no-server --ticker=false runDaemon "$@"
+    else
+        ./mill --no-server --ticker=false run "$@"
+    fi
+else
+    echo "Expected this command to be 'protopost'."
+fi
+
+
 
