@@ -24,3 +24,6 @@
     - Public keys are in uncompressed format, 65 bytes, beginning with 0x04, concatenated with the 32-byte x value,
       concatenated with the 32-byte y value of the public key point.
 
+* Useful documentation while developing
+  - Laminar: ([docs](https://laminar.dev/documentation)) ([apidocs](https://javadoc.io/doc/com.raquo/laminar_sjs1_3/latest/index.html))
+  
