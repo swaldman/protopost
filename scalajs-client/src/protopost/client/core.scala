@@ -18,10 +18,12 @@ object LoginLevel:
       LoginLevel.low
     else
       LoginLevel.none
-enum LoginLevel( val colorClass : String ):
-  case high extends LoginLevel("logged-in-high")
-  case low  extends LoginLevel("logged-in-low")
-  case none extends LoginLevel("logged-in-none")
+enum LoginLevel( val cssColor : String ):
+  case high extends LoginLevel("green")
+  case low  extends LoginLevel("cyan")
+  case none extends LoginLevel("red")
+
+val UnknownLoginStatusColor = "gray"  
 
 object UserLocation:
   object TableOfContents extends UserLocation

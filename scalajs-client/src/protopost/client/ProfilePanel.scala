@@ -18,13 +18,13 @@ object ProfilePanel:
 
     div(
       //backgroundColor("#ccccff"),
-      width("100%"),
-      height("100%"),
-      margin("1.5rem"),
+      width.percent(100),
+      height.percent(100),
+      margin.rem(1.5),
       div(
         idAttr := "profile-name-pane",
-        fontSize("18pt"),
-        fontWeight("bold"),
+        fontSize.pt(18),
+        fontWeight.bold,
         text <-- posterNoAuthVar.signal.map: mbPna =>
           mbPna match
             case Some( pna ) => s"Hello, ${pna.fullName}!"

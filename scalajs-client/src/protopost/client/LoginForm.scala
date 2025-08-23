@@ -98,10 +98,17 @@ object LoginForm:
         case _ => false
 
     div(
-      cls("login-form"),
+      // main login pane
+      width.percent(100),
+      height.percent(100),
+      display.flex,
+      alignItems.center,
+      justifyContent.center,
+      flexDirection.column,
       div(
-        cls("login-form-inputs"),
+        // username password form
         div(
+          // username
           input(
             placeholder("e-mail address"),
             disabled <-- disabledSignal,
@@ -111,7 +118,7 @@ object LoginForm:
             // insists upon its post-autofill color
             //onChange.mapToValue.map( _.trim ) --> emailVar, // can't seem to handle autofill properly
             //onBlur.mapToValue.map( _.trim ) --> emailVar, // can't seem to handle autofill properly
-            
+
             onInput.mapTo("") --> loginFormMessage,
             backgroundColor <-- emailBackgroundStream,
             onEnterPress.compose( _.withCurrentValueOf(emailPasswordSignal) ) --> submitter,
@@ -119,6 +126,7 @@ object LoginForm:
           )
         ),
         div(
+          // password
           input(
             `type` := "password",
             placeholder("password"),
@@ -131,9 +139,11 @@ object LoginForm:
         ),
       ),
       div(
-        cls := "login-form-message",
+        // error messages
+        marginTop.em(0.5),
+        color.red,
+        fontSize.pt(8),
+        height.em(1.5),
         text <-- loginFormMessage
       ),
-      width("100%"),
-      height("100%")
     )

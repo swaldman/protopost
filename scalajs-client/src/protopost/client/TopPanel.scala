@@ -74,7 +74,11 @@ object TopPanel:
       onMountCallback { _ => maintainLoginStatus() },
       onUnmountCallback { _ => retireLoginStatus() },
       idAttr("top"),
-      cls <-- loginLevelSignal.map( _.fold("logged-in-unknown")( _.colorClass ) ),
+      borderColor <-- loginLevelSignal.map( _.fold(UnknownLoginStatusColor)( _.cssColor ) ),
+      width.percent(100),
+      height.percent(100),
+      borderStyle.solid,
+      borderWidth.px(3),
       loginForm.amend(
         display <-- loggedInLocationSignal.map( _.fold("flex")(_ => "none") )
       ),
