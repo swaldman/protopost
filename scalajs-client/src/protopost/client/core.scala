@@ -24,12 +24,18 @@ enum LoginLevel( val cssColor : String ):
   case none extends LoginLevel("red")
   case unknown extends LoginLevel("gray")
 
-val UnknownLoginStatusColor = "gray"  
+val UnknownLoginStatusColor = "gray"
 
+/*
 object UserLocation:
   object TableOfContents extends UserLocation
   object NewPostLaunchpad extends UserLocation
   case class ExistingPost( id : Int ) extends UserLocation
   object Profile extends UserLocation
-sealed trait UserLocation  
+sealed trait UserLocation
+*/
 
+enum Tab( val label : String ):
+  case newPost  extends Tab("new post")
+  case allPosts extends Tab("all posts")
+  case profile  extends Tab("profile")

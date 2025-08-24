@@ -13,9 +13,14 @@ object ProfilePanel:
     div(
       idAttr("profile-panel"),
       //backgroundColor("#ccccff"),
+      //boxSizing.borderBox,
       width.percent(100),
       height.percent(100),
-      margin.rem(1.5),
+      paddingLeft.rem(0.5),
+      paddingRight.rem(0.5),
+      borderWidth.px(3),
+      borderColor.black,
+      // margin.rem(1.5),
       // display.flex,
       // flexDirection.column,
       div(
@@ -26,6 +31,11 @@ object ProfilePanel:
           mbPna match
             case Some( pna ) => s"Hello, ${pna.fullName}!"
             case None => ""
+      ),
+      hr(
+        borderStyle.solid,
+        borderColor.black,
+        borderWidth.px(1)
       ),
       onMountCallback { mountContext =>
         given Owner = mountContext.owner

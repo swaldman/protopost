@@ -40,7 +40,7 @@ object LoginForm:
           else Color.BadField
 
     val inputResetStringsStream = loginLevelChangeEvents.map( _ => "" )
-    
+
     val submitter = Observer[(KeyboardEvent, String, String)]: tuptup =>
 
       def refreshLoginStatus() : Unit =
