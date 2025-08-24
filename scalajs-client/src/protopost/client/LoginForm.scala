@@ -39,6 +39,8 @@ object LoginForm:
           else if EmailAddress.isValidEmail(s) then Color.GoodField
           else Color.BadField
 
+    val inputResetStringsStream = loginLevelChangeEvents.map( _ => "" )
+    
     val submitter = Observer[(KeyboardEvent, String, String)]: tuptup =>
 
       def refreshLoginStatus() : Unit =
@@ -121,7 +123,8 @@ object LoginForm:
 
             onInput.mapTo("") --> loginFormMessage,
             backgroundColor <-- emailBackgroundStream,
-            value <-- loginLevelChangeEvents.map( _ => "" ),
+            value <-- inputResetStringsStream,
+            backgroundColor <-- inputResetStringsStream,
             onEnterPress.compose( _.withCurrentValueOf(emailPasswordSignal) ) --> submitter,
             size(32),
           )
@@ -134,7 +137,7 @@ object LoginForm:
             onInput.mapToValue --> passwordVar,
             disabled <-- disabledSignal,
             onInput.mapTo("") --> loginFormMessage,
-            value <-- loginLevelChangeEvents.map( _ => "" ),
+            value <-- inputResetStringsStream,
             onEnterPress.compose( _.withCurrentValueOf(emailPasswordSignal) ) --> submitter,
             size(32),
           )
