@@ -8,7 +8,8 @@ import scala.util.control.NonFatal
 import zio.*
 import zio.http.Server as ZServer
 
-import sttp.tapir.server.ziohttp.ZioHttpInterpreter
+import sttp.tapir.server.interceptor.log.DefaultServerLog
+import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
 import protopost.{AppResources,EmailAddress,ExternalConfig,ProtopostException}
 import protopost.LoggingApi.*
@@ -33,7 +34,23 @@ object ConfiguredCommand extends SelfLogging:
         INFO.log(s"Created new user '${fullName}' with email '${email}' and id '${id}'")
         0
   end CreateUser
-  case class Daemon( fork : Boolean, port : Option[Int] ) extends ConfiguredCommand:
+  case class Daemon( fork : Boolean, verbose : Boolean, port : Option[Int] ) extends ConfiguredCommand:
+    val VerboseServerInterpreterOptions: ZioHttpServerOptions[Any] =
+    // modified from https://github.com/longliveenduro/zio-geolocation-tapir-tapir-starter/blob/b79c88b9b1c44a60d7c547d04ca22f12f420d21d/src/main/scala/com/tsystems/toil/Main.scala
+      ZioHttpServerOptions
+        .customiseInterceptors
+        .serverLog(
+          DefaultServerLog[Task](
+            doLogWhenReceived = msg => INFO.zlog(msg),
+            doLogWhenHandled = (msg, error) => error.fold(INFO.zlog(msg))(err => WARNING.zlog(s"msg: ${msg}, err: ${err}")),
+            doLogAllDecodeFailures = (msg, error) => error.fold(INFO.zlog(msg))(err => WARNING.zlog(s"msg: ${msg}, err: ${err}")),
+            doLogExceptions = (msg: String, exc: Throwable) => WARNING.zlog(msg, exc),
+            noLog = ZIO.unit
+          )
+        )
+        .options
+    val DefaltServerInterpreterOptions: ZioHttpServerOptions[Any] = ZioHttpServerOptions.default.widen[Any]
+    def interpreterOptions( verbose : Boolean ) = if verbose then VerboseServerInterpreterOptions else DefaltServerInterpreterOptions
     val attemptInstallPidFileDeleteShutdownHook =
       ZIO.attempt( PidFileManager.installShutdownHookCarefulDelete() ).catchSome: t =>
         t match
@@ -45,7 +62,7 @@ object ConfiguredCommand extends SelfLogging:
         ec       =  ar.externalConfig
         p        =  port.getOrElse( ec( ExternalConfig.Key.`protopost.api.local.port` ).toInt )
         seps     =  TapirEndpoint.serverEndpoints(ar)
-        httpApp  =  ZioHttpInterpreter().toHttp(seps)
+        httpApp  =  ZioHttpInterpreter(interpreterOptions(verbose)).toHttp(seps)
         _        <- INFO.zlog( s"Serving protopost API on port $p, location with identity '${ar.localIdentity.toPublicIdentity.toIdentifierWithLocation}'" )
         exitCode <- ZServer
                       .serve(httpApp)

@@ -22,6 +22,7 @@ enum LoginLevel( val cssColor : String ):
   case high extends LoginLevel("green")
   case low  extends LoginLevel("cyan")
   case none extends LoginLevel("red")
+  case unknown extends LoginLevel("gray")
 
 val UnknownLoginStatusColor = "gray"  
 

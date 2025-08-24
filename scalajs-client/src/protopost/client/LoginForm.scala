@@ -26,7 +26,7 @@ object LoginForm:
     val GoodField = "#aaddaa"
     val BadField  = "#ffaaaa"
   
-  def create(protopostLocation : Uri, loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[Option[LoginLevel]]) : HtmlElement =
+  def create(protopostLocation : Uri, loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[LoginLevel], loginLevelChangeEvents : EventStream[LoginLevel]) : HtmlElement =
     val emailVar = Var[String]("")
     val passwordVar = Var[String]("")
     val emailPasswordSignal = emailVar.signal.combineWith(passwordVar)
@@ -93,8 +93,8 @@ object LoginForm:
 
     val disabledSignal : Signal[Boolean] =
       loginLevelSignal.map:
-        case None => true
-        case Some( LoginLevel.high ) => true
+        case LoginLevel.unknown => true
+        case LoginLevel.high    => true
         case _ => false
 
     div(
@@ -121,6 +121,7 @@ object LoginForm:
 
             onInput.mapTo("") --> loginFormMessage,
             backgroundColor <-- emailBackgroundStream,
+            value <-- loginLevelChangeEvents.map( _ => "" ),
             onEnterPress.compose( _.withCurrentValueOf(emailPasswordSignal) ) --> submitter,
             size(32),
           )
@@ -133,6 +134,7 @@ object LoginForm:
             onInput.mapToValue --> passwordVar,
             disabled <-- disabledSignal,
             onInput.mapTo("") --> loginFormMessage,
+            value <-- loginLevelChangeEvents.map( _ => "" ),
             onEnterPress.compose( _.withCurrentValueOf(emailPasswordSignal) ) --> submitter,
             size(32),
           )

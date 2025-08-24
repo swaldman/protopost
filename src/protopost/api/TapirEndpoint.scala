@@ -61,6 +61,13 @@ object TapirEndpoint extends SelfLogging:
       .out(setCookie("token_security_low"))
       .out(jsonBody[LoginStatus])
 
+  val Logout =
+    Base.post
+      .in("logout")
+      .out(setCookie("token_security_high"))
+      .out(setCookie("token_security_low"))
+      .out(jsonBody[LoginStatus])
+
   val LoginStatus =
     Base.get
       .in("login-status")
@@ -120,7 +127,7 @@ object TapirEndpoint extends SelfLogging:
             throw new NotLoggedIn("No authentication token provided")
 
   def email( aposter : jwt.AuthenticatedPoster ) : EmailAddress = EmailAddress(aposter.claims.subject)
-  
+
   def posterInfo( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[PosterNoAuth] =
     ZOut.fromOptionalTask:
       val db = appResources.database
@@ -139,6 +146,11 @@ object TapirEndpoint extends SelfLogging:
 
   extension ( pwd : protopost.Password )
     def toRehash : com.mchange.rehash.Password = com.mchange.rehash.Password(Password.s(pwd))
+
+  private def peel( either : Either[String,CookieValueWithMeta] ) =
+    either match
+      case Left( str )   => throw new BadCookieSettings( str )
+      case Right( cvwm ) => cvwm
 
   def login( appResources : AppResources )( emailPassword : EmailPassword ) : ZOut[(CookieValueWithMeta, CookieValueWithMeta, LoginStatus)] =
     import com.mchange.rehash.str
@@ -198,15 +210,18 @@ object TapirEndpoint extends SelfLogging:
         val highSecurityCookieValue = CookieValueWithMeta.safeApply(jwt.Jwt.s(highSecurityJwt), expires=Some(highSecurityExpiration), secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
         val lowSecurityCookieValue  = CookieValueWithMeta.safeApply(jwt.Jwt.s(lowSecurityJwt),  expires=Some(lowSecurityExpiration),  secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
 
-        def peel( either : Either[String,CookieValueWithMeta] ) =
-          either match
-            case Left( str )   => throw new BadCookieSettings( str )
-            case Right( cvwm ) => cvwm
 
         ( peel(highSecurityCookieValue), peel(lowSecurityCookieValue), loginStatusFromExpirations(highSecurityExpiration, lowSecurityExpiration) )
 
     ZOut.fromTask:
       checkCredentials *> issueTokens
+
+  def logout( appResources : AppResources )( unit : Unit ) : ZOut[(CookieValueWithMeta, CookieValueWithMeta, LoginStatus)] =
+    ZOut.fromTask:
+      ZIO.attempt:
+        val highSecurityCookieValue = CookieValueWithMeta.safeApply("irrelevant", expires=Some(Instant.EPOCH), secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
+        val lowSecurityCookieValue  = CookieValueWithMeta.safeApply("irrelevant", expires=Some(Instant.EPOCH), secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
+        (peel(highSecurityCookieValue), peel(lowSecurityCookieValue), protopost.api.LoginStatus.empty)
 
   private def loginStatusFromExpirations( highSecurityExpiration : Instant, lowSecurityExpiration : Instant ) : protopost.api.LoginStatus =
     val nowEpochSecond = java.lang.System.currentTimeMillis() / 1000
@@ -249,6 +264,7 @@ object TapirEndpoint extends SelfLogging:
       WellKnownJwks.zServerLogic( jwks( appResources ) ),
       Login.zServerLogic( login( appResources ) ),
       LoginStatus.zServerLogic( loginStatus( appResources ) ),
+      Logout.zServerLogic( logout( appResources ) ),
       Client.zServerLogic( client( appResources ) ),
       PosterInfo.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( posterInfo(appResources) ),
       ScalaJsServerEndpoint

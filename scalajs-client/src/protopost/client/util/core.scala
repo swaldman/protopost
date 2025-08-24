@@ -47,8 +47,11 @@ object sttp:
     val future = request.send(backend).map( _.body ).map( rawBodyToLoginStatusOrThrow )
 
     future.onComplete:
-      case Success(ls) => loginStatusVar.set(Some((ls,epochSecondsNow())))
+      case Success(ls) =>
+        println("hardUpdateLoginStatus -- success!")
+        loginStatusVar.set(Some((ls,epochSecondsNow())))
       case Failure(t) =>
+        println("hardUpdateLoginStatus -- failure!")
         t.printStackTrace
         loginStatusVar.set(None)
 
@@ -57,12 +60,42 @@ object sttp:
       case Left( oops ) => throw oops //new Exception( oops.toString() )
       case Right( theThing ) => theThing
 
-  private val DefaultErrorHandler : Throwable => Unit = t => t.printStackTrace()    
+  private val DefaultErrorHandler : Throwable => Unit = t => t.printStackTrace()
 
-  def setVarFromApiResult[T : JsonValueCodec](
+  def setVarFromTransformedApiResult[T : JsonValueCodec,U](
+        request : Request[Either[ResponseException[String], T]],
+        backend : WebSocketBackend[scala.concurrent.Future],
+        laminarVar : com.raquo.laminar.api.L.Var[U],
+        transformation : T => U,
+        errorHandler : Throwable => Unit = DefaultErrorHandler
+  )( using ec : ExecutionContext ) : Unit =
+    try
+      val future = request.send(backend).map( _.body ).map( decodeOrThrow )
+
+      future.onComplete:
+        case Success(result) => laminarVar.set(transformation(result))
+        case Failure(t) => errorHandler(t)
+    catch
+      case NonFatal(t) => errorHandler(t)
+
+  def setVarFromTransformedApiGetResult[T : JsonValueCodec,U](
+        endpointUri : Uri, // will be a get request!
+        backend : WebSocketBackend[scala.concurrent.Future],
+        laminarVar : com.raquo.laminar.api.L.Var[U],
+        transformation : T => U,
+        errorHandler : Throwable => Unit = DefaultErrorHandler
+  )( using ec : ExecutionContext ) : Unit =
+    val request = basicRequest
+      .get(endpointUri)
+      .response(asJson[T])
+    setVarFromTransformedApiResult( request, backend, laminarVar, transformation, errorHandler )
+
+/*
+  def setVarFromTransformedApiGetResult[T : JsonValueCodec,U](
         endpointUri : Uri,
         backend : WebSocketBackend[scala.concurrent.Future],
-        laminarVar : com.raquo.laminar.api.L.Var[T],
+        laminarVar : com.raquo.laminar.api.L.Var[U],
+        transformation : T => U,
         errorHandler : Throwable => Unit = DefaultErrorHandler
   )( using ec : ExecutionContext ) : Unit =
     try
@@ -72,12 +105,24 @@ object sttp:
       val future = request.send(backend).map( _.body ).map( decodeOrThrow )
 
       future.onComplete:
-        case Success(result) => laminarVar.set(result)
+        case Success(result) => laminarVar.set(transformation(result))
         case Failure(t) => errorHandler(t)
     catch
       case NonFatal(t) => errorHandler(t)
+*/
 
-  def setOptionalVarFromApiResult[T : JsonValueCodec](
+  def setVarFromApiGetResult[T : JsonValueCodec](
+        endpointUri : Uri,
+        backend : WebSocketBackend[scala.concurrent.Future],
+        laminarVar : com.raquo.laminar.api.L.Var[T],
+        errorHandler : Throwable => Unit = DefaultErrorHandler
+  )( using ec : ExecutionContext ) : Unit =
+    val request = basicRequest
+      .get(endpointUri)
+      .response(asJson[T])
+    setVarFromTransformedApiResult[T,T]( request, backend, laminarVar, transformation = identity, errorHandler )
+
+  def setOptionalVarFromApiGetResult[T : JsonValueCodec](
         endpointUri : Uri,
         backend : WebSocketBackend[scala.concurrent.Future],
         laminarVar : com.raquo.laminar.api.L.Var[Option[T]],

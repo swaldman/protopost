@@ -5,6 +5,8 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
 import protopost.{EmailAddress,Password,PosterId}
 
+object LoginStatus:
+  val empty = LoginStatus(0L,0L)
 case class LoginStatus( highSecuritySecondsRemaining : Long, lowSecuritySecondsRemaining : Long )
 case class EmailPassword( email : EmailAddress, password : Password )
 case class PosterNoAuth( id : PosterId, email : EmailAddress, fullName : String )

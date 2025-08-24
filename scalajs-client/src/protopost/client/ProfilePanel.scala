@@ -9,18 +9,15 @@ import com.raquo.laminar.api.L.{*, given}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
 object ProfilePanel:
-  def create(protopostLocation : Uri, loginLevelSignal : Signal[Option[LoginLevel]]) : HtmlElement =
-    val loginEvents = loginLevelSignal.changes.filter( _.fold(false)(level => level != LoginLevel.none) ).map( _.get )
-    val posterNoAuthVar : Var[Option[PosterNoAuth]] = Var(None)
-
-    val loginObserver = Observer[LoginLevel]: _ =>
-      util.sttp.setOptionalVarFromApiResult[PosterNoAuth]( protopostLocation.addPath("protopost", "poster-info"), Client.backend, posterNoAuthVar )
-
+  def create(loginLevelChangeEvents : EventStream[LoginLevel], loginObserver : Observer[LoginLevel], posterNoAuthVar : Var[Option[PosterNoAuth]]) : HtmlElement =
     div(
+      idAttr("profile-panel"),
       //backgroundColor("#ccccff"),
       width.percent(100),
       height.percent(100),
       margin.rem(1.5),
+      // display.flex,
+      // flexDirection.column,
       div(
         idAttr := "profile-name-pane",
         fontSize.pt(18),
@@ -32,6 +29,6 @@ object ProfilePanel:
       ),
       onMountCallback { mountContext =>
         given Owner = mountContext.owner
-        loginEvents.addObserver(loginObserver)
+        loginLevelChangeEvents.addObserver(loginObserver)
       }
     )

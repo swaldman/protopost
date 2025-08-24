@@ -31,11 +31,14 @@ object Decline:
         val fork =
           val help = "Run as background process (if supported by wrapper script) and generate a PID file."
           Opts.flag("fork",help=help).orFalse
+        val verbose =
+          val help = "Log requests, verbosely."
+          Opts.flag("verbose",help=help).orFalse
         val port =
           val help = "The port on which the daemon process should serve the API (perhaps only internally, if the API is proxied)."
           Opts.option[Int]("port",help=help).orNone
-        ( fork, port ) mapN: (f, p) =>  
-          ConfiguredCommand.Daemon(f,p)
+        ( fork, verbose, port ) mapN: (f, v, p) =>  
+          ConfiguredCommand.Daemon(f,v,p)
       Command("daemon", header=header )( opts )
     val dbDump =
       val header = "Dump a backup of the database into a configured directory."
