@@ -10,6 +10,22 @@ import com.mchange.rehash.Password
 
 object Decline:
   object Subcommand:
+    val createDestination =
+      val header = "Create a new destination, a reference to a site on a seismic node to which posts can be published."
+      val opts =
+        val seismicNode =
+          val help = "The full identifier, including location, of the seismic node hosting the destination."
+          Opts.option[String]("seismic-node",help=help,metavar="identifier")
+        val name =
+          val help = "The name of the site on the remote seismic node."
+          Opts.option[String]("name",help=help,metavar="site-name")
+        val force =
+          val help = "Force creation even where potential problems have been detected."
+          Opts.flag("force",help=help).orFalse
+        ( seismicNode, name, force ) mapN: (sn, n, f) =>
+          ConfiguredCommand.CreateDestination( sn, n, f )
+      Command("create-destination", header=header )( opts )
+
     val createUser =
       val header = "Create a new user."
       val opts =
@@ -37,7 +53,7 @@ object Decline:
         val port =
           val help = "The port on which the daemon process should serve the API (perhaps only internally, if the API is proxied)."
           Opts.option[Int]("port",help=help).orNone
-        ( fork, verbose, port ) mapN: (f, v, p) =>  
+        ( fork, verbose, port ) mapN: (f, v, p) =>
           ConfiguredCommand.Daemon(f,v,p)
       Command("daemon", header=header )( opts )
     val dbDump =
@@ -58,6 +74,10 @@ object Decline:
       val header = "Generate and print to the console a hex value suitable for use in config as 'protopost.server.private-key-hex'"
       val opts = Opts( Precommand.GeneratePrivateKey )
       Command("generate-private-key", header=header )( opts )
+    val showIdentifier =
+      val header = "Print to the console the full identifier-with-location of this protopost node, suitable for identifying it to seismic nodes."
+      val opts = Opts( ConfiguredCommand.ShowIdentifier )
+      Command("show-identifier", header=header )( opts )
     val version =
       val header = "Print the version of protopost, then exit."
       val opts = Opts( Precommand.Version )
@@ -72,12 +92,14 @@ object Decline:
         val env  = Opts.env[JPath]("PROTOPOST_CONFIG", help=help).map( os.Path.apply )
         (opt orElse env).orNone
       val subcommands = Opts.subcommands(
+        Subcommand.createDestination,
         Subcommand.createUser,
         Subcommand.daemon,
         Subcommand.dbDump,
         Subcommand.dbInit,
         Subcommand.dbMigrate,
         Subcommand.generatePrivateKey,
+        Subcommand.showIdentifier,
         Subcommand.version
       )
       ( config, subcommands ).mapN( (c,sc) => Tuple2( c, sc ) )

@@ -64,15 +64,16 @@ given JsonValueCodec[Jwks]          = JsonCodecMaker.make
 given JsonValueCodec[Envelope]      = JsonCodecMaker.make
 
 // json codecs -- tapir
-given Schema[EmailAddress]  = Schema.string.map((s : String) => Some(EmailAddress(s)))(addr => EmailAddress.s(addr))
-given Schema[Password]      = Schema.string.map((s : String) => Some(Password(s)))(pw => Password.s(pw))
-given Schema[Jwt]           = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => Jwt.s(jwt))
-given Schema[PosterId]      = Schema.schemaForInt.map( (i : Int) => Some(PosterId(i)) )(pid => PosterId.i(pid))
-given Schema[Jwk]           = Schema.derived
-given Schema[Jwks]          = Schema.derived
-//given Schema[Jwts]          = Schema.derived
-given Schema[LoginStatus]   = Schema.derived
-given Schema[Envelope]      = Schema.derived
-given Schema[EmailPassword] = Schema.derived
-given Schema[PosterNoAuth] = Schema.derived
+given Schema[EmailAddress]      = Schema.string.map((s : String) => Some(EmailAddress(s)))(addr => EmailAddress.s(addr))
+given Schema[Password]          = Schema.string.map((s : String) => Some(Password(s)))(pw => Password.s(pw))
+given Schema[Jwt]               = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => Jwt.s(jwt))
+given Schema[PosterId]          = Schema.schemaForInt.map( (i : Int) => Some(PosterId(i)) )(pid => PosterId.i(pid))
+given Schema[Jwk]               = Schema.derived
+given Schema[Jwks]              = Schema.derived
+//given Schema[Jwts]            = Schema.derived
+given Schema[LoginStatus]       = Schema.derived
+given Schema[Envelope]          = Schema.derived
+given Schema[EmailPassword]     = Schema.derived
+given Schema[PosterNoAuth]      = Schema.derived
+given Schema[ClientDestination] = Schema.derived
 
