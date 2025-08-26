@@ -183,9 +183,7 @@ object PgSchema extends SelfLogging:
             ps.setLong  (1, i(id))
             ps.setString(2, es(email))
             ps.setString(3, fullName)
-            auth match
-              case Some( bch ) => ps.setString(4, new String(bch.unsafeInternalArray))
-              case None        => ps.setNull(4, Types.CHAR)
+            setStringOptional( ps, 4, Types.CHAR, auth.map(bch=>new String(bch.unsafeInternalArray)) )
             val rowsInserted = ps.executeUpdate()
             TRACE.log(s"Inserted into poster, seqnum ${i(id)}, ${rowsInserted} rows inserted.")
       end Poster
@@ -201,6 +199,14 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY ( seismic_node_id ) references seismic_node(id),
              |  FOREIGN KEY ( poster_id ) references poster(id)
              |)""".stripMargin
+        val Insert = s"INSERT INTO destination_poster(seismic_node_id, destination_name, poster_id, nickname) VALUES (?,?,?,?)"
+        def insert( seismicNodeId : Int, destinationName : String, posterId : PosterId, nickname : Option[String] )( conn : Connection ) =
+          Using.resource( conn.prepareStatement(Insert) ): ps =>
+            ps.setInt(1, seismicNodeId)
+            ps.setString(2, destinationName)
+            ps.setInt(3, PosterId.i(posterId))
+            setStringOptional( ps, 4, Types.VARCHAR, nickname )
+            ps.executeUpdate()
       end DestinationPoster
       object Post extends Creatable:
         override val Create =

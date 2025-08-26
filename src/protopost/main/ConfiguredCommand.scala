@@ -12,7 +12,7 @@ import zio.http.Server as ZServer
 import sttp.tapir.server.interceptor.log.DefaultServerLog
 import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
-import protopost.{AppResources,BadService,EmailAddress,ExternalConfig,InconsistentSeismicNodeDefinition,ProtopostException,ProtoSeismicNode,SeismicNodeWithId}
+import protopost.{AppResources,BadService,EmailAddress,ExternalConfig,InconsistentSeismicNodeDefinition,PosterId,ProtopostException,ProtoSeismicNode,SeismicNodeWithId,UnknownDestination,UnknownPoster}
 import protopost.LoggingApi.*
 import protopost.api.{Destination,TapirEndpoint}
 import protopost.db.{PgDatabase,PgSchemaManager}
@@ -27,6 +27,7 @@ import com.mchange.sc.zsqlutil.*
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
 import com.mchange.milldaemon.util.PidFileManager
+import protopost.effectlib.encounterProtoSeismicNode
 
 object ConfiguredCommand extends SelfLogging:
   case class CreateDestination( psn : ProtoSeismicNode, destinationName : String, acceptAdvertised : Boolean ) extends ConfiguredCommand:
@@ -137,42 +138,41 @@ object ConfiguredCommand extends SelfLogging:
         // migrate functions log internally, no need for additional messages here
         0
     end zcommand
-
-/*
-  case class GrantDestinationToUser(seismicNode : PublicIdentity, destinationName : String, posterIdOrEmailAddress : (PosterId | EmailAddress), nickname : Option[String]) extends ConfiguredCommand:
+  case class GrantDestination(psn : ProtoSeismicNode, destinationName : String, posterIdOrEmailAddress : (PosterId | EmailAddress), nickname : Option[String], acceptAdvertised : Boolean) extends ConfiguredCommand:
     def findPosterId( db : PgDatabase, conn : Connection ) : Task[PosterId] =
       ZIO.attemptBlocking:
-        posterIdOrEmaiAddress match
-          case pid : PosterId => pid
-          case eml : EmailAddress =>
-            val pwa =
-              db.posterWithAuthForEmail(eml).getOrElse:
-                throw new UnknownPoster( s"No poster with e-mail address '${eml}' has been defined." )
-            pwa.id
-    def findSeismicNodeId( db : PgDatabase, conn : Connection ) : Task[Int] =
-      ZIO.attemptBlocking:
-        require( seismicNode.service == Service.seismic, s"The seismic node specified appears to be a service of type '${seismicNode.service}', not '${Service.seismic}' as expected." )
-        val mbSnwi = db.seismicNodeByComponents( conn, seismicNode.algcrv, seismicNode.publicKeyBytes.unsafeArray, seismicNode.location.protocol, seismicNode.location.host, seismicNode.location.port )
-        mbSnwi match
-          case Some(snwi) => snwi.id
-          case None =>
-            throw new UnknownDestination( "The seismic node specified is not part of any destination. Please use 'create-destination' to define a destination before granting access to users. Unknown: " + publicIdentity.toIdentifierWithLocation)
-    def ensureDefined( db : PgDatabase, conn : Connection, seismicNodeId : Int ) : Task[Unit] =
-      if db.destinationDefined(conn, seismicNodeId, name) then ZIO.unit
-      else ZIO.fail( new UnknownDestination( s"No destination has been defined for name '${name}' on the seismic node specified. Please try 'create-destination' first." ) )
-    //def createRelationship( ... ) <-- define insert with optional nickname! unique(host,port) / unique(algcrv,pubkey)?
-
+        // grrrr. can't use pattern match 'cuz opaque types get erased
+        val isEmail = posterIdOrEmailAddress.toString.indexOf("@") >= 0
+        if !isEmail then
+          posterIdOrEmailAddress.asInstanceOf[PosterId]
+        else
+          val pwa =
+            val eml = posterIdOrEmailAddress.asInstanceOf[EmailAddress]
+            db.posterWithAuthForEmail(eml)(conn).getOrElse:
+              throw new UnknownPoster( s"No poster with e-mail address '${eml}' has been defined." )
+          pwa.id
+    def ensureDestinationExists( snid : Int, db : PgDatabase, conn : Connection ) : Task[Unit] =
+      if !db.destinationDefined( snid, destinationName )( conn ) then
+        ZIO.fail( new UnknownDestination( s"Destination '${destinationName}' on seismic node at $psn is unknown. Please try 'create-destination' first." ) )
+      else
+        ZIO.unit
+    def performUpdate( db : PgDatabase )( conn : Connection ) : Task[Unit] =
+      for
+        snid <- encounterProtoSeismicNode(psn,acceptAdvertised,createInDatabase=false)( db, conn )
+        pid  <- findPosterId( db, conn )
+        _    <- ensureDestinationExists(snid, db, conn)
+        _    <- ZIO.attemptBlocking( db.grant( snid, destinationName, pid, nickname )( conn ) )
+      yield()
     override def zcommand =
       for
-        ar  <- ZIO.service[AppResources]
-        db  =  ar.database
-        ds  =  ar.dataSource
-        pid <- posterId.fold( email.fold
+        ar   <- ZIO.service[AppResources]
+        db   =  ar.database
+        ds   =  ar.dataSource
+        _    <- withConnectionTransactionalZIO(ds)( performUpdate(db) )
       yield
-        // migrate functions log internally, no need for additional messages here
+        println(s"User ${posterIdOrEmailAddress} added to sepcified destination.")
         0
     end zcommand
-*/
   case object ListDestinations extends ConfiguredCommand:
     import com.mchange.sc.v1.texttable.*
     val Columns = Seq( Column("Seismic Node Identifier With Location"), Column("Name") )

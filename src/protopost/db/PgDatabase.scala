@@ -24,6 +24,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Destination.defined( seismicNodeId, name )( conn )
   def fetchHashForPoster( posterId : PosterId )( conn : Connection ) : Option[BCryptHash] =
     Schema.Table.Poster.select( posterId )( conn ).map( _.auth )
+  def grant( seismicNodeId : Int, destinationName : String, posterId : PosterId, nickname : Option[String] )( conn : Connection ) : Unit =
+    Schema.Table.DestinationPoster.insert( seismicNodeId, destinationName, posterId, nickname )( conn )
   def identifierWithLocationForSeismicNodeId( seismicNodeId : Int )( conn : Connection ) : String =
     Schema.Table.SeismicNode.selectById( seismicNodeId )( conn ) match
       case Some( seismicNodeWithId ) => seismicNodeWithId.identifierWithLocation
@@ -35,8 +37,6 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
     Schema.Table.SeismicNode.insert( newId, algcrv, pubkey, protocol, host, port )( conn )
     newId
-  def updateHashForPoster( posterId : PosterId, hash : BCryptHash )( conn : Connection ) : Unit =
-    Schema.Table.Poster.updateHash( posterId, hash )( conn )
   def posterWithAuthForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
     Schema.Table.Poster.selectPosterWithAuthByEmail( email )( conn )
   def seismicNodeByHostPort( host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
@@ -45,6 +45,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.SeismicNode.selectByAlgcrvPubkey( pubkey )( conn )
   def seismicNodeByComponents( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByComponents( algcrv, pubkey, protocol, host, port )( conn )
+  def updateHashForPoster( posterId : PosterId, hash : BCryptHash )( conn : Connection ) : Unit =
+    Schema.Table.Poster.updateHash( posterId, hash )( conn )
 
   object txn:
     def createUser( authManager : AuthManager[PosterId] )( email : EmailAddress, fullName : String, password : Password )( ds : DataSource ) : Task[PosterId] =
