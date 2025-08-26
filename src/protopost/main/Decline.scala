@@ -74,6 +74,10 @@ object Decline:
       val header = "Generate and print to the console a hex value suitable for use in config as 'protopost.server.private-key-hex'"
       val opts = Opts( Precommand.GeneratePrivateKey )
       Command("generate-private-key", header=header )( opts )
+    val listDestinations =
+      val header = "List all the destinations known to this server."
+      val opts = Opts( ConfiguredCommand.ListDestinations )
+      Command("list-destinations", header=header )( opts )
     val showIdentifier =
       val header = "Print to the console the full identifier-with-location of this protopost node, suitable for identifying it to seismic nodes."
       val opts = Opts( ConfiguredCommand.ShowIdentifier )
@@ -99,6 +103,7 @@ object Decline:
         Subcommand.dbInit,
         Subcommand.dbMigrate,
         Subcommand.generatePrivateKey,
+        Subcommand.listDestinations,
         Subcommand.showIdentifier,
         Subcommand.version
       )

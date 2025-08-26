@@ -13,7 +13,7 @@ case class EmailPassword( email : EmailAddress, password : Password )
 
 case class PosterNoAuth( id : PosterId, email : EmailAddress, fullName : String )
 
-case class ClientDestination( id : Int, seismicIdentifierWithLocation : String, name : String )
+case class Destination( seismicIdentifierWithLocation : String, name : String )
 
 // json codecs -- jsoniter-scala
 given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:
@@ -38,4 +38,4 @@ given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 
 given JsonValueCodec[PosterNoAuth]  = JsonCodecMaker.make
 
-given JsonValueCodec[ClientDestination]  = JsonCodecMaker.make
+given JsonValueCodec[Destination]  = JsonCodecMaker.make

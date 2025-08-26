@@ -55,6 +55,7 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
       mvn"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
       mvn"com.mchange::mailutil:${mailutilVersion}",
       mvn"com.mchange::rehash:0.0.1-SNAPSHOT",
+      mvn"com.mchange::texttable:0.0.3",
       mvn"at.favre.lib:bcrypt:0.10.2",
       mvn"com.monovore::decline:2.5.0",
       mvn"org.postgresql:postgresql:42.7.7",

@@ -3,6 +3,7 @@ package protopost.main
 import java.sql.Connection
 import javax.sql.DataSource
 
+import scala.collection.immutable
 import scala.util.control.NonFatal
 
 import zio.*
@@ -13,7 +14,7 @@ import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
 import protopost.{AppResources,BadService,EmailAddress,ExternalConfig,InconsistentSeismicNodeDefinition,ProtopostException,SeismicNodeWithId}
 import protopost.LoggingApi.*
-import protopost.api.{TapirEndpoint}
+import protopost.api.{Destination,TapirEndpoint}
 import protopost.db.PgSchemaManager
 import protopost.identity.{PublicIdentity,Service}
 
@@ -82,7 +83,7 @@ object ConfiguredCommand extends SelfLogging:
           mbFromHostPort orElse mbFromPubKey
       checkForExistingSeismicNodes.map: mbId =>
         mbId.getOrElse( ar.database.newSeismicNode( conn, publicIdentity.algcrv, publicIdentity.publicKeyBytes.unsafeArray.asInstanceOf[Array[Byte]], publicIdentity.location.protocol, publicIdentity.location.host, publicIdentity.location.port ) )
-    def createDestination( ar : AppResources, conn : Connection ) : Task[Int]=
+    def createDestination( ar : AppResources, conn : Connection ) : Task[Destination]=
       for
         seismicNodeId <- findCreateSeismicNode( ar, conn )
       yield
@@ -92,9 +93,9 @@ object ConfiguredCommand extends SelfLogging:
         _    <- ensureSeismic
         ar   <- ZIO.service[AppResources]
         ds   = ar.dataSource
-        id   <- withConnectionTransactionalZIO( ds )( conn => createDestination( ar, conn ) )
+        d   <- withConnectionTransactionalZIO( ds )( conn => createDestination( ar, conn ) )
       yield
-        INFO.log(s"Created new destination with id '${id}'")
+        INFO.log(s"Created new destination with name '${d.name}' on seismic node '${d.seismicIdentifierWithLocation}'")
         0
   end CreateDestination
   case class CreateUser( email : EmailAddress, password : Password, fullName : String ) extends ConfiguredCommand:
@@ -195,6 +196,21 @@ object ConfiguredCommand extends SelfLogging:
         ar <- ZIO.service[AppResources]
       yield
         println( ar.localIdentity.toPublicIdentity.toIdentifierWithLocation )
+        0
+    end zcommand
+  case object ListDestinations extends ConfiguredCommand:
+    import com.mchange.sc.v1.texttable.*
+    val Columns = Seq( Column("Identifier With Location"), Column("Name") )
+    given Ordering[Destination] = Ordering.by( (d : Destination )=> ( d.seismicIdentifierWithLocation, d.name) )
+    override def zcommand =
+      for
+        ar  <- ZIO.service[AppResources]
+        db  =  ar.database
+        ds  =  ar.dataSource
+        ds <- withConnectionTransactional(ds)( db.allDestinations )
+      yield
+        val rows = immutable.SortedSet.from(ds).toList.map( Row.apply )
+        printProductTable( Columns )( rows )
         0
     end zcommand
 

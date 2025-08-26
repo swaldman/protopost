@@ -75,5 +75,5 @@ given Schema[LoginStatus]       = Schema.derived
 given Schema[Envelope]          = Schema.derived
 given Schema[EmailPassword]     = Schema.derived
 given Schema[PosterNoAuth]      = Schema.derived
-given Schema[ClientDestination] = Schema.derived
+given Schema[Destination]       = Schema.derived
 

@@ -6,6 +6,7 @@ final class BadIdentifierFormat( message : String, cause : Throwable = null ) ex
 final class BadCookieSettings( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class BadCredentials( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class BadLocation( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
+final class BadSeismicNodeId( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class BadService( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class BadServiceUrl( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class EmailIsAlreadyRegistered( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )

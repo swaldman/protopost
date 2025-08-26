@@ -58,11 +58,14 @@ object PgSchema extends SelfLogging:
              |  pubkey bytea,
              |  protocol VARCHAR(16),
              |  host VARCHAR(256),
-             |  port INTEGER
+             |  port INTEGER,
+             |  UNIQUE( algcrv, pubkey, protocol, host, port )
              |)""".stripMargin
         val Insert = "INSERT INTO seismic_node( id, algcrv, pubkey, protocol, host, port ) VALUES ( ?, ?, ?, ?, ?, ? )"
+        val SelectById = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE id = ?"
         val SelectByHostPort = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE host = ? AND port = ?"
         val SelectByPubkey = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE pubkey = ?"
+        val SelectIdByComponents = "SELECT id FROM seismic_node WHERE algcrv = ? AND pubkey = ? AND protocol = ? AND host = ? AND port = ?"
         def insert( conn : Connection, id : Int, algcrv : String, pubkey : Array[Byte], protocol : String, host : String, port : Int ) : Unit =
           Using.resource( conn.prepareStatement(Insert) ): ps =>
             ps.setInt(1, id)
@@ -90,21 +93,24 @@ object PgSchema extends SelfLogging:
           Using.resource( conn.prepareStatement( SelectByPubkey ) ): ps =>
             ps.setBytes(1, pubkey)
             Using.resource( ps.executeQuery() )( rs => toSet(rs)(extractSeismicNodeWithId) )
+        def selectById( conn : Connection, id : Int ) : Option[SeismicNodeWithId] =
+          Using.resource( conn.prepareStatement( SelectById ) ): ps =>
+            ps.setInt(1, id)
+            Using.resource( ps.executeQuery() )( rs => zeroOrOneResult("seismic-node-by-id", rs)(extractSeismicNodeWithId) )
       end SeismicNode
       object Destination extends Creatable:
         override val Create =
           """|CREATE TABLE destination (
-             |  id INTEGER PRIMARY KEY,
              |  seismic_node_id INTEGER,
              |  name VARCHAR(256),
+             |  PRIMARY KEY (seismic_node_id, name),
              |  FOREIGN KEY (seismic_node_id) REFERENCES seismic_node(id)
              |)""".stripMargin
-        val Insert = "INSERT INTO destination(id, seismic_node_id, name) VALUES ( ?, ?, ? )"
-        def insert( conn : Connection, id : Int, seismicNodeId : Int, name : String ) : Unit =
+        val Insert = "INSERT INTO destination(seismic_node_id, name) VALUES ( ?, ? )"
+        def insert( conn : Connection, seismicNodeId : Int, name : String ) : Unit =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
-            ps.setInt( 1, id )
-            ps.setInt( 2, seismicNodeId )
-            ps.setString( 3, name )
+            ps.setInt( 1, seismicNodeId )
+            ps.setString( 2, name )
             ps.executeUpdate()
       end Destination
       object Poster extends Creatable:
@@ -178,18 +184,20 @@ object PgSchema extends SelfLogging:
       object DestinationPoster extends Creatable:
         override val Create =
           """|CREATE TABLE destination_poster (
-             |  destination_id INTEGER,
-             |  poster_id      INTEGER,
-             |  PRIMARY KEY ( destination_id, poster_id ),
-             |  FOREIGN KEY ( destination_id ) references destination(id),
+             |  seismic_node_id  INTEGER,
+             |  destination_name VARCHAR(256), 
+             |  poster_id        INTEGER,
+             |  PRIMARY KEY ( seismic_node_id, destination_name, poster_id ),
+             |  FOREIGN KEY ( seismic_node_id ) references seismic_node(id),
              |  FOREIGN KEY ( poster_id ) references poster(id)
              |)""".stripMargin
       end DestinationPoster
       object Post extends Creatable:
         override val Create =
           """|CREATE TABLE post (
-             |  destination_id        INTEGER,
-             |  post_id               INTEGER,
+             |  id                    INTEGER,
+             |  seismic_node_id       INTEGER,
+             |  destination_name      VARCHAR(256),
              |  post_anchor           VARCHAR(256),
              |  title                 VARCHAR(1024),
              |  sprout                BOOLEAN,
@@ -198,9 +206,9 @@ object PgSchema extends SelfLogging:
              |  in_reply_to_guid      VARCHAR(1024),
              |  content_type          VARCHAR(256),
              |  published_permalink   VARCHAR(1024),
-             |  UNIQUE ( destination_id, post_anchor ),
-             |  PRIMARY KEY ( destination_id, post_id ),
-             |  FOREIGN KEY(destination_id) REFERENCES destination(id)
+             |  UNIQUE ( seismic_node_id, destination_name, post_anchor ), -- anchors should be unique within destinations
+             |  PRIMARY KEY ( id ),
+             |  FOREIGN KEY(seismic_node_id, destination_name) REFERENCES destination(seismic_node_id,name)
              |)""".stripMargin
       end Post
       object PostAuthor extends Creatable:
@@ -214,67 +222,63 @@ object PgSchema extends SelfLogging:
          */
         override val Create =
           """|CREATE TABLE post_author (
-             |  destination_id           INTEGER,
              |  post_id                  INTEGER,
              |  placement                INTEGER,
              |  full_name                VARCHAR(2048),
-             |  PRIMARY KEY ( destination_id, post_id, placement ),
-             |  FOREIGN KEY(destination_id, post_id) REFERENCES post(destination_id, post_id)
+             |  PRIMARY KEY ( post_id, placement ),
+             |  FOREIGN KEY(post_id) REFERENCES post(id)
              |)""".stripMargin
       end PostAuthor
       object PostRevision extends Creatable:
         override val Create =
           """|CREATE TABLE post_revision (
-             |  destination_id INTEGER,
              |  post_id        INTEGER,
              |  save_time      TIMESTAMP,
              |  body           TEXT,
-             |  PRIMARY KEY ( destination_id, post_id, save_time ),
-             |  FOREIGN KEY(destination_id, post_id) REFERENCES post(destination_id, post_id)
+             |  PRIMARY KEY ( post_id, save_time ),
+             |  FOREIGN KEY(post_id) REFERENCES post(id)
              |)""".stripMargin
       end PostRevision
       object PostPublicationHistory extends Creatable:
         override val Create =
           """|CREATE TABLE post_publication_history (
-             |  destination_id            INTEGER,
              |  post_id                   INTEGER,
              |  save_time                 TIMESTAMP,
              |  update_time               TIMESTAMP,
              |  major_update_description  VARCHAR(2048),
-             |  update_confirmation_state VARCHAR(128),               -- usually a git commit id
-             |  PRIMARY KEY ( destination_id, post_id, update_time ),
-             |  FOREIGN KEY(destination_id, post_id, save_time) REFERENCES post_revision(destination_id, post_id, save_time)
+             |  update_confirmation_state VARCHAR(128),   -- usually a git commit id
+             |  PRIMARY KEY ( post_id, update_time ),
+             |  FOREIGN KEY(post_id, save_time) REFERENCES post_revision(post_id, save_time)
              |)""".stripMargin
       end PostPublicationHistory
       object PostDeleteHistory extends Creatable:
         override val Create =
           """|CREATE TABLE post_delete_history (
-             |  destination_id            INTEGER,
              |  post_id                   INTEGER,
              |  delete_time               TIMESTAMP,
              |  delete_confirmation_state VARCHAR(128),
-             |  PRIMARY KEY ( destination_id, post_id, delete_time )
+             |  PRIMARY KEY ( post_id, delete_time ),
+             |  FOREIGN KEY(post_id) REFERENCES post(id)
              |)""".stripMargin
       end PostDeleteHistory
       object PostUndeleteHistory extends Creatable:
         override val Create =
           """|CREATE TABLE post_undelete_history (
-             |  destination_id              INTEGER,
              |  post_id                     INTEGER,
              |  undelete_time               TIMESTAMP,
              |  undelete_confirmation_state VARCHAR(128),
-             |  PRIMARY KEY ( destination_id, post_id, undelete_time )
+             |  PRIMARY KEY ( post_id, undelete_time ),
+             |  FOREIGN KEY(post_id) REFERENCES post(id)
              |)""".stripMargin
       end PostUndeleteHistory
       object PostMedia extends Creatable:
         override val Create =
           """|CREATE TABLE post_media (
-             |  destination_id INTEGER,
              |  post_id        INTEGER,
              |  media_name     VARCHAR(1024),
              |  media          OID,
-             |  PRIMARY KEY ( destination_id, post_id, media_name ),
-             |  FOREIGN KEY(destination_id, post_id) references post(destination_id, post_id)
+             |  PRIMARY KEY ( post_id, media_name ),
+             |  FOREIGN KEY(post_id) references post(id)
              |)""".stripMargin
       end PostMedia
     end Table
@@ -287,10 +291,6 @@ object PgSchema extends SelfLogging:
         protected val Create = "CREATE SEQUENCE seismic_node_id_seq AS INTEGER"
         def selectNext( conn : Connection ) : Int = Sequence.selectNext( conn, "seismic_node_id_seq" )( scala.Predef.identity )
       end SeismicNodeId
-      object DestinationId extends Creatable:
-        protected val Create = "CREATE SEQUENCE destination_id_seq AS INTEGER"
-        def selectNext( conn : Connection ) : Int = Sequence.selectNext( conn, "destination_id_seq" )( scala.Predef.identity )
-      end DestinationId
       object PosterId extends Creatable:
         protected val Create = "CREATE SEQUENCE poster_id_seq AS INTEGER"
         def selectNext( conn : Connection ) : protopost.PosterId = Sequence.selectNext( conn, "poster_id_seq" )( protopost.PosterId.apply )
@@ -300,6 +300,8 @@ object PgSchema extends SelfLogging:
       end PostId
     end Sequence
     object Index:
+      object SeismicNodeComponents extends Creatable:
+        protected val Create = "CREATE INDEX seismic_node_components ON seismic_node( algcrv, pubkey, protocol, host, port )"
       object PosterEmail extends Creatable:
         protected val Create = "CREATE INDEX poster_email ON poster(email)"
       object PostPublishedPermalink extends Creatable:
@@ -310,28 +312,35 @@ object PgSchema extends SelfLogging:
         protected val Create = "CREATE INDEX seismic_node_pubkey ON seismic_node(pubkey)"
     end Index
     object Join:
+      val SelectAllDestinations =
+        """|SELECT seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name
+           |FROM destination
+           |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id""".stripMargin
       val SelectDestinationsForPosterId =
         """|SELECT seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name
            |FROM destination_poster
-           |INNER JOIN destination ON destination_poster.destination_id = destination.id
+           |INNER JOIN destination ON destination_poster.seismic_node_id = destination.seismic_node_id AND destination_poster.destination_name = destination_name
            |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id
            |WHERE destination_poster.id = ?""".stripMargin
-      def selectDestinationsForPosterId( conn : Connection, posterId : PosterId ) : Set[ClientDestination] =
+      private def extractDestination( rs : ResultSet ) : Destination =
+        val algcrv      = rs.getString(1)
+        val pubkey      = rs.getBytes(2)
+        val protocolStr = rs.getString(3)
+        val host        = rs.getString(4)
+        val port        = rs.getInt(5)
+        val name        = rs.getString(6)
+        val service = Service.seismic
+        val protocol = Protocol.valueOf(protocolStr)
+        val portStr = if port == protocol.defaultPort then "" else s":${port}"
+        val identifierWithLocation = s"${service}[${algcrv}]${pubkey.hex0x}:${protocol}://${host}${portStr}/"
+        Destination(identifierWithLocation, name)
+      def selectAllDestinations( conn : Connection ) : Set[Destination] =
+        Using.resource( conn.prepareStatement(SelectAllDestinations) ): ps =>
+          Using.resource( ps.executeQuery() )( rs => toSet(rs)(extractDestination) )
+      def selectDestinationsForPosterId( conn : Connection, posterId : PosterId ) : Set[Destination] =
         val pid = PosterId.i(posterId)
-        def extract( rs : ResultSet ) : ClientDestination =
-          val algcrv      = rs.getString(1)
-          val pubkey      = rs.getBytes(2)
-          val protocolStr = rs.getString(3)
-          val host        = rs.getString(4)
-          val port        = rs.getInt(5)
-          val name        = rs.getString(6)
-          val service = Service.seismic
-          val protocol = Protocol.valueOf(protocolStr)
-          val portStr = if port == protocol.defaultPort then "" else s":${port}"
-          val identifierWithLocation = s"${service}[${algcrv}]${pubkey.hex0x}:${protocol}://${host}${portStr}/"
-          ClientDestination(pid, identifierWithLocation, name)
         Using.resource( conn.prepareStatement(SelectDestinationsForPosterId) ): ps =>
           ps.setInt(1, pid)
-          Using.resource( ps.executeQuery() )( rs => toSet(rs)(extract) )
+          Using.resource( ps.executeQuery() )( rs => toSet(rs)(extractDestination) )
     end Join
   end V1
