@@ -20,11 +20,11 @@ object Decline:
         val name =
           val help = "The name of the site on the remote seismic node."
           Opts.option[String]("name",help=help,metavar="site-name")
-        val force =
-          val help = "Force creation even where potential problems have been detected."
-          Opts.flag("force",help=help).orFalse
-        ( Common.seismicNode, name, force ) mapN: (sn, n, f) =>
-          ConfiguredCommand.CreateDestination( sn, n, f )
+        val acceptAdvertised =
+          val help = "Accept the identity that a remote node advertises via its JWKS."
+          Opts.flag("accept-advartised",help=help,short="a").orFalse
+        ( Common.seismicNode, name, acceptAdvertised ) mapN: (sn, n, aa) =>
+          ConfiguredCommand.CreateDestination( sn, n, aa )
       Command("create-destination", header=header )( opts )
 
     val createUser =
