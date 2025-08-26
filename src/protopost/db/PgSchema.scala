@@ -184,9 +184,11 @@ object PgSchema extends SelfLogging:
       object DestinationPoster extends Creatable:
         override val Create =
           """|CREATE TABLE destination_poster (
-             |  seismic_node_id  INTEGER,
-             |  destination_name VARCHAR(256), 
-             |  poster_id        INTEGER,
+             |  seismic_node_id  INTEGER NOT NULL,
+             |  destination_name VARCHAR(256) NOT NULL,
+             |  poster_id        INTEGER NOT NULL,
+             |  nickname         VARCHAR(256),
+             |  UNIQUE ( poster_id, nickname ), -- each destination's nickname should be unique to each poster
              |  PRIMARY KEY ( seismic_node_id, destination_name, poster_id ),
              |  FOREIGN KEY ( seismic_node_id ) references seismic_node(id),
              |  FOREIGN KEY ( poster_id ) references poster(id)
@@ -195,9 +197,10 @@ object PgSchema extends SelfLogging:
       object Post extends Creatable:
         override val Create =
           """|CREATE TABLE post (
-             |  id                    INTEGER,
-             |  seismic_node_id       INTEGER,
-             |  destination_name      VARCHAR(256),
+             |  id                    INTEGER NOT NULL,
+             |  seismic_node_id       INTEGER NOT NULL,
+             |  destination_name      VARCHAR(256) NOT NULL,
+             |  owner                 INTEGER NOT NULL,
              |  post_anchor           VARCHAR(256),
              |  title                 VARCHAR(1024),
              |  sprout                BOOLEAN,
@@ -208,6 +211,7 @@ object PgSchema extends SelfLogging:
              |  published_permalink   VARCHAR(1024),
              |  UNIQUE ( seismic_node_id, destination_name, post_anchor ), -- anchors should be unique within destinations
              |  PRIMARY KEY ( id ),
+             |  FOREIGN KEY(owner) REFERENCES poster(id),
              |  FOREIGN KEY(seismic_node_id, destination_name) REFERENCES destination(seismic_node_id,name)
              |)""".stripMargin
       end Post
