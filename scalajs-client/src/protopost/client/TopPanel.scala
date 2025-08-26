@@ -99,7 +99,7 @@ object TopPanel:
         """
         |#app-panel {
         |  /* Use flexbox instead of grid for better Safari compatibility */
-        |  display: flex !important;
+        |  display: flex;
         |  flex-direction: column;
         |  height: 100%;
         |}
