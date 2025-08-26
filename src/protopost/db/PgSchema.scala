@@ -59,7 +59,7 @@ object PgSchema extends SelfLogging:
              |  protocol VARCHAR(16),
              |  host VARCHAR(256),
              |  port INTEGER,
-             |  UNIQUE( algcrv, pubkey, protocol, host, port )
+             |  UNIQUE( algcrv, pubkey, protocol, host, port ) -- no need to create an index on these, the uniqueness constraint does it, see https://www.postgresql.org/docs/current/indexes-unique.html
              |)""".stripMargin
         val Insert = "INSERT INTO seismic_node( id, algcrv, pubkey, protocol, host, port ) VALUES ( ?, ?, ?, ?, ?, ? )"
         val SelectById = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE id = ?"
@@ -300,8 +300,6 @@ object PgSchema extends SelfLogging:
       end PostId
     end Sequence
     object Index:
-      object SeismicNodeComponents extends Creatable:
-        protected val Create = "CREATE INDEX seismic_node_components ON seismic_node( algcrv, pubkey, protocol, host, port )"
       object PosterEmail extends Creatable:
         protected val Create = "CREATE INDEX poster_email ON poster(email)"
       object PostPublishedPermalink extends Creatable:
