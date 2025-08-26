@@ -20,6 +20,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
 
   def allDestinations( conn : Connection ) : Set[Destination] =
     Schema.Join.selectAllDestinations( conn )
+  def allPosters( conn : Connection ) : Set[PosterWithAuth] =
+    Schema.Table.Poster.selectAll( conn )
   def destinationDefined( seismicNodeId : Int, name : String )( conn : Connection ) : Boolean =
     Schema.Table.Destination.defined( seismicNodeId, name )( conn )
   def fetchHashForPoster( posterId : PosterId )( conn : Connection ) : Option[BCryptHash] =
@@ -37,7 +39,7 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
     Schema.Table.SeismicNode.insert( newId, algcrv, pubkey, protocol, host, port )( conn )
     newId
-  def posterWithAuthForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
+  def posterForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
     Schema.Table.Poster.selectPosterWithAuthByEmail( email )( conn )
   def seismicNodeByHostPort( host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByHostPort( host, port )( conn )
@@ -66,7 +68,7 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
       posterWithAuthByEmail(email)(ds).map( _.map( _.toPosterNoAuth ) )
     def destinationsForPosterEmail( email : EmailAddress )( ds : DataSource ) : Task[Set[Destination]] =
       withConnectionTransactional( ds ): conn =>
-        posterWithAuthForEmail(email)(conn) match
+        posterForEmail(email)(conn) match
           case None => throw new UnknownPoster( s"User '${email}' is unknown." )
           case Some( pwa ) => Schema.Join.selectDestinationsForPosterId( pwa.id )( conn )
     def seismicNodesByHostPort( host : String, port : Int )( ds : DataSource ) : Task[Option[SeismicNodeWithId]] =

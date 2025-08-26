@@ -148,7 +148,7 @@ object ConfiguredCommand extends SelfLogging:
         else
           val pwa =
             val eml = posterIdOrEmailAddress.asInstanceOf[EmailAddress]
-            db.posterWithAuthForEmail(eml)(conn).getOrElse:
+            db.posterForEmail(eml)(conn).getOrElse:
               throw new UnknownPoster( s"No poster with e-mail address '${eml}' has been defined." )
           pwa.id
     def ensureDestinationExists( snid : Int, db : PgDatabase, conn : Connection ) : Task[Unit] =
@@ -185,6 +185,23 @@ object ConfiguredCommand extends SelfLogging:
         ds <- withConnectionTransactional(ds)( db.allDestinations )
       yield
         val rows = immutable.SortedSet.from(ds).toList.map( Row.apply )
+        printProductTable( Columns )( rows )
+        0
+    end zcommand
+  case object ListUsers extends ConfiguredCommand:
+    import com.mchange.sc.v1.texttable.*
+    val Columns = Seq( Column("ID"), Column("Full Name"), Column("E-Mail Address") )
+    override def zcommand =
+      for
+        ar  <- ZIO.service[AppResources]
+        db  =  ar.database
+        ds  =  ar.dataSource
+        ps <- withConnectionTransactional(ds)( db.allPosters )
+      yield
+        val rows =
+          import PosterId.i, EmailAddress.s
+          val tups = ps.map(p => (i(p.id),p.fullName,s(p.email)))
+          immutable.SortedSet.from(tups).toList.map( Row.apply )
         printProductTable( Columns )( rows )
         0
     end zcommand

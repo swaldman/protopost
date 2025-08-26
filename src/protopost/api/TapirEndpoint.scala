@@ -163,7 +163,7 @@ object TapirEndpoint extends SelfLogging:
     val checkCredentials =
       withConnectionTransactionalZIO( appResources.dataSource ): conn =>
         import VerificationResult.*
-        database.posterWithAuthForEmail( email )( conn ) match
+        database.posterForEmail( email )( conn ) match
           case Some( pwa ) =>
             val fetchHash : PosterId => Option[BCryptHash] = posterId => database.fetchHashForPoster( posterId )( conn )
             val storeHash : ( PosterId, BCryptHash ) => Unit = ( posterId : PosterId, hash : BCryptHash ) => database.updateHashForPoster( posterId, hash )( conn )

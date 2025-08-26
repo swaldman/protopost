@@ -92,9 +92,13 @@ object Decline:
       val opts = Opts( Precommand.GeneratePrivateKey )
       Command("generate-private-key", header=header )( opts )
     val listDestinations =
-      val header = "List all the destinations known to this server."
+      val header = "List the destinations known to this server."
       val opts = Opts( ConfiguredCommand.ListDestinations )
       Command("list-destinations", header=header )( opts )
+    val listUsers =
+      val header = "List the users known to this server."
+      val opts = Opts( ConfiguredCommand.ListUsers )
+      Command("list-users", header=header )( opts )
     val showIdentifier =
       val header = "Print to the console the full identifier-with-location of this protopost node, suitable for identifying it to seismic nodes."
       val opts = Opts( ConfiguredCommand.ShowIdentifier )
@@ -122,6 +126,7 @@ object Decline:
         Subcommand.grantDestination,
         Subcommand.generatePrivateKey,
         Subcommand.listDestinations,
+        Subcommand.listUsers,
         Subcommand.showIdentifier,
         Subcommand.version
       )

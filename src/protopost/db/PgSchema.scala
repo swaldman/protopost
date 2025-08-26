@@ -140,6 +140,7 @@ object PgSchema extends SelfLogging:
              |)""".stripMargin
         private val Insert = "INSERT INTO poster( id, email, full_name, auth ) VALUES ( ?, ?, ?, ? )"
         private val Select = "SELECT id, email, full_name, auth FROM poster WHERE id = ?"
+        private val SelectAll = "SELECT id, email, full_name, auth FROM poster"
         private val SelectPosterWithAuthByEmail = "SELECT id, email, full_name, auth FROM poster WHERE email = ?"
         private val SelectPosterExistsForEmail = "SELECT EXISTS(SELECT 1 FROM poster WHERE email = ?)"
         private val UpdateHash = "UPDATE poster SET hash = ? WHERE id = ?"
@@ -169,6 +170,9 @@ object PgSchema extends SelfLogging:
           Using.resource( conn.prepareStatement( Select ) ): ps =>
             ps.setInt(1, i(posterId))
             Using.resource( ps.executeQuery() )( zeroOrOneResult("select-poster")(extractPosterWithAuth) )
+        def selectAll( conn : Connection ) : Set[PosterWithAuth] =
+          Using.resource( conn.prepareStatement( SelectAll ) ): ps =>
+            Using.resource( ps.executeQuery() )( toSet(extractPosterWithAuth) )
         def posterExistsForEmail( email : EmailAddress )( conn : Connection ) : Boolean =
           Using.resource( conn.prepareStatement( SelectPosterExistsForEmail ) ): ps =>
             ps.setString(1, es(email) )
