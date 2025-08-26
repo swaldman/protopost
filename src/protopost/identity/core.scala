@@ -6,7 +6,7 @@ import com.mchange.conveniences.string.*
 
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 
-import protopost.{BadIdentifierFormat,BadLocation,BadServiceUrl,UnknownAlgorithmOrCurve,UnsupportedProtocol}
+import protopost.{BadIdentifierFormat,BadLocation,BadServiceUrl,ProtopostException,UnknownAlgorithmOrCurve,UnsupportedProtocol}
 import protopost.crypto.BouncyCastleSecp256r1
 
 import scala.collection.immutable
@@ -42,6 +42,8 @@ object Location:
   case class Simple( protocol : Protocol, host : String, port : Int ) extends Location:
     def simple = this
     lazy val toUrl : String = if port == protocol.defaultPort then s"${protocol}://${host}/" else s"${protocol}://${host}:${port}/"
+    def findAdvertisedPublicIdentityForService( service : Service ) : PublicIdentity[?] =
+      throw new ProtopostException("We've not yet implemented looking up identites for services via JWKS. Let's do it!")
   object WithPath:
     def assert( location : Location ) : Location.WithPath =
       location match

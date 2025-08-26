@@ -12,10 +12,11 @@ import zio.http.Server as ZServer
 import sttp.tapir.server.interceptor.log.DefaultServerLog
 import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
-import protopost.{AppResources,BadService,EmailAddress,ExternalConfig,InconsistentSeismicNodeDefinition,ProtopostException,SeismicNodeWithId}
+import protopost.{AppResources,BadService,EmailAddress,ExternalConfig,InconsistentSeismicNodeDefinition,ProtopostException,ProtoSeismicNode,SeismicNodeWithId}
 import protopost.LoggingApi.*
 import protopost.api.{Destination,TapirEndpoint}
-import protopost.db.PgSchemaManager
+import protopost.db.{PgDatabase,PgSchemaManager}
+import protopost.effectlib.encounterProtoSeismicNode
 import protopost.identity.{PublicIdentity,Service}
 
 import com.mchange.cryptoutil.given
@@ -28,72 +29,18 @@ import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 import com.mchange.milldaemon.util.PidFileManager
 
 object ConfiguredCommand extends SelfLogging:
-  case class CreateDestination( seismicIdentifierWithLocation : String, destinationName : String, force : Boolean ) extends ConfiguredCommand:
-    val publicIdentity = PublicIdentity.fromIdentifierWithLocationSimple(seismicIdentifierWithLocation)
-    def matches( seismicNodeWithId : SeismicNodeWithId ) : Boolean =
-      publicIdentity.service == Service.seismic                 &&
-      publicIdentity.algcrv == seismicNodeWithId.algcrv         &&
-      publicIdentity.publicKeyBytes == seismicNodeWithId.pubkey &&
-      publicIdentity.location == seismicNodeWithId.location
-    def ensureSeismic : Task[Unit] =
-      if publicIdentity.service == Service.seismic then ZIO.unit
-      else throw new BadService( s"Destinations much live on seismic, not ${publicIdentity.service} nodes, as in identifier provided '${seismicIdentifierWithLocation}'." )
-    def findCreateSeismicNode( ar : AppResources, conn : Connection ) : Task[Int] =  
-      val checkSeismicNodesByHostPort : Task[Option[Int]] = // we return an int, its id, if this seismic node is already known
-        for
-          sns  <- ZIO.attemptBlocking( ar.database.seismicNodesByHostPort( conn, publicIdentity.location.host, publicIdentity.location.port ) )
-        yield
-          if sns.isEmpty then
-            None
-          else
-            sns.find( matches ) match
-              case Some( sn ) => Some( sn.id )
-              case None =>
-                val msg =
-                  s"Distinct seismic nodes are already defined on host '${publicIdentity.location.host}' and port '${publicIdentity.location.port}': " +
-                  sns.map( _.identifierWithLocation ).mkString("[",",","]")
-                if !force then
-                  throw new InconsistentSeismicNodeDefinition( s"${msg} Consider correcting either the current destination, or updating the existing seismic nodes for consistency." )
-                else
-                  WARNING.log( msg + " Since '--force' was specified, we will define a new node at this location anyway! You may wish to verify these nodes!" )
-                  None
-      val checkSeismicNodesByPublicKey : Task[Option[Int]] = // we return an int, its id, if this seismic node is already known
-        for
-          sns  <- ZIO.attemptBlocking( ar.database.seismicNodesByPubkey( conn, publicIdentity.publicKeyBytes.unsafeArray.asInstanceOf[Array[Byte]] ) )
-        yield
-          if sns.isEmpty then
-            None
-          else
-            sns.find( matches ) match
-              case Some( sn ) => Some( sn.id )
-              case None =>
-                val msg =
-                  s"Distinct seismic nodes are already defined with the same public key '${publicIdentity.publicKeyBytes.hex0x}': " +
-                  sns.map( _.identifierWithLocation ).mkString("[",",","]")
-                if force then
-                  throw new InconsistentSeismicNodeDefinition( s"${msg} Consider correcting either the current destination, or updating the existing seismic nodes for consistency." )
-                else
-                  WARNING.log( msg + " Since '--force' was specified, we will define a new node at this location anyway! You may wish to verify these nodes!" )
-                  None
-      val checkForExistingSeismicNodes : Task[Option[Int]] =
-        for
-          mbFromHostPort <- checkSeismicNodesByHostPort
-          mbFromPubKey   <- if mbFromHostPort.isEmpty then checkSeismicNodesByHostPort else ZIO.none // don't check again if we've already found our node
-        yield
-          mbFromHostPort orElse mbFromPubKey
-      checkForExistingSeismicNodes.map: mbId =>
-        mbId.getOrElse( ar.database.newSeismicNode( conn, publicIdentity.algcrv, publicIdentity.publicKeyBytes.unsafeArray.asInstanceOf[Array[Byte]], publicIdentity.location.protocol, publicIdentity.location.host, publicIdentity.location.port ) )
-    def createDestination( ar : AppResources, conn : Connection ) : Task[Destination]=
+  case class CreateDestination( psn : ProtoSeismicNode, destinationName : String, acceptAdvertised : Boolean ) extends ConfiguredCommand:
+    def createDestination( db : PgDatabase, conn : Connection ) : Task[Destination]=
       for
-        seismicNodeId <- findCreateSeismicNode( ar, conn )
+        seismicNodeId <- encounterProtoSeismicNode( psn, acceptAdvertised, createInDatabase=true )( db, conn )
       yield
-        ar.database.newDestination( conn, seismicNodeId, destinationName )
+        db.newDestination( seismicNodeId, destinationName )( conn )
     override def zcommand =
       for
-        _    <- ensureSeismic
         ar   <- ZIO.service[AppResources]
+        db   = ar.database
         ds   = ar.dataSource
-        d   <- withConnectionTransactionalZIO( ds )( conn => createDestination( ar, conn ) )
+        d    <- withConnectionTransactionalZIO( ds )( conn => createDestination( db, conn ) )
       yield
         INFO.log(s"Created new destination with name '${d.name}' on seismic node '${d.seismicIdentifierWithLocation}'")
         0
@@ -103,7 +50,7 @@ object ConfiguredCommand extends SelfLogging:
       for
         ar   <- ZIO.service[AppResources]
         ds   = ar.dataSource
-        id   <- ar.database.txn.createUser( ds, ar.authManager )( email, fullName, password )
+        id   <- ar.database.txn.createUser( ar.authManager )( email, fullName, password )( ds )
       yield
         INFO.log(s"Created new user '${fullName}' with email '${email}' and id '${id}'")
         0
@@ -190,14 +137,42 @@ object ConfiguredCommand extends SelfLogging:
         // migrate functions log internally, no need for additional messages here
         0
     end zcommand
-  case object ShowIdentifier extends ConfiguredCommand:
+
+/*
+  case class GrantDestinationToUser(seismicNode : PublicIdentity, destinationName : String, posterIdOrEmailAddress : (PosterId | EmailAddress), nickname : Option[String]) extends ConfiguredCommand:
+    def findPosterId( db : PgDatabase, conn : Connection ) : Task[PosterId] =
+      ZIO.attemptBlocking:
+        posterIdOrEmaiAddress match
+          case pid : PosterId => pid
+          case eml : EmailAddress =>
+            val pwa =
+              db.posterWithAuthForEmail(eml).getOrElse:
+                throw new UnknownPoster( s"No poster with e-mail address '${eml}' has been defined." )
+            pwa.id
+    def findSeismicNodeId( db : PgDatabase, conn : Connection ) : Task[Int] =
+      ZIO.attemptBlocking:
+        require( seismicNode.service == Service.seismic, s"The seismic node specified appears to be a service of type '${seismicNode.service}', not '${Service.seismic}' as expected." )
+        val mbSnwi = db.seismicNodeByComponents( conn, seismicNode.algcrv, seismicNode.publicKeyBytes.unsafeArray, seismicNode.location.protocol, seismicNode.location.host, seismicNode.location.port )
+        mbSnwi match
+          case Some(snwi) => snwi.id
+          case None =>
+            throw new UnknownDestination( "The seismic node specified is not part of any destination. Please use 'create-destination' to define a destination before granting access to users. Unknown: " + publicIdentity.toIdentifierWithLocation)
+    def ensureDefined( db : PgDatabase, conn : Connection, seismicNodeId : Int ) : Task[Unit] =
+      if db.destinationDefined(conn, seismicNodeId, name) then ZIO.unit
+      else ZIO.fail( new UnknownDestination( s"No destination has been defined for name '${name}' on the seismic node specified. Please try 'create-destination' first." ) )
+    //def createRelationship( ... ) <-- define insert with optional nickname! unique(host,port) / unique(algcrv,pubkey)?
+
     override def zcommand =
       for
-        ar <- ZIO.service[AppResources]
+        ar  <- ZIO.service[AppResources]
+        db  =  ar.database
+        ds  =  ar.dataSource
+        pid <- posterId.fold( email.fold
       yield
-        println( ar.localIdentity.toPublicIdentity.toIdentifierWithLocation )
+        // migrate functions log internally, no need for additional messages here
         0
     end zcommand
+*/
   case object ListDestinations extends ConfiguredCommand:
     import com.mchange.sc.v1.texttable.*
     val Columns = Seq( Column("Seismic Node Identifier With Location"), Column("Name") )
@@ -211,6 +186,14 @@ object ConfiguredCommand extends SelfLogging:
       yield
         val rows = immutable.SortedSet.from(ds).toList.map( Row.apply )
         printProductTable( Columns )( rows )
+        0
+    end zcommand
+  case object ShowIdentifier extends ConfiguredCommand:
+    override def zcommand =
+      for
+        ar <- ZIO.service[AppResources]
+      yield
+        println( ar.localIdentity.toPublicIdentity.toIdentifierWithLocation )
         0
     end zcommand
 

@@ -4,25 +4,26 @@ import com.monovore.decline.*
 import cats.implicits.* // for mapN
 import java.nio.file.{Path as JPath}
 
-import protopost.EmailAddress
+import protopost.{EmailAddress,ProtoSeismicNode}
 
 import com.mchange.rehash.Password
 
 object Decline:
+  object Common:
+    val seismicNode : Opts[ProtoSeismicNode] =
+      val help = "The full identifier, including location, of the seismic node hosting the destination."
+      Opts.option[String]("seismic-node",help=help,metavar="identifier").map( ProtoSeismicNode.apply )
   object Subcommand:
     val createDestination =
       val header = "Create a new destination, a reference to a site on a seismic node to which posts can be published."
       val opts =
-        val seismicNode =
-          val help = "The full identifier, including location, of the seismic node hosting the destination."
-          Opts.option[String]("seismic-node",help=help,metavar="identifier")
         val name =
           val help = "The name of the site on the remote seismic node."
           Opts.option[String]("name",help=help,metavar="site-name")
         val force =
           val help = "Force creation even where potential problems have been detected."
           Opts.flag("force",help=help).orFalse
-        ( seismicNode, name, force ) mapN: (sn, n, f) =>
+        ( Common.seismicNode, name, force ) mapN: (sn, n, f) =>
           ConfiguredCommand.CreateDestination( sn, n, f )
       Command("create-destination", header=header )( opts )
 

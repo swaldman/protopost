@@ -132,7 +132,7 @@ object TapirEndpoint extends SelfLogging:
     ZOut.fromOptionalTask:
       val db = appResources.database
       val ds = appResources.dataSource
-      db.txn.posterNoAuthByEmail( ds )( email( authenticatedPoster ) )
+      db.txn.posterNoAuthByEmail( email( authenticatedPoster ) )( ds )
 
   def jwks( appResources : AppResources )(u : Unit) : ZOut[jwt.Jwks] =
     ZOut.fromTask:
@@ -163,10 +163,10 @@ object TapirEndpoint extends SelfLogging:
     val checkCredentials =
       withConnectionTransactionalZIO( appResources.dataSource ): conn =>
         import VerificationResult.*
-        database.posterWithAuthForEmail( conn, email ) match
+        database.posterWithAuthForEmail( email )( conn ) match
           case Some( pwa ) =>
-            val fetchHash : PosterId => Option[BCryptHash] = posterId => database.fetchHashForPoster( conn, posterId )
-            val storeHash : ( PosterId, BCryptHash ) => Unit = ( posterId : PosterId, hash : BCryptHash ) => database.updateHashForPoster( conn, posterId, hash )
+            val fetchHash : PosterId => Option[BCryptHash] = posterId => database.fetchHashForPoster( posterId )( conn )
+            val storeHash : ( PosterId, BCryptHash ) => Unit = ( posterId : PosterId, hash : BCryptHash ) => database.updateHashForPoster( posterId, hash )( conn )
             appResources.authManager.verifyRehash( pwa.id, password.toRehash, fetchHash, storeHash ) match
               case OK => ZIO.unit
               case WrongPassword => ZIO.fail( new BadCredentials( "The password given fails to validate." ) )

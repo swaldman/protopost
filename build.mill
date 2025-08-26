@@ -49,7 +49,7 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
       mvn"com.mchange:c3p0-loom:0.11.2",
       mvn"com.mchange::logadapter-scala-log4j2:$LogadapterScalaVersion",
       mvn"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
-      mvn"com.mchange::sqlutil-scala-zio:0.0.5",
+      mvn"com.mchange::sqlutil-scala-zio:0.0.6-SNAPSHOT",
       mvn"com.mchange::mill-daemon-util:0.1.2",
       mvn"com.mchange::conveniences:0.0.6-SNAPSHOT",
       mvn"com.mchange::cryptoutil:0.0.3-SNAPSHOT",

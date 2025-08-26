@@ -29,21 +29,20 @@ object PgSchema extends SelfLogging:
         private val Insert = "INSERT INTO metadata(key, value) VALUES( ?, ? )"
         private val Update = "UPDATE metadata SET value = ? WHERE key = ?"
         private val Select = "SELECT value FROM metadata WHERE key = ?"
-        def insert( conn : Connection, key : MetadataKey, value : String ) : Int =
+        def insert( key : MetadataKey, value : String )( conn : Connection ) : Int =
           Using.resource( conn.prepareStatement( this.Insert ) ): ps =>
             ps.setString( 1, key.toString() )
             ps.setString( 2, value )
             ps.executeUpdate()
-        def update( conn : Connection, key : MetadataKey, newValue : String ) : Int =
+        def update( key : MetadataKey, newValue : String )( conn : Connection ) : Int =
           Using.resource( conn.prepareStatement(this.Update) ): ps =>
             ps.setString(1, newValue)
             ps.setString(2, key.toString())
             ps.executeUpdate()
-        def select( conn : Connection, key : MetadataKey ) : Option[String] =
+        def select( key : MetadataKey )( conn : Connection ) : Option[String] =
           Using.resource( conn.prepareStatement( this.Select ) ): ps =>
             ps.setString(1, key.toString())
-            Using.resource( ps.executeQuery() ): rs =>
-              zeroOrOneResult("select-metadata", rs)( _.getString(1) )
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-metadata")( _.getString(1) ) )
 
   object V0 extends Schema: // contains unversioned schema only
     override val Version = 0
@@ -59,19 +58,21 @@ object PgSchema extends SelfLogging:
              |  protocol VARCHAR(16),
              |  host VARCHAR(256),
              |  port INTEGER,
+             |  UNIQUE( algcrv, pubkey ),
+             |  UNIQUE( host, port ),
              |  UNIQUE( algcrv, pubkey, protocol, host, port ) -- no need to create an index on these, the uniqueness constraint does it, see https://www.postgresql.org/docs/current/indexes-unique.html
              |)""".stripMargin
         val Insert = "INSERT INTO seismic_node( id, algcrv, pubkey, protocol, host, port ) VALUES ( ?, ?, ?, ?, ?, ? )"
         val SelectById = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE id = ?"
         val SelectByHostPort = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE host = ? AND port = ?"
-        val SelectByPubkey = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE pubkey = ?"
+        val SelectByAlgcrvPubkey = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE algcrv = ? AND pubkey = ?"
         val SelectIdByComponents = "SELECT id FROM seismic_node WHERE algcrv = ? AND pubkey = ? AND protocol = ? AND host = ? AND port = ?"
-        def insert( conn : Connection, id : Int, algcrv : String, pubkey : Array[Byte], protocol : String, host : String, port : Int ) : Unit =
+        def insert( id : Int, algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Unit =
           Using.resource( conn.prepareStatement(Insert) ): ps =>
             ps.setInt(1, id)
             ps.setString(2, algcrv)
             ps.setBytes(3, pubkey)
-            ps.setString(4, protocol)
+            ps.setString(4, protocol.toString)
             ps.setString(5, host)
             ps.setInt(6, port)
             ps.executeUpdate()
@@ -84,19 +85,28 @@ object PgSchema extends SelfLogging:
             rs.getString(5),
             rs.getInt(6)
           )
-        def selectByHostPort( conn : Connection, host : String, port : Int ) : Set[SeismicNodeWithId] =
+        def selectByHostPort( host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
           Using.resource( conn.prepareStatement( SelectByHostPort ) ): ps =>
             ps.setString(1, host)
             ps.setInt(2, port)
-            Using.resource( ps.executeQuery() )( rs => toSet(rs)(extractSeismicNodeWithId) )
-        def selectByPubkey( conn : Connection, pubkey : Array[Byte] ) : Set[SeismicNodeWithId] =
-          Using.resource( conn.prepareStatement( SelectByPubkey ) ): ps =>
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-by-host-port")( extractSeismicNodeWithId) )
+        def selectByAlgcrvPubkey( pubkey : Array[Byte] )( conn : Connection ) : Option[SeismicNodeWithId] =
+          Using.resource( conn.prepareStatement( SelectByAlgcrvPubkey ) ): ps =>
             ps.setBytes(1, pubkey)
-            Using.resource( ps.executeQuery() )( rs => toSet(rs)(extractSeismicNodeWithId) )
-        def selectById( conn : Connection, id : Int ) : Option[SeismicNodeWithId] =
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-by-algcrv-pubkey")(extractSeismicNodeWithId) )
+        def selectById( id : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
           Using.resource( conn.prepareStatement( SelectById ) ): ps =>
             ps.setInt(1, id)
-            Using.resource( ps.executeQuery() )( rs => zeroOrOneResult("seismic-node-by-id", rs)(extractSeismicNodeWithId) )
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("seismic-node-by-id")(extractSeismicNodeWithId) )
+        def selectByComponents( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
+          def extract( rs : ResultSet ) : SeismicNodeWithId = SeismicNodeWithId( rs.getInt(1), algcrv, immutable.ArraySeq.ofByte(pubkey), protocol, host, port )
+          Using.resource( conn.prepareStatement( SelectIdByComponents ) ): ps =>
+            ps.setString(1, algcrv)
+            ps.setBytes(2, pubkey)
+            ps.setString(3, protocol.toString)
+            ps.setString(4, host)
+            ps.setInt(5, port)
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("seismic-node-by-id")(extract) )
       end SeismicNode
       object Destination extends Creatable:
         override val Create =
@@ -106,12 +116,18 @@ object PgSchema extends SelfLogging:
              |  PRIMARY KEY (seismic_node_id, name),
              |  FOREIGN KEY (seismic_node_id) REFERENCES seismic_node(id)
              |)""".stripMargin
+        val SelectDefined = "SELECT EXISTS(SELECT 1 FROM destination WHERE seismic_node_id=? AND name=?)"
         val Insert = "INSERT INTO destination(seismic_node_id, name) VALUES ( ?, ? )"
-        def insert( conn : Connection, seismicNodeId : Int, name : String ) : Unit =
+        def insert( seismicNodeId : Int, name : String )( conn : Connection ) : Unit =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
             ps.setInt( 1, seismicNodeId )
             ps.setString( 2, name )
             ps.executeUpdate()
+        def defined( seismicNodeId : Int, name : String )( conn : Connection ) : Boolean =
+          Using.resource( conn.prepareStatement( SelectDefined ) ): ps =>
+            ps.setInt(1, seismicNodeId)
+            ps.setString(2, name)
+            Using.resource( ps.executeQuery() )( uniqueResult( "destination-defined" )( _.getBoolean(1) ) )
       end Destination
       object Poster extends Creatable:
         override val Create =
@@ -127,7 +143,7 @@ object PgSchema extends SelfLogging:
         private val SelectPosterWithAuthByEmail = "SELECT id, email, full_name, auth FROM poster WHERE email = ?"
         private val SelectPosterExistsForEmail = "SELECT EXISTS(SELECT 1 FROM poster WHERE email = ?)"
         private val UpdateHash = "UPDATE poster SET hash = ? WHERE id = ?"
-        def updateHash( conn : Connection, posterId : PosterId, hash : BCryptHash ) : Unit =
+        def updateHash( posterId : PosterId, hash : BCryptHash )( conn : Connection ) : Unit =
           import com.mchange.rehash.str
           import PosterId.i
           val count =
@@ -136,40 +152,32 @@ object PgSchema extends SelfLogging:
               ps.setInt(2, i(posterId))
               ps.executeUpdate()
           if count == 0 then
-            throw new PosterUnknown( s"Poster with ID ${posterId} not found." )
+            throw new UnknownPoster( s"Poster with ID ${posterId} not found." )
           else if count == 1 then
             ()
           else
             throw new InternalError( s"id is poster primary key, should reference zero or one row, found ${count}." )
-        def select( conn : Connection, posterId : PosterId ) : Option[PosterWithAuth] =
+        private def extractPosterWithAuth( rs : ResultSet ) : PosterWithAuth =
+          PosterWithAuth(
+            PosterId( rs.getInt(1) ),
+            EmailAddress( rs.getString(2) ),
+            rs.getString(3),
+            BCryptHash( rs.getString(4).toCharArray )
+          )
+        def select( posterId : PosterId )( conn : Connection ) : Option[PosterWithAuth] =
           import PosterId.i
           Using.resource( conn.prepareStatement( Select ) ): ps =>
             ps.setInt(1, i(posterId))
-            Using.resource( ps.executeQuery() ): rs =>
-              zeroOrOneResult("select-poster", rs): rs =>
-                PosterWithAuth(
-                  PosterId( rs.getInt(1) ),
-                  EmailAddress( rs.getString(2) ),
-                  rs.getString(3),
-                  BCryptHash( rs.getString(4).toCharArray )
-                )
-        def posterExistsForEmail( conn : Connection, email : EmailAddress ) : Boolean =
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-poster")(extractPosterWithAuth) )
+        def posterExistsForEmail( email : EmailAddress )( conn : Connection ) : Boolean =
           Using.resource( conn.prepareStatement( SelectPosterExistsForEmail ) ): ps =>
             ps.setString(1, es(email) )
-            Using.resource( ps.executeQuery() ): rs =>
-              uniqueResult("poster-exists-for-email", rs)( _.getBoolean(1) )
-        def selectPosterWithAuthByEmail( conn : Connection, email : EmailAddress ) : Option[PosterWithAuth] =
+            Using.resource( ps.executeQuery() )( uniqueResult("poster-exists-for-email")( _.getBoolean(1) ) )
+        def selectPosterWithAuthByEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
           Using.resource( conn.prepareStatement( SelectPosterWithAuthByEmail ) ): ps =>
             ps.setString(1, es(email))
-            Using.resource( ps.executeQuery() ): rs =>
-              zeroOrOneResult("poster-with-auth-by-email", rs): rs =>
-                PosterWithAuth(
-                  PosterId( rs.getInt(1) ),
-                  EmailAddress( rs.getString(2) ),
-                  rs.getString(3),
-                  BCryptHash( rs.getString(4).toCharArray )
-                )
-        def insert( conn : Connection, id : PosterId, email : EmailAddress, fullName : String, auth : Option[BCryptHash] ) =
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("poster-with-auth-by-email")(extractPosterWithAuth) )
+        def insert( id : PosterId, email : EmailAddress, fullName : String, auth : Option[BCryptHash] )( conn : Connection ) =
           import PosterId.i
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
             ps.setLong  (1, i(id))
@@ -287,17 +295,16 @@ object PgSchema extends SelfLogging:
       end PostMedia
     end Table
     object Sequence:
-      private def selectNext[T]( conn : Connection, seqName : String )( wrap : Int => T) : T =
+      private def selectNext[T]( seqName : String )( wrap : Int => T )( conn : Connection )  : T =
         Using.resource( conn.prepareStatement(s"SELECT nextval('${seqName}')") ): ps =>
-          Using.resource( ps.executeQuery() ): rs =>
-            uniqueResult(s"select-next-${seqName}", rs)( rs => wrap( rs.getInt(1) ) )
+          Using.resource( ps.executeQuery() )( uniqueResult(s"select-next-${seqName}")( rs => wrap( rs.getInt(1) ) ) )
       object SeismicNodeId extends Creatable:
         protected val Create = "CREATE SEQUENCE seismic_node_id_seq AS INTEGER"
-        def selectNext( conn : Connection ) : Int = Sequence.selectNext( conn, "seismic_node_id_seq" )( scala.Predef.identity )
+        def selectNext( conn : Connection ) : Int = Sequence.selectNext( "seismic_node_id_seq" )( scala.Predef.identity )( conn )
       end SeismicNodeId
       object PosterId extends Creatable:
         protected val Create = "CREATE SEQUENCE poster_id_seq AS INTEGER"
-        def selectNext( conn : Connection ) : protopost.PosterId = Sequence.selectNext( conn, "poster_id_seq" )( protopost.PosterId.apply )
+        def selectNext( conn : Connection ) : protopost.PosterId = Sequence.selectNext( "poster_id_seq" )( protopost.PosterId.apply )( conn )
       end PosterId
       object PostId extends Creatable:
         protected val Create = "CREATE SEQUENCE post_id_seq AS INTEGER"
@@ -338,11 +345,11 @@ object PgSchema extends SelfLogging:
         Destination(identifierWithLocation, name)
       def selectAllDestinations( conn : Connection ) : Set[Destination] =
         Using.resource( conn.prepareStatement(SelectAllDestinations) ): ps =>
-          Using.resource( ps.executeQuery() )( rs => toSet(rs)(extractDestination) )
-      def selectDestinationsForPosterId( conn : Connection, posterId : PosterId ) : Set[Destination] =
+          Using.resource( ps.executeQuery() )( toSet(extractDestination) )
+      def selectDestinationsForPosterId( posterId : PosterId )( conn : Connection ) : Set[Destination] =
         val pid = PosterId.i(posterId)
         Using.resource( conn.prepareStatement(SelectDestinationsForPosterId) ): ps =>
           ps.setInt(1, pid)
-          Using.resource( ps.executeQuery() )( rs => toSet(rs)(extractDestination) )
+          Using.resource( ps.executeQuery() )( toSet(extractDestination) )
     end Join
   end V1

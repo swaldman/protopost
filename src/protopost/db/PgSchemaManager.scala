@@ -19,9 +19,9 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
 
   override def getRunningAppVersionIfAvailable() : Option[String] = Some( protopost.BuildInfo.version )
 
-  override def fetchMetadataValue( conn : Connection, key : MetadataKey )             : Option[String] = PgSchema.Unversioned.Table.Metadata.select( conn, key )
-  override def insertMetadataKeys( conn : Connection, pairs : (MetadataKey,String)* ) : Unit           = pairs.foreach( ( mdkey, value ) => PgSchema.Unversioned.Table.Metadata.insert(conn, mdkey, value) )
-  override def updateMetadataKeys( conn : Connection, pairs : (MetadataKey,String)* ) : Unit           = pairs.foreach( ( mdkey, value ) => PgSchema.Unversioned.Table.Metadata.update(conn, mdkey, value) )
+  override def fetchMetadataValue( conn : Connection, key : MetadataKey )             : Option[String] = PgSchema.Unversioned.Table.Metadata.select( key )( conn )
+  override def insertMetadataKeys( conn : Connection, pairs : (MetadataKey,String)* ) : Unit           = pairs.foreach( ( mdkey, value ) => PgSchema.Unversioned.Table.Metadata.insert(mdkey, value)(conn) )
+  override def updateMetadataKeys( conn : Connection, pairs : (MetadataKey,String)* ) : Unit           = pairs.foreach( ( mdkey, value ) => PgSchema.Unversioned.Table.Metadata.update(mdkey, value)(conn) )
 
   override def hasMetadataTable( conn : Connection ) : Boolean = Using.resource( conn.getMetaData().getTables(null,null,PgSchema.Unversioned.Table.Metadata.Name,null) )( _.next() )
 
