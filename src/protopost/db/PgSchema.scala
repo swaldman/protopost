@@ -340,7 +340,7 @@ object PgSchema extends SelfLogging:
            |FROM destination_poster
            |INNER JOIN destination ON destination_poster.seismic_node_id = destination.seismic_node_id AND destination_poster.destination_name = destination_name
            |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id
-           |WHERE destination_poster.id = ?""".stripMargin
+           |WHERE destination_poster.poster_id = ?""".stripMargin
       private def extractDestination( rs : ResultSet ) : Destination =
         val algcrv      = rs.getString(1)
         val pubkey      = rs.getBytes(2)

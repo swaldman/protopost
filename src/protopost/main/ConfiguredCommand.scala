@@ -30,6 +30,18 @@ import com.mchange.milldaemon.util.PidFileManager
 import protopost.effectlib.encounterProtoSeismicNode
 
 object ConfiguredCommand extends SelfLogging:
+  private def findPosterId(posterIdOrEmailAddress : PosterId | EmailAddress)( db : PgDatabase, conn : Connection ) : Task[PosterId] =
+    ZIO.attemptBlocking:
+      // grrrr. can't use pattern match 'cuz opaque types get erased
+      val isEmail = posterIdOrEmailAddress.toString.indexOf("@") >= 0
+      if !isEmail then
+        posterIdOrEmailAddress.asInstanceOf[PosterId]
+      else
+        val pwa =
+          val eml = posterIdOrEmailAddress.asInstanceOf[EmailAddress]
+          db.posterForEmail(eml)(conn).getOrElse:
+            throw new UnknownPoster( s"No poster with e-mail address '${eml}' has been defined." )
+        pwa.id
   case class CreateDestination( psn : ProtoSeismicNode, destinationName : String, acceptAdvertised : Boolean ) extends ConfiguredCommand:
     def createDestination( db : PgDatabase, conn : Connection ) : Task[Destination]=
       for
@@ -139,18 +151,6 @@ object ConfiguredCommand extends SelfLogging:
         0
     end zcommand
   case class GrantDestination(psn : ProtoSeismicNode, destinationName : String, posterIdOrEmailAddress : (PosterId | EmailAddress), nickname : Option[String], acceptAdvertised : Boolean) extends ConfiguredCommand:
-    def findPosterId( db : PgDatabase, conn : Connection ) : Task[PosterId] =
-      ZIO.attemptBlocking:
-        // grrrr. can't use pattern match 'cuz opaque types get erased
-        val isEmail = posterIdOrEmailAddress.toString.indexOf("@") >= 0
-        if !isEmail then
-          posterIdOrEmailAddress.asInstanceOf[PosterId]
-        else
-          val pwa =
-            val eml = posterIdOrEmailAddress.asInstanceOf[EmailAddress]
-            db.posterForEmail(eml)(conn).getOrElse:
-              throw new UnknownPoster( s"No poster with e-mail address '${eml}' has been defined." )
-          pwa.id
     def ensureDestinationExists( snid : Int, db : PgDatabase, conn : Connection ) : Task[Unit] =
       if !db.destinationDefined( snid, destinationName )( conn ) then
         ZIO.fail( new UnknownDestination( s"Destination '${destinationName}' on seismic node at $psn is unknown. Please try 'create-destination' first." ) )
@@ -159,7 +159,7 @@ object ConfiguredCommand extends SelfLogging:
     def performUpdate( db : PgDatabase )( conn : Connection ) : Task[Unit] =
       for
         snid <- encounterProtoSeismicNode(psn,acceptAdvertised,createInDatabase=false)( db, conn )
-        pid  <- findPosterId( db, conn )
+        pid  <- findPosterId(posterIdOrEmailAddress)( db, conn )
         _    <- ensureDestinationExists(snid, db, conn)
         _    <- ZIO.attemptBlocking( db.grant( snid, destinationName, pid, nickname )( conn ) )
       yield()
@@ -173,16 +173,24 @@ object ConfiguredCommand extends SelfLogging:
         println(s"User ${posterIdOrEmailAddress} added to sepcified destination.")
         0
     end zcommand
-  case object ListDestinations extends ConfiguredCommand:
+  case class ListDestinations(mbPosterIdOrEmail : Option[PosterId|EmailAddress]) extends ConfiguredCommand:
     import com.mchange.sc.v1.texttable.*
     val Columns = Seq( Column("Seismic Node Identifier With Location"), Column("Name") )
     given Ordering[Destination] = Ordering.by( (d : Destination )=> ( d.seismicIdentifierWithLocation, d.name) )
+    def findDestinations( db : PgDatabase )( conn : Connection ) : Task[Set[Destination]] =
+      mbPosterIdOrEmail match
+        case None => ZIO.attemptBlocking( db.allDestinations(conn) )
+        case Some( posterIdOrEmail ) =>
+          for
+            pid <- findPosterId(posterIdOrEmail)(db,conn)
+            out <- ZIO.attemptBlocking( db.destinationsByPosterId(pid)(conn) )
+          yield out  
     override def zcommand =
       for
         ar  <- ZIO.service[AppResources]
         db  =  ar.database
         ds  =  ar.dataSource
-        ds <- withConnectionTransactional(ds)( db.allDestinations )
+        ds <- withConnectionTransactionalZIO(ds)( findDestinations(db) )
       yield
         val rows = immutable.SortedSet.from(ds).toList.map( Row.apply )
         printProductTable( Columns )( rows )

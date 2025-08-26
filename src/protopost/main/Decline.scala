@@ -16,6 +16,14 @@ object Decline:
     val destinationName =
       val help = "The name of the site on the remote seismic node."
       Opts.option[String]("name",help=help,metavar="site-name")
+    val posterIdOrEmailAddress : Opts[PosterId | EmailAddress] =
+      val posterId =
+        val help = s"The ID of a poster, available via 'list-posters'."
+        Opts.option[Int]("user-id", help=help).map( PosterId.apply )
+      val email =
+        val help = s"The email address of a poster, available via 'list-posters'."
+        Opts.option[String]("email", help=help).map( EmailAddress.apply )
+      posterId.orElse(email)
     val seismicNode : Opts[ProtoSeismicNode] =
       val help = "The full identifier, including location, of the seismic node hosting the destination."
       Opts.option[String]("seismic-node",help=help,metavar="identifier").map( ProtoSeismicNode.apply )
@@ -73,18 +81,10 @@ object Decline:
     val grantDestination =
       val header = "Grant a user the right to post a destination."
       val opts =
-        val posterIdOrEmailAddress : Opts[PosterId | EmailAddress] =
-          val posterId =
-            val help = s"The ID of a poster, available via 'list-posters'."
-            Opts.option[Int]("user-id", help=help).map( PosterId.apply )
-          val email =
-            val help = s"The email address of a poster, available via 'list-posters'."
-            Opts.option[String]("email", help=help).map( EmailAddress.apply )
-          posterId.orElse(email)
         val nickname =
           val help = s"A nickname for the destination visible to the poster."
           Opts.option[String]("nickname", help=help).orNone 
-        ( Common.seismicNode, Common.destinationName, posterIdOrEmailAddress, nickname, Common.acceptAdvertised ) mapN: (sn, n, poea, nn, aa) =>
+        ( Common.seismicNode, Common.destinationName, Common.posterIdOrEmailAddress, nickname, Common.acceptAdvertised ) mapN: (sn, n, poea, nn, aa) =>
           ConfiguredCommand.GrantDestination( sn, n, poea, nn, aa )
       Command("grant-destination", header=header )( opts )
     val generatePrivateKey =
@@ -93,7 +93,10 @@ object Decline:
       Command("generate-private-key", header=header )( opts )
     val listDestinations =
       val header = "List the destinations known to this server."
-      val opts = Opts( ConfiguredCommand.ListDestinations )
+      val opts =
+        val mbPoster =
+          Common.posterIdOrEmailAddress.orNone
+        mbPoster.map( ConfiguredCommand.ListDestinations.apply )
       Command("list-destinations", header=header )( opts )
     val listUsers =
       val header = "List the users known to this server."

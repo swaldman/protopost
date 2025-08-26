@@ -22,6 +22,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Join.selectAllDestinations( conn )
   def allPosters( conn : Connection ) : Set[PosterWithAuth] =
     Schema.Table.Poster.selectAll( conn )
+  def destinationsByPosterId( posterId : PosterId)( conn : Connection ) : Set[Destination] =
+    Schema.Join.selectDestinationsForPosterId( posterId )( conn )
   def destinationDefined( seismicNodeId : Int, name : String )( conn : Connection ) : Boolean =
     Schema.Table.Destination.defined( seismicNodeId, name )( conn )
   def fetchHashForPoster( posterId : PosterId )( conn : Connection ) : Option[BCryptHash] =
