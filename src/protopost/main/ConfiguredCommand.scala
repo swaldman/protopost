@@ -200,7 +200,7 @@ object ConfiguredCommand extends SelfLogging:
     end zcommand
   case object ListDestinations extends ConfiguredCommand:
     import com.mchange.sc.v1.texttable.*
-    val Columns = Seq( Column("Identifier With Location"), Column("Name") )
+    val Columns = Seq( Column("Seismic Node Identifier With Location"), Column("Name") )
     given Ordering[Destination] = Ordering.by( (d : Destination )=> ( d.seismicIdentifierWithLocation, d.name) )
     override def zcommand =
       for
