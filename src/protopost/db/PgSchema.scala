@@ -67,7 +67,7 @@ object PgSchema extends SelfLogging:
         val SelectByHostPort = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE host = ? AND port = ?"
         val SelectByAlgcrvPubkey = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE algcrv = ? AND pubkey = ?"
         val SelectIdByComponents = "SELECT id FROM seismic_node WHERE algcrv = ? AND pubkey = ? AND protocol = ? AND host = ? AND port = ?"
-        def insert( id : Int, algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Unit =
+        def insert( id : Int, algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) =
           Using.resource( conn.prepareStatement(Insert) ): ps =>
             ps.setInt(1, id)
             ps.setString(2, algcrv)
@@ -90,9 +90,10 @@ object PgSchema extends SelfLogging:
             ps.setString(1, host)
             ps.setInt(2, port)
             Using.resource( ps.executeQuery() )( zeroOrOneResult("select-by-host-port")( extractSeismicNodeWithId) )
-        def selectByAlgcrvPubkey( pubkey : Array[Byte] )( conn : Connection ) : Option[SeismicNodeWithId] =
+        def selectByAlgcrvPubkey( algcrv : String, pubkey : Array[Byte] )( conn : Connection ) : Option[SeismicNodeWithId] =
           Using.resource( conn.prepareStatement( SelectByAlgcrvPubkey ) ): ps =>
-            ps.setBytes(1, pubkey)
+            ps.setString(1, algcrv)
+            ps.setBytes(2, pubkey)
             Using.resource( ps.executeQuery() )( zeroOrOneResult("select-by-algcrv-pubkey")(extractSeismicNodeWithId) )
         def selectById( id : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
           Using.resource( conn.prepareStatement( SelectById ) ): ps =>

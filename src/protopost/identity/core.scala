@@ -18,7 +18,7 @@ object Proto:
   object Identifier:
     val regexInnerString =
       val services = Service.values.mkString("|")
-      raw"""($services)\[([~\]]+)\](?:0x)?[0-9a-f]+"""
+      raw"""($services)\[([^\]]+)\](?:0x)?([0-9a-f]+)"""
     val regex = s"""^${regexInnerString}$$""".r
   case class Identifier( service : Service, algcrv : String, publicKeyHex : String ) extends Proto:
     lazy val publicKeyBytes : immutable.ArraySeq[Byte] = immutable.ArraySeq.ofByte( publicKeyHex.decodeHex )
@@ -28,7 +28,7 @@ object Proto:
   object Location:
     val regexInnerString =
       val protocols = Protocol.values.mkString("|")
-      raw"""($protocols)\:\/\/([~\:\/]+)(?:\:(\d+))?\/?"""
+      raw"""($protocols)\:\/\/([^\:\/]+)(?:\:(\d+))?\/?"""
     val regex = s"""^${regexInnerString}$$""".r
   case class Location( protocol : Protocol, host : String, port : Int ) extends Proto:
     def complete : protopost.identity.Location.Simple = protopost.identity.Location.Simple( protocol, host, port )

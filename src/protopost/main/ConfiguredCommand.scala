@@ -49,9 +49,9 @@ object ConfiguredCommand extends SelfLogging:
             throw new UnknownPoster( s"No poster with e-mail address '${eml}' has been defined." )
         pwa.id
   case class CreateDestination( psn : ProtoSeismicNode, destinationName : String, acceptAdvertised : Boolean ) extends ConfiguredCommand:
-    def createDestination( db : PgDatabase, conn : Connection ) : Task[Destination]=
+    def createDestination( ar : AppResources, db : PgDatabase, conn : Connection ) : Task[Destination]=
       for
-        seismicNodeId <- encounterProtoSeismicNode( psn, acceptAdvertised, createInDatabase=true )( db, conn )
+        seismicNodeId <- encounterProtoSeismicNode( psn, acceptAdvertised, createInDatabase=true )( ar, db, conn )
       yield
         db.newDestination( seismicNodeId, destinationName )( conn )
     override def zcommand =
@@ -59,7 +59,7 @@ object ConfiguredCommand extends SelfLogging:
         ar   <- ZIO.service[AppResources]
         db   = ar.database
         ds   = ar.dataSource
-        d    <- withConnectionTransactionalZIO( ds )( conn => createDestination( db, conn ) )
+        d    <- withConnectionTransactionalZIO( ds )( conn => createDestination( ar, db, conn ) )
       yield
         INFO.log(s"Created new destination with name '${d.name}' on seismic node '${d.seismicIdentifierWithLocation}'")
         0
@@ -157,9 +157,9 @@ object ConfiguredCommand extends SelfLogging:
         0
     end zcommand
   case class GrantDestination(psn : ProtoSeismicNode, destinationName : String, posterIdOrEmailAddress : (PosterId | EmailAddress), nickname : Option[String], acceptAdvertised : Boolean) extends ConfiguredCommand:
-    def performUpdate( db : PgDatabase )( conn : Connection ) : Task[Unit] =
+    def performUpdate( ar : AppResources, db : PgDatabase)( conn : Connection ) : Task[Unit] =
       for
-        snid <- encounterProtoSeismicNode(psn,acceptAdvertised,createInDatabase=false)( db, conn )
+        snid <- encounterProtoSeismicNode(psn,acceptAdvertised,createInDatabase=false)( ar, db, conn )
         pid  <- findPosterId(posterIdOrEmailAddress)( db, conn )
         _    <- ensureDestinationExists(psn, snid, destinationName)(db, conn)
         _    <- ZIO.attemptBlocking( db.grant( snid, destinationName, pid, nickname )( conn ) )
@@ -169,7 +169,7 @@ object ConfiguredCommand extends SelfLogging:
         ar   <- ZIO.service[AppResources]
         db   =  ar.database
         ds   =  ar.dataSource
-        _    <- withConnectionTransactionalZIO(ds)( performUpdate(db) )
+        _    <- withConnectionTransactionalZIO(ds)( performUpdate(ar,db) )
       yield
         println(s"User ${posterIdOrEmailAddress} added to sepcified destination.")
         0
@@ -200,12 +200,12 @@ object ConfiguredCommand extends SelfLogging:
   case class ListUsers(mbTup : Option[(ProtoSeismicNode,String,Boolean)]) extends ConfiguredCommand:
     import com.mchange.sc.v1.texttable.*
     val Columns = Seq( Column("ID"), Column("Full Name"), Column("E-Mail Address") )
-    def findUsers( db : PgDatabase )( conn : Connection ) : Task[Set[PosterWithAuth]] =
+    def findUsers( ar : AppResources, db : PgDatabase )( conn : Connection ) : Task[Set[PosterWithAuth]] =
       mbTup match
         case None => ZIO.attemptBlocking( db.allPosters(conn) )
         case Some( psn, nm, aa ) =>
           for
-            snid <- encounterProtoSeismicNode(psn,aa,createInDatabase=false)(db,conn )
+            snid <- encounterProtoSeismicNode(psn,aa,createInDatabase=false)(ar,db,conn)
             _    <- ensureDestinationExists(psn,snid,nm)(db,conn)
             out  <- ZIO.attemptBlocking( db.postersBySeismicNodeIdDestinationName(snid,nm)(conn) )
           yield out  
@@ -214,7 +214,7 @@ object ConfiguredCommand extends SelfLogging:
         ar <- ZIO.service[AppResources]
         db =  ar.database
         ds =  ar.dataSource
-        ps <- withConnectionTransactionalZIO(ds)( findUsers(db) )
+        ps <- withConnectionTransactionalZIO(ds)( findUsers(ar,db) )
       yield
         val rows =
           import PosterId.i, EmailAddress.s

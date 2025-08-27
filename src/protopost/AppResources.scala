@@ -1,11 +1,12 @@
 package protopost
 
-import javax.sql.DataSource
 import protopost.crypto.BouncyCastleSecp256r1
 import protopost.db.{PgDatabase,PgSchemaManager}
 import protopost.identity.{LocalIdentity,Location,Protocol,Service}
-import java.security.interfaces.ECPrivateKey
-import java.security.interfaces.ECPublicKey
+import java.security.interfaces.{ECPrivateKey,ECPublicKey}
+import javax.sql.DataSource
+import scala.collection.mutable
+import com.auth0.jwk.{Jwk,JwkProvider,JwkProviderBuilder}
 
 class AppResources( val configProperties : ConfigProperties ):
 
@@ -55,3 +56,10 @@ class AppResources( val configProperties : ConfigProperties ):
     val privateKey = BouncyCastleSecp256r1.privateKeyFromHex( hex )
     val publicKey = BouncyCastleSecp256r1.publicKeyFromPrivate( privateKey )
     LocalIdentity.ES256( location, Service.protopost, privateKey, publicKey ) 
+
+  object jwkProviders:
+    private val innerMap : mutable.Map[Location.Simple,JwkProvider] = mutable.HashMap.empty[Location.Simple,JwkProvider]
+    private def get( location : Location.Simple ) : JwkProvider = this.synchronized:
+      innerMap.getOrElseUpdate( location, new JwkProviderBuilder(location.toUrl).build() )
+    def get( location : Location.Simple, service : Service ) : Option[Jwk] =
+      Option( this.get( location ).get( service.toString ) )

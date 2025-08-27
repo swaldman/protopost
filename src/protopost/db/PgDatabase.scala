@@ -47,8 +47,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Join.selectPostersBySeismicNodeIdDestinationName(snid,destinationName)(conn)
   def seismicNodeByHostPort( host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByHostPort( host, port )( conn )
-  def seismicNodeByAlgcrvPubkey( pubkey : Array[Byte] )( conn : Connection ) : Option[SeismicNodeWithId] =
-    Schema.Table.SeismicNode.selectByAlgcrvPubkey( pubkey )( conn )
+  def seismicNodeByAlgcrvPubkey( algcrv : String, pubkey : Array[Byte] )( conn : Connection ) : Option[SeismicNodeWithId] =
+    Schema.Table.SeismicNode.selectByAlgcrvPubkey( algcrv, pubkey )( conn )
   def seismicNodeByComponents( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByComponents( algcrv, pubkey, protocol, host, port )( conn )
   def updateHashForPoster( posterId : PosterId, hash : BCryptHash )( conn : Connection ) : Unit =
@@ -77,7 +77,7 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
           case Some( pwa ) => Schema.Join.selectDestinationsForPosterId( pwa.id )( conn )
     def seismicNodesByHostPort( host : String, port : Int )( ds : DataSource ) : Task[Option[SeismicNodeWithId]] =
       withConnectionTransactional( ds )( Schema.Table.SeismicNode.selectByHostPort( host, port ) )
-    def seismicNodesByAlgcrvPubkey( ds : DataSource )( pubkey : Array[Byte] ) : Task[Option[SeismicNodeWithId]] =
-      withConnectionTransactional( ds )( Schema.Table.SeismicNode.selectByAlgcrvPubkey( pubkey ) )
+    def seismicNodesByAlgcrvPubkey( ds : DataSource )( algcrv : String, pubkey : Array[Byte] ) : Task[Option[SeismicNodeWithId]] =
+      withConnectionTransactional( ds )( Schema.Table.SeismicNode.selectByAlgcrvPubkey( algcrv, pubkey ) )
   end txn
 end PgDatabase
