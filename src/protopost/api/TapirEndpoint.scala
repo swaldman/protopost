@@ -25,7 +25,7 @@ import sttp.model.headers.CookieValueWithMeta
 
 object TapirEndpoint extends SelfLogging:
 
-  val service = protopost.identity.Service.protopost // forseeing abstracting some of this to a more abstract restack library
+  val service = protopost.common.Service.protopost // forseeing abstracting some of this to a more abstract restack library
 
   val errorHandler =
     def errorBodyOutNotFound() = stringBody.map(_ => None)( _ => "Resource not found." )

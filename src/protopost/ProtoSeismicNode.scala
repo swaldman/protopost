@@ -2,7 +2,8 @@ package protopost
 
 import scala.collection.immutable
 
-import protopost.identity.{Location,Proto,Protocol,PublicIdentity,Service}
+import protopost.common.{Protocol,Service}
+import protopost.identity.{Location,Proto,PublicIdentity}
 
 import com.mchange.cryptoutil.{*,given}
 

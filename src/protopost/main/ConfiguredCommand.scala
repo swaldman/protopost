@@ -17,7 +17,8 @@ import protopost.LoggingApi.*
 import protopost.api.{Destination,TapirEndpoint}
 import protopost.db.{PgDatabase,PgSchemaManager}
 import protopost.effectlib.encounterProtoSeismicNode
-import protopost.identity.{PublicIdentity,Service}
+import protopost.common.Service
+import protopost.identity.PublicIdentity
 
 import com.mchange.cryptoutil.given
 
@@ -29,6 +30,7 @@ import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 import com.mchange.milldaemon.util.PidFileManager
 import protopost.effectlib.encounterProtoSeismicNode
 import protopost.PosterWithAuth
+import protopost.api.Destination
 
 object ConfiguredCommand extends SelfLogging:
   private def ensureDestinationExists( psn : ProtoSeismicNode, snid : Int, destinationName : String )(db : PgDatabase, conn : Connection ) : Task[Unit] =
@@ -61,7 +63,7 @@ object ConfiguredCommand extends SelfLogging:
         ds   = ar.dataSource
         d    <- withConnectionTransactionalZIO( ds )( conn => createDestination( ar, db, conn ) )
       yield
-        INFO.log(s"Created new destination with name '${d.name}' on seismic node '${d.seismicIdentifierWithLocation}'")
+        INFO.log(s"Created new destination with name '${d.name}' on seismic node '${d.seismicNode.identifierWithLocation}'")
         0
   end CreateDestination
   case class CreateUser( email : EmailAddress, password : Password, fullName : String ) extends ConfiguredCommand:
@@ -176,8 +178,8 @@ object ConfiguredCommand extends SelfLogging:
     end zcommand
   case class ListDestinations(mbPosterIdOrEmail : Option[PosterId|EmailAddress]) extends ConfiguredCommand:
     import com.mchange.sc.v1.texttable.*
-    val Columns = Seq( Column("Seismic Node Identifier With Location"), Column("Name") )
-    given Ordering[Destination] = Ordering.by( (d : Destination )=> ( d.seismicIdentifierWithLocation, d.name) )
+    val Columns = Seq( Column("Seismic Node Identifier With Location (ID)"), Column("Name") )
+    given Ordering[Destination] = Ordering.by( (d : Destination )=> ( d.seismicNode.identifierWithLocation, d.name) )
     def findDestinations( db : PgDatabase )( conn : Connection ) : Task[Set[Destination]] =
       mbPosterIdOrEmail match
         case None => ZIO.attemptBlocking( db.allDestinations(conn) )
@@ -193,7 +195,8 @@ object ConfiguredCommand extends SelfLogging:
         ds  =  ar.dataSource
         ds <- withConnectionTransactionalZIO(ds)( findDestinations(db) )
       yield
-        val rows = immutable.SortedSet.from(ds).toList.map( Row.apply )
+        def tup( d : Destination ) = Tuple2( s"${d.seismicNode.identifierWithLocation} (${d.seismicNode.id})", d.name )
+        val rows = immutable.SortedSet.from(ds.map(tup)).toList.map( Row.apply )
         printProductTable( Columns )( rows )
         0
     end zcommand

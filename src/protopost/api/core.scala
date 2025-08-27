@@ -3,6 +3,7 @@ package protopost.api
 import zio.*
 
 import protopost.{EmailAddress,Password,PosterId,SignatureDoesNotVerify}
+import protopost.common.Protocol
 import protopost.crypto.{*,given}
 
 import protopost.jwt.{Jwk,Jwks,Jwt}
@@ -68,6 +69,7 @@ given Schema[EmailAddress]      = Schema.string.map((s : String) => Some(EmailAd
 given Schema[Password]          = Schema.string.map((s : String) => Some(Password(s)))(pw => Password.s(pw))
 given Schema[Jwt]               = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => Jwt.s(jwt))
 given Schema[PosterId]          = Schema.schemaForInt.map( (i : Int) => Some(PosterId(i)) )(pid => PosterId.i(pid))
+
 given Schema[Jwk]               = Schema.derived
 given Schema[Jwks]              = Schema.derived
 //given Schema[Jwts]            = Schema.derived
@@ -75,5 +77,7 @@ given Schema[LoginStatus]       = Schema.derived
 given Schema[Envelope]          = Schema.derived
 given Schema[EmailPassword]     = Schema.derived
 given Schema[PosterNoAuth]      = Schema.derived
+given Schema[Protocol]          = Schema.derived
+given Schema[SeismicNode]       = Schema.derived
 given Schema[Destination]       = Schema.derived
 

@@ -7,7 +7,7 @@ import javax.sql.DataSource
 
 import protopost.{BadSeismicNodeId,EmailAddress,PosterWithAuth,PosterId,SeismicNodeWithId,UnknownPoster}
 import protopost.api.{Destination,PosterNoAuth}
-import protopost.identity.Protocol
+import protopost.common.Protocol
 
 import com.mchange.rehash.*
 
@@ -36,7 +36,10 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
       case None => throw new BadSeismicNodeId( s"Expected a seismic node to be defined in the database with ID $seismicNodeId. Did not find one." )
   def newDestination( seismicNodeId : Int, name : String )( conn : Connection ) : Destination =
     Schema.Table.Destination.insert( seismicNodeId, name )( conn )
-    Destination( identifierWithLocationForSeismicNodeId( seismicNodeId )( conn ), name )
+    val sn =
+      seismicNodeById( seismicNodeId )( conn ).getOrElse:
+        throw new BadSeismicNodeId( s"Expected a seismic node to be defined in the database with ID $seismicNodeId. Did not find one." )
+    Destination( sn.toApiSeismicNode, name ) 
   def newSeismicNode( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Int =
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
     Schema.Table.SeismicNode.insert( newId, algcrv, pubkey, protocol, host, port )( conn )
@@ -47,6 +50,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Join.selectPostersBySeismicNodeIdDestinationName(snid,destinationName)(conn)
   def seismicNodeByHostPort( host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByHostPort( host, port )( conn )
+  def seismicNodeById( seismicNodeId : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
+    Schema.Table.SeismicNode.selectById( seismicNodeId )( conn )
   def seismicNodeByAlgcrvPubkey( algcrv : String, pubkey : Array[Byte] )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByAlgcrvPubkey( algcrv, pubkey )( conn )
   def seismicNodeByComponents( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
@@ -69,7 +74,7 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
       withConnectionTransactional( ds ): conn =>
         Schema.Table.Poster.selectPosterWithAuthByEmail(email)( conn )
     def posterNoAuthByEmail( email : EmailAddress )( ds : DataSource ) : Task[Option[PosterNoAuth]] =
-      posterWithAuthByEmail(email)(ds).map( _.map( _.toPosterNoAuth ) )
+      posterWithAuthByEmail(email)(ds).map( _.map( _.toApiPosterNoAuth ) )
     def destinationsForPosterEmail( email : EmailAddress )( ds : DataSource ) : Task[Set[Destination]] =
       withConnectionTransactional( ds ): conn =>
         posterForEmail(email)(conn) match

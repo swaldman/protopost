@@ -3,6 +3,7 @@ package protopost.identity
 import com.mchange.conveniences.string.*
 
 import protopost.{BadLocation,BadServiceUrl,ProtopostException,UnsupportedProtocol}
+import protopost.common.Protocol
 
 object Location:
   val DefaultApiLocalPort = 8025

@@ -5,7 +5,7 @@ import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 
-import protopost.identity.Service
+import protopost.common.Service
 import protopost.crypto.BouncyCastleSecp256r1
 
 enum SecurityLevel:

@@ -15,6 +15,7 @@ import com.mchange.cryptoutil.given
 
 import protopost.*
 import protopost.api.*
+import protopost.common.*
 import protopost.identity.*
 import protopost.LoggingApi.*
 
@@ -333,11 +334,11 @@ object PgSchema extends SelfLogging:
     end Index
     object Join:
       val SelectAllDestinations =
-        """|SELECT seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name
+        """|SELECT seismic_node.id, seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name
            |FROM destination
            |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id""".stripMargin
       val SelectDestinationsForPosterId =
-        """|SELECT seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name
+        """|SELECT seismic_node.id, seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name
            |FROM destination_poster
            |INNER JOIN destination ON destination_poster.seismic_node_id = destination.seismic_node_id AND destination_poster.destination_name = destination_name
            |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id
@@ -348,17 +349,16 @@ object PgSchema extends SelfLogging:
            |INNER JOIN destination_poster ON poster.id = destination_poster.poster_id
            |WHERE destination_poster.seismic_node_id = ? AND destination_poster.destination_name = ?""".stripMargin
       private def extractDestination( rs : ResultSet ) : Destination =
-        val algcrv      = rs.getString(1)
-        val pubkey      = rs.getBytes(2)
-        val protocolStr = rs.getString(3)
-        val host        = rs.getString(4)
-        val port        = rs.getInt(5)
-        val name        = rs.getString(6)
-        val service = Service.seismic
+        val snid        = rs.getInt(1)
+        val algcrv      = rs.getString(2)
+        val pubkey      = rs.getBytes(3)
+        val protocolStr = rs.getString(4)
+        val host        = rs.getString(5)
+        val port        = rs.getInt(6)
+        val name        = rs.getString(7)
         val protocol = Protocol.valueOf(protocolStr)
-        val portStr = if port == protocol.defaultPort then "" else s":${port}"
-        val identifierWithLocation = s"${service}[${algcrv}]${pubkey.hex0x}:${protocol}://${host}${portStr}/"
-        Destination(identifierWithLocation, name)
+        val apiSeismicNode = api.SeismicNode( snid, algcrv, pubkey.hex0x, protocol, host, port )
+        Destination(apiSeismicNode, name)
       def selectAllDestinations( conn : Connection ) : Set[Destination] =
         Using.resource( conn.prepareStatement(SelectAllDestinations) ): ps =>
           Using.resource( ps.executeQuery() )( toSet(extractDestination) )

@@ -3,6 +3,7 @@ package protopost.identity
 import com.mchange.cryptoutil.{*,given}
 
 import protopost.{BadIdentifierFormat,UnknownAlgorithmOrCurve}
+import protopost.common.{Protocol,Service}
 import protopost.crypto.BouncyCastleSecp256r1
 
 import java.security.PublicKey

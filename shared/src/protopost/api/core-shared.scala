@@ -4,6 +4,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
 import protopost.{EmailAddress,Password,PosterId}
+import protopost.common.{Protocol,Service}
 
 object LoginStatus:
   val empty = LoginStatus(0L,0L)
@@ -13,7 +14,14 @@ case class EmailPassword( email : EmailAddress, password : Password )
 
 case class PosterNoAuth( id : PosterId, email : EmailAddress, fullName : String )
 
-case class Destination( seismicIdentifierWithLocation : String, name : String )
+case class SeismicNode( id : Int, algcrv : String, publicKeyHex0x : String, protocol : Protocol, host : String, port : Int ):
+  lazy val locationUrl =
+    val portStr = if port == protocol.defaultPort then "" else s":${port}"
+    s"${protocol}://${host}${portStr}/"
+  lazy val identifierWithLocation =
+    s"${Service.seismic}[${algcrv}]${publicKeyHex0x}:${locationUrl}"
+
+case class Destination( seismicNode : SeismicNode, name : String )
 
 // json codecs -- jsoniter-scala
 given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:
@@ -37,5 +45,7 @@ given JsonValueCodec[LoginStatus]   = JsonCodecMaker.make
 given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 
 given JsonValueCodec[PosterNoAuth]  = JsonCodecMaker.make
+
+given JsonValueCodec[SeismicNode]  = JsonCodecMaker.make
 
 given JsonValueCodec[Destination]  = JsonCodecMaker.make

@@ -5,14 +5,8 @@ import scala.collection.immutable
 import com.mchange.cryptoutil.{*, given}
 
 import protopost.UnknownAlgorithmOrCurve
+import protopost.common.{Protocol,Service}
 import protopost.crypto.BouncyCastleSecp256r1
-
-enum Service:
-  case protopost, seismic;
-
-enum Protocol( val defaultPort : Int ):
-  case http  extends Protocol(80)  // for testing only! auth credentials are sent "in the clear", so only https should be used in production
-  case https extends Protocol(443)
 
 object Proto:
   object Identifier:
