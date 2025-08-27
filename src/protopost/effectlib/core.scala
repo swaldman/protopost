@@ -13,6 +13,7 @@ import com.mchange.cryptoutil.{*,given}
 
 def encounterProtoSeismicNode( psn : ProtoSeismicNode, acceptAdvertised : Boolean, createInDatabase : Boolean )( ar : AppResources, db : PgDatabase, conn : Connection ) : Task[Int] =
   psn match
+    case ProtoSeismicNode.fromLocalId( snid ) => ZIO.succeed(snid)
     case ProtoSeismicNode.fromPublicIdentity(pi) =>
       if pi.service != Service.seismic then
         throw new BadService( s"protopost destinations must live on seismic, not ${pi.service} nodes, as in identifier provided '${pi.toIdentifierWithLocation}'." )
