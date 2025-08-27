@@ -7,6 +7,7 @@ import java.nio.file.{Path as JPath}
 import protopost.{EmailAddress,PosterId,ProtoSeismicNode}
 
 import com.mchange.rehash.Password
+import protopost.main.Decline.Common.fullDestination
 
 object Decline:
   object Common:
@@ -27,6 +28,8 @@ object Decline:
     val seismicNode : Opts[ProtoSeismicNode] =
       val help = "The full identifier, including location, of the seismic node hosting the destination."
       Opts.option[String]("seismic-node",help=help,metavar="identifier").map( ProtoSeismicNode.apply )
+    val fullDestination : Opts[(ProtoSeismicNode,String,Boolean)] = // we have to specify this late, since it's built on two earlier vals
+      ( seismicNode, destinationName, acceptAdvertised ).mapN( ( sn, dn, aa ) => Tuple3(sn,dn,aa) )
   object Subcommand:
     val createDestination =
       val header = "Create a new destination, a reference to a site on a seismic node to which posts can be published."
@@ -100,7 +103,7 @@ object Decline:
       Command("list-destinations", header=header )( opts )
     val listUsers =
       val header = "List the users known to this server."
-      val opts = Opts( ConfiguredCommand.ListUsers )
+      val opts = fullDestination.orNone.map( ConfiguredCommand.ListUsers.apply )
       Command("list-users", header=header )( opts )
     val showIdentifier =
       val header = "Print to the console the full identifier-with-location of this protopost node, suitable for identifying it to seismic nodes."

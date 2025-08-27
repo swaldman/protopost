@@ -43,6 +43,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     newId
   def posterForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
     Schema.Table.Poster.selectPosterWithAuthByEmail( email )( conn )
+  def postersBySeismicNodeIdDestinationName( snid : Int, destinationName : String )( conn : Connection ) : Set[PosterWithAuth] =
+    Schema.Join.selectPostersBySeismicNodeIdDestinationName(snid,destinationName)(conn)
   def seismicNodeByHostPort( host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByHostPort( host, port )( conn )
   def seismicNodeByAlgcrvPubkey( pubkey : Array[Byte] )( conn : Connection ) : Option[SeismicNodeWithId] =

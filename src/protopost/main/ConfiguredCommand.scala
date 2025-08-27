@@ -28,8 +28,14 @@ import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
 import com.mchange.milldaemon.util.PidFileManager
 import protopost.effectlib.encounterProtoSeismicNode
+import protopost.PosterWithAuth
 
 object ConfiguredCommand extends SelfLogging:
+  private def ensureDestinationExists( psn : ProtoSeismicNode, snid : Int, destinationName : String )(db : PgDatabase, conn : Connection ) : Task[Unit] =
+    if !db.destinationDefined( snid, destinationName )( conn ) then
+      ZIO.fail( new UnknownDestination( s"Destination '${destinationName}' on seismic node at $psn is unknown. Please try 'create-destination' first." ) )
+    else
+      ZIO.unit
   private def findPosterId(posterIdOrEmailAddress : PosterId | EmailAddress)( db : PgDatabase, conn : Connection ) : Task[PosterId] =
     ZIO.attemptBlocking:
       // grrrr. can't use pattern match 'cuz opaque types get erased
@@ -151,16 +157,11 @@ object ConfiguredCommand extends SelfLogging:
         0
     end zcommand
   case class GrantDestination(psn : ProtoSeismicNode, destinationName : String, posterIdOrEmailAddress : (PosterId | EmailAddress), nickname : Option[String], acceptAdvertised : Boolean) extends ConfiguredCommand:
-    def ensureDestinationExists( snid : Int, db : PgDatabase, conn : Connection ) : Task[Unit] =
-      if !db.destinationDefined( snid, destinationName )( conn ) then
-        ZIO.fail( new UnknownDestination( s"Destination '${destinationName}' on seismic node at $psn is unknown. Please try 'create-destination' first." ) )
-      else
-        ZIO.unit
     def performUpdate( db : PgDatabase )( conn : Connection ) : Task[Unit] =
       for
         snid <- encounterProtoSeismicNode(psn,acceptAdvertised,createInDatabase=false)( db, conn )
         pid  <- findPosterId(posterIdOrEmailAddress)( db, conn )
-        _    <- ensureDestinationExists(snid, db, conn)
+        _    <- ensureDestinationExists(psn, snid, destinationName)(db, conn)
         _    <- ZIO.attemptBlocking( db.grant( snid, destinationName, pid, nickname )( conn ) )
       yield()
     override def zcommand =
@@ -184,7 +185,7 @@ object ConfiguredCommand extends SelfLogging:
           for
             pid <- findPosterId(posterIdOrEmail)(db,conn)
             out <- ZIO.attemptBlocking( db.destinationsByPosterId(pid)(conn) )
-          yield out  
+          yield out
     override def zcommand =
       for
         ar  <- ZIO.service[AppResources]
@@ -196,15 +197,24 @@ object ConfiguredCommand extends SelfLogging:
         printProductTable( Columns )( rows )
         0
     end zcommand
-  case object ListUsers extends ConfiguredCommand:
+  case class ListUsers(mbTup : Option[(ProtoSeismicNode,String,Boolean)]) extends ConfiguredCommand:
     import com.mchange.sc.v1.texttable.*
     val Columns = Seq( Column("ID"), Column("Full Name"), Column("E-Mail Address") )
+    def findUsers( db : PgDatabase )( conn : Connection ) : Task[Set[PosterWithAuth]] =
+      mbTup match
+        case None => ZIO.attemptBlocking( db.allPosters(conn) )
+        case Some( psn, nm, aa ) =>
+          for
+            snid <- encounterProtoSeismicNode(psn,aa,createInDatabase=false)(db,conn )
+            _    <- ensureDestinationExists(psn,snid,nm)(db,conn)
+            out  <- ZIO.attemptBlocking( db.postersBySeismicNodeIdDestinationName(snid,nm)(conn) )
+          yield out  
     override def zcommand =
       for
-        ar  <- ZIO.service[AppResources]
-        db  =  ar.database
-        ds  =  ar.dataSource
-        ps <- withConnectionTransactional(ds)( db.allPosters )
+        ar <- ZIO.service[AppResources]
+        db =  ar.database
+        ds =  ar.dataSource
+        ps <- withConnectionTransactionalZIO(ds)( findUsers(db) )
       yield
         val rows =
           import PosterId.i, EmailAddress.s

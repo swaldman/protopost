@@ -158,7 +158,7 @@ object PgSchema extends SelfLogging:
             ()
           else
             throw new InternalError( s"id is poster primary key, should reference zero or one row, found ${count}." )
-        private def extractPosterWithAuth( rs : ResultSet ) : PosterWithAuth =
+        private[V1] def extractPosterWithAuth( rs : ResultSet ) : PosterWithAuth =
           PosterWithAuth(
             PosterId( rs.getInt(1) ),
             EmailAddress( rs.getString(2) ),
@@ -341,6 +341,11 @@ object PgSchema extends SelfLogging:
            |INNER JOIN destination ON destination_poster.seismic_node_id = destination.seismic_node_id AND destination_poster.destination_name = destination_name
            |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id
            |WHERE destination_poster.poster_id = ?""".stripMargin
+      val SelectPostersBySeismicNodeIdDestinationName =
+        """|SELECT poster.id, poster.email, poster.full_name, poster.auth
+           |FROM poster
+           |INNER JOIN destination_poster ON poster.id = destination_poster.poster_id
+           |WHERE destination_poster.seismic_node_id = ? AND destination_poster.destination_name = ?""".stripMargin
       private def extractDestination( rs : ResultSet ) : Destination =
         val algcrv      = rs.getString(1)
         val pubkey      = rs.getBytes(2)
@@ -361,5 +366,10 @@ object PgSchema extends SelfLogging:
         Using.resource( conn.prepareStatement(SelectDestinationsForPosterId) ): ps =>
           ps.setInt(1, pid)
           Using.resource( ps.executeQuery() )( toSet(extractDestination) )
+      def selectPostersBySeismicNodeIdDestinationName( snid : Int, destinationName : String )( conn : Connection ) : Set[PosterWithAuth] =
+        Using.resource( conn.prepareStatement(SelectPostersBySeismicNodeIdDestinationName) ): ps =>
+          ps.setInt(1, snid)
+          ps.setString(2, destinationName )
+          Using.resource( ps.executeQuery() )( toSet( Table.Poster.extractPosterWithAuth ) )
     end Join
   end V1
