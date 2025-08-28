@@ -362,7 +362,7 @@ object PgSchema extends SelfLogging:
       private def extractDestinationNickname( rs : ResultSet ) : DestinationNickname =
         val destination = extractDestination(rs)
         val nickname = rs.getString(8)
-        DestinationNickname( destination, nickname )
+        DestinationNickname( destination, Option(nickname) )
       def selectAllDestinations( conn : Connection ) : Set[Destination] =
         Using.resource( conn.prepareStatement(SelectAllDestinations) ): ps =>
           Using.resource( ps.executeQuery() )( toSet(extractDestination) )

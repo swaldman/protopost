@@ -23,7 +23,7 @@ case class SeismicNode( id : Int, algcrv : String, publicKeyHex0x : String, prot
 
 case class Destination( seismicNode : SeismicNode, name : String )
 
-case class DestinationNickname( destination : Destination, nickname : String )
+case class DestinationNickname( destination : Destination, nickname : Option[String] )
 
 // json codecs -- jsoniter-scala
 given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:
