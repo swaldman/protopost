@@ -14,6 +14,7 @@ import com.mchange.rehash.*
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.zsqlutil.*
 import protopost.EmailIsAlreadyRegistered
+import protopost.api.PostDefinition
 
 class PgDatabase( val SchemaManager : PgSchemaManager ):
   val Schema = SchemaManager.LatestSchema
@@ -53,8 +54,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     inReplyToMimeType        : Option[String]  = None,
     inReplyToGuid            : Option[String]  = None,
     contentType              : Option[String]  = None,
-    publicationAttempted     : Option[Boolean] = None,
-    publicationConfirmed     : Option[Boolean] = None
+    publicationAttempted     : Boolean = false,
+    publicationConfirmed     : Boolean = false
   )( conn : Connection ) : Int =
     val postId = Schema.Sequence.PostId.selectNext( conn )
     Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, title, postAnchor, sprout, inReplyToHref, inReplyToMimeType, inReplyToGuid, contentType, publicationAttempted, publicationConfirmed )( conn )
@@ -63,6 +64,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
     Schema.Table.SeismicNode.insert( newId, algcrv, pubkey, protocol, host, port )( conn )
     newId
+  def postDefinitionForId( id : Int )( conn : Connection ) : Option[PostDefinition] =
+    Schema.Table.Post.select( id )( conn )
   def posterForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
     Schema.Table.Poster.selectPosterWithAuthByEmail( email )( conn )
   def posterById( id : PosterId )( conn : Connection ) : Option[PosterWithAuth] =

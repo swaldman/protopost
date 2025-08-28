@@ -20,6 +20,7 @@ import protopost.identity.*
 import protopost.LoggingApi.*
 
 import EmailAddress.{s => es}
+import protopost.db.PgSchema.V1.Table.Poster.posterExistsForEmail
 
 object PgSchema extends SelfLogging:
   object Unversioned:
@@ -90,12 +91,12 @@ object PgSchema extends SelfLogging:
           Using.resource( conn.prepareStatement( SelectByHostPort ) ): ps =>
             ps.setString(1, host)
             ps.setInt(2, port)
-            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-by-host-port")( extractSeismicNodeWithId) )
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("seismic-node-by-host-port")( extractSeismicNodeWithId) )
         def selectByAlgcrvPubkey( algcrv : String, pubkey : Array[Byte] )( conn : Connection ) : Option[SeismicNodeWithId] =
           Using.resource( conn.prepareStatement( SelectByAlgcrvPubkey ) ): ps =>
             ps.setString(1, algcrv)
             ps.setBytes(2, pubkey)
-            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-by-algcrv-pubkey")(extractSeismicNodeWithId) )
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("seismic-node-by-algcrv-pubkey")(extractSeismicNodeWithId) )
         def selectById( id : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
           Using.resource( conn.prepareStatement( SelectById ) ): ps =>
             ps.setInt(1, id)
@@ -228,31 +229,55 @@ object PgSchema extends SelfLogging:
              |  in_reply_to_mime_type VARCHAR(128),
              |  in_reply_to_guid      VARCHAR(1024),
              |  content_type          VARCHAR(256),
-             |  publication_attempted BOOLEAN,
-             |  publication_confirmed BOOLEAN,
+             |  publication_attempted BOOLEAN NOT NULL,
+             |  publication_confirmed BOOLEAN NOT NULL,
              |  UNIQUE ( seismic_node_id, destination_name, post_anchor ), -- anchors should be unique within destinations
              |  PRIMARY KEY ( id ),
              |  FOREIGN KEY(owner) REFERENCES poster(id),
              |  FOREIGN KEY(seismic_node_id, destination_name) REFERENCES destination(seismic_node_id,name)
              |)""".stripMargin
+        val Select =
+          """|SELECT id, seismic_node_id, destination_name, owner, post_anchor, title, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, content_type, publication_attempted, publication_confirmed
+             |FROM post
+             |WHERE id = ?""".stripMargin
         val Insert =
           """|INSERT INTO
              |post(id, seismic_node_id, destination_name, owner, post_anchor, title, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, content_type, publication_attempted, publication_confirmed)
              |VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
+        private def extract( rs : ResultSet ) : PostDefinition =
+          PostDefinition(
+            postId = rs.getInt(1),
+            destinationSeismicNodeId = rs.getInt(2),
+            destinationName = rs.getString(3),
+            owner = PosterId( rs.getInt(4) ),
+            title = Option( rs.getString(5) ),
+            postAnchor = Option( rs.getString(6) ),
+            sprout = getBooleanOptionalAtPosition( rs, 7 ),
+            inReplyToHref = Option( rs.getString(8) ),
+            inReplyToMimeType = Option( rs.getString(9) ),
+            inReplyToGuid = Option( rs.getString(10) ),
+            contentType = Option( rs.getString(11) ),
+            publicationAttempted = rs.getBoolean(12),
+            publicationConfirmed = rs.getBoolean(13)
+          )
+        def select( postId : Int )( conn : Connection ) : Option[PostDefinition] =
+          Using.resource( conn.prepareStatement(Select) ): ps =>
+            ps.setInt(1, postId)
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-post-by-id")( extract) )
         def insert(
           newPostId                : Int,
           destinationSeismicNodeId : Int,
           destinationName          : String,
           owner                    : PosterId,
-          title                    : Option[String]  = None,
-          postAnchor               : Option[String]  = None,
-          sprout                   : Option[Boolean] = None,
-          inReplyToHref            : Option[String]  = None,
-          inReplyToMimeType        : Option[String]  = None,
-          inReplyToGuid            : Option[String]  = None,
-          contentType              : Option[String]  = None,
-          publicationAttempted     : Option[Boolean] = None,
-          publicationConfirmed     : Option[Boolean] = None
+          title                    : Option[String],
+          postAnchor               : Option[String],
+          sprout                   : Option[Boolean],
+          inReplyToHref            : Option[String],
+          inReplyToMimeType        : Option[String],
+          inReplyToGuid            : Option[String],
+          contentType              : Option[String],
+          publicationAttempted     : Boolean,
+          publicationConfirmed     : Boolean
         )( conn : Connection ) =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
             ps.setInt(1, newPostId)
@@ -266,8 +291,8 @@ object PgSchema extends SelfLogging:
             setStringOptional( ps, 9, Types.VARCHAR, inReplyToMimeType )
             setStringOptional( ps, 10, Types.VARCHAR, inReplyToGuid )
             setStringOptional( ps, 11, Types.VARCHAR, contentType )
-            setBooleanOptional( ps, 12, publicationAttempted )
-            setBooleanOptional( ps, 13, publicationConfirmed )
+            ps.setBoolean( 12, publicationAttempted )
+            ps.setBoolean( 13, publicationConfirmed )
             ps.executeUpdate()
       end Post
       // post_href, post_guid, post_rss
