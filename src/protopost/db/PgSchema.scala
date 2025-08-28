@@ -228,12 +228,47 @@ object PgSchema extends SelfLogging:
              |  in_reply_to_mime_type VARCHAR(128),
              |  in_reply_to_guid      VARCHAR(1024),
              |  content_type          VARCHAR(256),
-             |  published_permalink   VARCHAR(1024),
+             |  publication_attempted BOOLEAN,
+             |  publication_confirmed BOOLEAN,
              |  UNIQUE ( seismic_node_id, destination_name, post_anchor ), -- anchors should be unique within destinations
              |  PRIMARY KEY ( id ),
              |  FOREIGN KEY(owner) REFERENCES poster(id),
              |  FOREIGN KEY(seismic_node_id, destination_name) REFERENCES destination(seismic_node_id,name)
              |)""".stripMargin
+        val Insert =
+          """|INSERT INTO
+             |post(id, seismic_node_id, destination_name, owner, post_anchor, title, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, content_type, publication_attempted, publication_confirmed)
+             |VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
+        def insert(
+          newPostId                : Int,
+          destinationSeismicNodeId : Int,
+          destinationName          : String,
+          owner                    : PosterId,
+          title                    : Option[String]  = None,
+          postAnchor               : Option[String]  = None,
+          sprout                   : Option[Boolean] = None,
+          inReplyToHref            : Option[String]  = None,
+          inReplyToMimeType        : Option[String]  = None,
+          inReplyToGuid            : Option[String]  = None,
+          contentType              : Option[String]  = None,
+          publicationAttempted     : Option[Boolean] = None,
+          publicationConfirmed     : Option[Boolean] = None
+        )( conn : Connection ) =
+          Using.resource( conn.prepareStatement( Insert ) ): ps =>
+            ps.setInt(1, newPostId)
+            ps.setInt(2, destinationSeismicNodeId)
+            ps.setString(3, destinationName)
+            ps.setInt(4, PosterId.i(owner))
+            setStringOptional( ps, 5, Types.VARCHAR, title )
+            setStringOptional( ps, 6, Types.VARCHAR, postAnchor ) 
+            setBooleanOptional( ps, 7, sprout )
+            setStringOptional( ps, 8, Types.VARCHAR, inReplyToHref )
+            setStringOptional( ps, 9, Types.VARCHAR, inReplyToMimeType )
+            setStringOptional( ps, 10, Types.VARCHAR, inReplyToGuid )
+            setStringOptional( ps, 11, Types.VARCHAR, contentType )
+            setBooleanOptional( ps, 12, publicationAttempted )
+            setBooleanOptional( ps, 13, publicationConfirmed )
+            ps.executeUpdate()
       end Post
       // post_href, post_guid, post_rss
       // are all tables so we can identify comments back to us
@@ -353,6 +388,7 @@ object PgSchema extends SelfLogging:
       end PosterId
       object PostId extends Creatable:
         protected val Create = "CREATE SEQUENCE post_id_seq AS INTEGER"
+        def selectNext( conn : Connection ) : Int = Sequence.selectNext( "post_id_seq" )( scala.Predef.identity )( conn )
       end PostId
     end Sequence
     object Index:

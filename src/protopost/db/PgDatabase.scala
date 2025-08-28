@@ -41,7 +41,24 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     val sn =
       seismicNodeById( seismicNodeId )( conn ).getOrElse:
         throw new BadSeismicNodeId( s"Expected a seismic node to be defined in the database with ID $seismicNodeId. Did not find one." )
-    Destination( sn.toApiSeismicNode, name ) 
+    Destination( sn.toApiSeismicNode, name )
+  def newPost(
+    destinationSeismicNodeId : Int,
+    destinationName          : String,
+    owner                    : PosterId,
+    title                    : Option[String]  = None,
+    postAnchor               : Option[String]  = None,
+    sprout                   : Option[Boolean] = None,
+    inReplyToHref            : Option[String]  = None,
+    inReplyToMimeType        : Option[String]  = None,
+    inReplyToGuid            : Option[String]  = None,
+    contentType              : Option[String]  = None,
+    publicationAttempted     : Option[Boolean] = None,
+    publicationConfirmed     : Option[Boolean] = None
+  )( conn : Connection ) : Int =
+    val postId = Schema.Sequence.PostId.selectNext( conn )
+    Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, title, postAnchor, sprout, inReplyToHref, inReplyToMimeType, inReplyToGuid, contentType, publicationAttempted, publicationConfirmed )( conn )
+    postId
   def newSeismicNode( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Int =
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
     Schema.Table.SeismicNode.insert( newId, algcrv, pubkey, protocol, host, port )( conn )
