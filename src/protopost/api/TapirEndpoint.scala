@@ -80,6 +80,8 @@ object TapirEndpoint extends SelfLogging:
 
   val PosterInfo = PosterAuthenticated.get.in("poster-info").out(jsonBody[PosterNoAuth])
 
+  val Destinations = PosterAuthenticated.get.in("destinations").out(jsonBody[Set[DestinationNickname]])
+
   val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
 
   private val JtiEntropyBytes = 16
@@ -126,13 +128,15 @@ object TapirEndpoint extends SelfLogging:
           case None =>
             throw new NotLoggedIn("No authentication token provided")
 
-  def email( aposter : jwt.AuthenticatedPoster ) : EmailAddress = EmailAddress(aposter.claims.subject)
+  def parseSubject( aposter : jwt.AuthenticatedPoster ) : Subject = Subject.parse(aposter.claims.subject)
 
   def posterInfo( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[PosterNoAuth] =
     ZOut.fromOptionalTask:
       val db = appResources.database
       val ds = appResources.dataSource
-      db.txn.posterNoAuthByEmail( email( authenticatedPoster ) )( ds )
+      val subject = parseSubject( authenticatedPoster )
+      withConnectionTransactional(ds): conn =>
+        db.posterById(subject.posterId)(conn).map( _.toApiPosterNoAuth )
 
   def jwks( appResources : AppResources )(u : Unit) : ZOut[jwt.Jwks] =
     ZOut.fromTask:
@@ -168,14 +172,14 @@ object TapirEndpoint extends SelfLogging:
             val fetchHash : PosterId => Option[BCryptHash] = posterId => database.fetchHashForPoster( posterId )( conn )
             val storeHash : ( PosterId, BCryptHash ) => Unit = ( posterId : PosterId, hash : BCryptHash ) => database.updateHashForPoster( posterId, hash )( conn )
             appResources.authManager.verifyRehash( pwa.id, password.toRehash, fetchHash, storeHash ) match
-              case OK => ZIO.unit
+              case OK => ZIO.succeed( pwa.id )
               case WrongPassword => ZIO.fail( new BadCredentials( "The password given fails to validate." ) )
               case UserNotFound => ZIO.fail( new BadCredentials( s"No poster found with id '${pwa.id}', despite identification of this poster by email ${email}?!?" ) )
           case None =>
             ZIO.fail( new BadCredentials( s"No poster found with e-mail '${emailPassword.email}'." ) )
-    val issueTokens : Task[(CookieValueWithMeta,CookieValueWithMeta,LoginStatus)] =
+    def issueTokens( posterId : PosterId ) : Task[(CookieValueWithMeta,CookieValueWithMeta,LoginStatus)] =
       ZIO.attempt:
-        import protopost.EmailAddress.s
+        val subject = Subject(posterId,email)
         val issuedAt = Instant.now()
         val highSecurityMinutes
           = appResources.externalConfig
@@ -193,7 +197,7 @@ object TapirEndpoint extends SelfLogging:
         val lowSecurityJti = newJti(appResources)  // for eventual implementation of token revocation
         val highSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
           keyId = service.toString,
-          subject = s(email),
+          subject = subject.toString(),
           issuedAt = issuedAt,
           expiration = highSecurityExpiration,
           jti = highSecurityJti,
@@ -201,7 +205,7 @@ object TapirEndpoint extends SelfLogging:
         )
         val lowSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
           keyId = service.toString,
-          subject = s(email),
+          subject = subject.toString(),
           issuedAt = issuedAt,
           expiration = lowSecurityExpiration,
           jti = lowSecurityJti,
@@ -214,7 +218,7 @@ object TapirEndpoint extends SelfLogging:
         ( peel(highSecurityCookieValue), peel(lowSecurityCookieValue), loginStatusFromExpirations(highSecurityExpiration, lowSecurityExpiration) )
 
     ZOut.fromTask:
-      checkCredentials *> issueTokens
+      checkCredentials.flatMap( issueTokens )
 
   def logout( appResources : AppResources )( unit : Unit ) : ZOut[(CookieValueWithMeta, CookieValueWithMeta, LoginStatus)] =
     ZOut.fromTask:
@@ -246,7 +250,7 @@ object TapirEndpoint extends SelfLogging:
                 case t : Throwable =>
                   WARNING.log("Could not validate a JWT.", t)
                   Instant.EPOCH
-            case None =>      
+            case None =>
                   Instant.EPOCH
 
         val highSecurityExpiration = extractExpirationOrEpoch(highSecurityToken)

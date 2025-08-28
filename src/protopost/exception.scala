@@ -9,6 +9,7 @@ final class BadLocation( message : String, cause : Throwable = null ) extends Pr
 final class BadSeismicNodeId( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class BadService( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class BadServiceUrl( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
+final class BadSubject( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class EmailIsAlreadyRegistered( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class InconsistentSeismicNodeDefinition( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class InsecureConfigurationPropertiesFile( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )

@@ -53,3 +53,5 @@ given JsonValueCodec[SeismicNode] = JsonCodecMaker.make
 given JsonValueCodec[Destination] = JsonCodecMaker.make
 
 given JsonValueCodec[DestinationNickname] = JsonCodecMaker.make
+
+given JsonValueCodec[Set[DestinationNickname]] = JsonCodecMaker.make
