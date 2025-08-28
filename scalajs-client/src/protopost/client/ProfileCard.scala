@@ -1,15 +1,15 @@
 package protopost.client
 
 import protopost.api.{PosterNoAuth, given}
-import sttp.model.Uri
 
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
+// import sttp.model.Uri
+// import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
-object ProfilePanel:
-  def create(loginLevelChangeEvents : EventStream[LoginLevel], loginObserver : Observer[LoginLevel], posterNoAuthVar : Var[Option[PosterNoAuth]]) : HtmlElement =
+object ProfileCard:
+  def create(posterNoAuthVar : Var[Option[PosterNoAuth]]) : HtmlElement =
     div(
       idAttr("profile-panel"),
       //backgroundColor("#ccccff"),
@@ -32,13 +32,5 @@ object ProfilePanel:
             case Some( pna ) => s"Hello, ${pna.fullName}!"
             case None => ""
       ),
-      hr(
-        borderStyle.solid,
-        borderColor.black,
-        borderWidth.px(1)
-      ),
-      onMountCallback { mountContext =>
-        given Owner = mountContext.owner
-        loginLevelChangeEvents.addObserver(loginObserver)
-      }
+      util.laminar.blackHr(),
     )

@@ -8,7 +8,7 @@ import sttp.client4.fetch.*
 import sttp.model.*
 
 object Client:
-  val backend : WebSocketBackend[scala.concurrent.Future] = FetchBackend()
+  final val TinyLinkFontSize = 9 //9pt
 
   @main
   def main() : Unit =

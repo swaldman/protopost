@@ -6,6 +6,8 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.*
 import protopost.{EmailAddress,Password,PosterId}
 import protopost.common.{Protocol,Service}
 
+val LastCharString = "\uDBFF\uDFFD"
+
 object LoginStatus:
   val empty = LoginStatus(0L,0L)
 case class LoginStatus( highSecuritySecondsRemaining : Long, lowSecuritySecondsRemaining : Long )
@@ -14,6 +16,8 @@ case class EmailPassword( email : EmailAddress, password : Password )
 
 case class PosterNoAuth( id : PosterId, email : EmailAddress, fullName : String )
 
+object SeismicNode:
+  given Ordering[SeismicNode] = Ordering.by( sn => ( sn.algcrv, sn.publicKeyHex0x, sn.protocol.toString, sn.host, sn.port ) )
 case class SeismicNode( id : Int, algcrv : String, publicKeyHex0x : String, protocol : Protocol, host : String, port : Int ):
   lazy val locationUrl =
     val portStr = if port == protocol.defaultPort then "" else s":${port}"
@@ -21,8 +25,12 @@ case class SeismicNode( id : Int, algcrv : String, publicKeyHex0x : String, prot
   lazy val identifierWithLocation =
     s"${Service.seismic}[${algcrv}]${publicKeyHex0x}:${locationUrl}"
 
+object Destination:
+  given Ordering[Destination] = Ordering.by( d => ( d.seismicNode, d.name ) )
 case class Destination( seismicNode : SeismicNode, name : String )
 
+object DestinationNickname:
+  given Ordering[DestinationNickname] = Ordering.by( dn => (dn.destination, dn.nickname.getOrElse(LastCharString)) )
 case class DestinationNickname( destination : Destination, nickname : Option[String] )
 
 // json codecs -- jsoniter-scala

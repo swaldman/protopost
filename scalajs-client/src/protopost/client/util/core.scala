@@ -14,6 +14,14 @@ object laminar:
   // https://laminar.dev/documentation
   val onEnterPress: EventProcessor[dom.KeyboardEvent, dom.KeyboardEvent] = onKeyPress.filter(_.keyCode == dom.KeyCode.Enter)
 
+  def blackHr() : HtmlElement =
+    hr(
+      borderStyle.solid,
+      borderColor.black,
+      borderWidth.px(1)
+    )
+  
+
 object sttp:
   import _root_.sttp.client4.*
   import _root_.sttp.model.*

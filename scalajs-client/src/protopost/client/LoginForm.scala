@@ -26,7 +26,7 @@ object LoginForm:
     val GoodField = "#aaddaa"
     val BadField  = "#ffaaaa"
   
-  def create(protopostLocation : Uri, loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[LoginLevel], loginLevelChangeEvents : EventStream[LoginLevel]) : HtmlElement =
+  def create(protopostLocation : Uri, backend : WebSocketBackend[scala.concurrent.Future], loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[LoginLevel], loginLevelChangeEvents : EventStream[LoginLevel]) : HtmlElement =
     val emailVar = Var[String]("")
     val passwordVar = Var[String]("")
     val emailPasswordSignal = emailVar.signal.combineWith(passwordVar)
@@ -45,7 +45,7 @@ object LoginForm:
 
       def refreshLoginStatus() : Unit =
         loginStatusVar.set(None)
-        protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, Client.backend, loginStatusVar)
+        protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, backend, loginStatusVar)
 
       def extractErrorBody[T]( response : Response[Either[ResponseException[String],T]] ) : String =
         response.body match
@@ -72,7 +72,7 @@ object LoginForm:
             .post(loginEndpoint)
             .body(asJson(emailPassword))
             .response(asJson[LoginStatus])
-        val future = request.send(Client.backend)
+        val future = request.send(backend)
         future.onComplete:
           case Success(response) =>
             if response.code.code == 401 || response.code.code == 403 then // authentication failure

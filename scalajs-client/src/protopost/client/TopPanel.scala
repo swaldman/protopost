@@ -8,22 +8,25 @@ import sttp.client4.fetch.*
 import sttp.client4.jsoniter.*
 import sttp.model.*
 
+import scala.collection.immutable
 import scala.util.{Success,Failure}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import scala.scalajs.js.timers.*
 
-import protopost.api.{LoginStatus, PosterNoAuth, given}
+import protopost.api.{DestinationNickname, LoginStatus, PosterNoAuth, given}
 import protopost.client.util.epochSecondsNow
+
+import Client.TinyLinkFontSize
 
 object TopPanel:
   private final val LoginStatusUpdateIntervalMsecs         = 6000
   private final val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
 
-  private final val TinyLinkFontSize = 9 //9pt
   private final val TopPanelMargin = 2 //2px
 
   def create(protopostLocation : Uri) : HtmlElement =
+    val backend : WebSocketBackend[scala.concurrent.Future] = FetchBackend()
 
     // ( LoginStatus, time last updated in epoch seconds )
     val loginStatusVar : Var[Option[(LoginStatus, Long)]] = Var(None)
@@ -32,6 +35,7 @@ object TopPanel:
     val loginLevelSignal : Signal[LoginLevel] = loginStatusVar.signal.map( _.fold(LoginLevel.unknown)( (ls,_) => LoginLevel.fromLoginStatus(ls) ) )
     val loginLevelChangeEvents = loginLevelSignal.changes.distinct
     val posterNoAuthVar : Var[Option[PosterNoAuth]] = Var(None)
+    val destinationsVar : Var[immutable.SortedSet[DestinationNickname]] = Var( immutable.SortedSet.empty )
 
     val locationVar : Var[Tab] = Var(Tab.profile)
 
@@ -40,18 +44,29 @@ object TopPanel:
         case LoginLevel.high | LoginLevel.low => Some(loc)
         case _ => None
 
-
     val loginObserver = Observer[LoginLevel]: level =>
       println(s"loginObserver - level: ${level}")
-      util.sttp.setOptionalVarFromApiGetResult[PosterNoAuth]( protopostLocation.addPath("protopost", "poster-info"), Client.backend, posterNoAuthVar )
+      if level.isLoggedIn then
+        util.sttp.setOptionalVarFromApiGetResult[PosterNoAuth]( protopostLocation.addPath("protopost", "poster-info"), backend, posterNoAuthVar )
+        util.sttp.setVarFromTransformedApiGetResult[immutable.Set[DestinationNickname],immutable.SortedSet[DestinationNickname]](
+          protopostLocation.addPath("protopost", "destinations"),
+          backend,
+          destinationsVar,
+          immutable.SortedSet.from
+        )
+      else
+        posterNoAuthVar.set(None)
+        destinationsVar.set( immutable.SortedSet.empty )
 
-    val loginForm = LoginForm.create( protopostLocation, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
-    val profilePanel = ProfilePanel.create(loginLevelChangeEvents,loginObserver,posterNoAuthVar)
+    val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
+
+    val destinationsAndPostsCard = DestinationsAndPostsCard.create(destinationsVar)
+    val profileCard = ProfileCard.create(posterNoAuthVar)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>
       val transformation : LoginStatus => Option[(LoginStatus,Long)] = loginStatus => Some(Tuple2(loginStatus, epochSecondsNow()))
       val request = basicRequest.post( protopostLocation.addPath("protopost","logout") ).response(asJson[LoginStatus])
-      util.sttp.setVarFromTransformedApiResult( request, Client.backend, loginStatusVar, transformation )
+      util.sttp.setVarFromTransformedApiResult( request, backend, loginStatusVar, transformation )
 
     def updateLoginStatus() : Unit =
       // on initial mount, the update seems sometimes to skip,
@@ -75,7 +90,7 @@ object TopPanel:
             None
       if hardUpdate then
         //println("Making hard login status request...")
-        protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, Client.backend, loginStatusVar)
+        protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, backend, loginStatusVar)
 
     def maintainLoginStatus() : Unit =
       updateLoginStatus()
@@ -91,7 +106,11 @@ object TopPanel:
         loginStatusHandle = None
 
     div(
-      onMountCallback { _ => maintainLoginStatus() },
+      onMountCallback { mountContext =>
+        given Owner = mountContext.owner
+        maintainLoginStatus()
+        loginLevelChangeEvents.addObserver(loginObserver)
+      },
       onUnmountCallback { _ => retireLoginStatus() },
       idAttr("top"),
       // very annoyingly, there's not an easy way to set grid- and hover-related style elements (beyond display.grid itself) in laminar
@@ -178,7 +197,10 @@ object TopPanel:
             height.percent(100),
             //marginTop.auto,
             marginBottom.auto,
-            profilePanel.amend(
+            destinationsAndPostsCard.amend(
+              display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.destinationsAndPosts) then "block" else "none" ),
+            ),
+            profileCard.amend(
               display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.profile) then "block" else "none" )
             ),
           ),
@@ -211,7 +233,7 @@ object TopPanel:
       a(
         fontSize.pt(TinyLinkFontSize),
         onClick.map(_ => tab) --> locationVar,
-        cursor("default"),
+        cursor.default,
         tab.label
       ),
     )

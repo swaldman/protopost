@@ -18,11 +18,14 @@ object LoginLevel:
       LoginLevel.low
     else
       LoginLevel.none
-enum LoginLevel( val cssColor : String ):
-  case high extends LoginLevel("green")
-  case low  extends LoginLevel("cyan")
-  case none extends LoginLevel("red")
-  case unknown extends LoginLevel("gray")
+enum LoginLevel( val cssColor : String, val isLoggedIn : Boolean ):
+  case unknown extends LoginLevel("gray",false)
+  case none    extends LoginLevel("red",false)
+  case low     extends LoginLevel("cyan",true)
+  case high    extends LoginLevel("green",true)
+
+
+
 
 val UnknownLoginStatusColor = "gray"
 
@@ -36,6 +39,7 @@ sealed trait UserLocation
 */
 
 enum Tab( val label : String ):
-  case newPost  extends Tab("new post")
-  case allPosts extends Tab("all posts")
+  //case newPost  extends Tab("new post")
+  case destinationsAndPosts extends Tab("destinations and posts")
+  case currentPost  extends Tab("current post")
   case profile  extends Tab("profile")
