@@ -235,6 +235,39 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY(seismic_node_id, destination_name) REFERENCES destination(seismic_node_id,name)
              |)""".stripMargin
       end Post
+      // post_href, post_guid, post_rss
+      // are all tables so we can identify comments back to us
+      object PostHref extends Creatable:
+        override val Create =
+          """|CREATE TABLE post_href (
+             |  post_id INTEGER NOT NULL,
+             |  href    VARCHAR(1024) NOT NULL,
+             |  UNIQUE ( href ),
+             |  PRIMARY KEY (post_id, href),
+             |  FOREIGN KEY (post_id) REFERENCES post(id)
+             |)""".stripMargin
+      end PostHref
+      object PostGuid extends Creatable:
+        override val Create =
+          """|CREATE TABLE post_guid (
+             |  post_id INTEGER NOT NULL,
+             |  guid    VARCHAR(1024) NOT NULL,
+             |  UNIQUE ( guid ),
+             |  PRIMARY KEY (post_id, guid),
+             |  FOREIGN KEY (post_id) REFERENCES post(id)
+             |)""".stripMargin
+      end PostGuid
+      object PostRss extends Creatable:
+        override val Create =
+          """|CREATE TABLE post_rss (
+             |  post_id INTEGER NOT NULL,
+             |  rss     VARCHAR(1024) NOT NULL,
+             |  single  BOOLEAN,
+             |  UNIQUE ( rss ),
+             |  PRIMARY KEY (post_id, rss),
+             |  FOREIGN KEY (post_id) REFERENCES post(id)
+             |)""".stripMargin
+      end PostRss
       object PostAuthor extends Creatable:
         /*
          *  Note that though the types match, full_name is NOT a
