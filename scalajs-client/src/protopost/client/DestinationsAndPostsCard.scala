@@ -42,7 +42,7 @@ object DestinationsAndPostsCard:
               a(
                 fontSize.pt(TinyLinkFontSize),
                 cursor.default,
-                "new post"
+                "create new post"
               ),
             )
           )

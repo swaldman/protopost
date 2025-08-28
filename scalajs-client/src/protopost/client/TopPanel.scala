@@ -18,6 +18,7 @@ import protopost.api.{DestinationNickname, LoginStatus, PosterNoAuth, given}
 import protopost.client.util.epochSecondsNow
 
 import Client.TinyLinkFontSize
+import scala.util.control.NonFatal
 
 object TopPanel:
   private final val LoginStatusUpdateIntervalMsecs         = 6000
@@ -89,8 +90,14 @@ object TopPanel:
             hardUpdate = true
             None
       if hardUpdate then
-        //println("Making hard login status request...")
-        protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, backend, loginStatusVar)
+        try
+          println("hard login status request...")
+          protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, backend, loginStatusVar)
+        catch
+          case NonFatal(t) =>
+            println("hard login status update request failed...");
+            t.printStackTrace()
+            loginStatusVar.set(None)
 
     def maintainLoginStatus() : Unit =
       updateLoginStatus()
