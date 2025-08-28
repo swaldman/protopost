@@ -29,3 +29,5 @@ enum Tab( val label : String ):
   case destinationsAndPosts extends Tab("destinations and posts")
   case currentPost  extends Tab("current post")
   case profile  extends Tab("profile")
+
+case class PostInProgress( id : Int, dirtyToLocalStorage : Boolean, dirtyToServer : Boolean, fetchCurrentText : () => String )
