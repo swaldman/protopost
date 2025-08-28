@@ -138,6 +138,14 @@ object TapirEndpoint extends SelfLogging:
       withConnectionTransactional(ds): conn =>
         db.posterById(subject.posterId)(conn).map( _.toApiPosterNoAuth )
 
+  def destinations( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[Set[DestinationNickname]] =
+    ZOut.fromTask:
+      val db = appResources.database
+      val ds = appResources.dataSource
+      val subject = parseSubject( authenticatedPoster )
+      withConnectionTransactional(ds): conn =>
+        db.destinationNicknamesByPosterId(subject.posterId)(conn)
+
   def jwks( appResources : AppResources )(u : Unit) : ZOut[jwt.Jwks] =
     ZOut.fromTask:
       ZIO.attempt:
@@ -263,7 +271,7 @@ object TapirEndpoint extends SelfLogging:
         .get( ExternalConfig.Key.`protopost.api.root-as-client` )
         .map( java.lang.Boolean.parseBoolean )
         .flatMap( use => if use then Some( RootAsClient.zServerLogic( client( appResources ) ) : ZServerEndpoint[Any,Any] ) else None )
-    List (
+    List[sttp.tapir.ztapir.ZServerEndpoint[Any, Any]] (
       //RootJwks.zServerLogic( jwks( appResources ) ),
       WellKnownJwks.zServerLogic( jwks( appResources ) ),
       Login.zServerLogic( login( appResources ) ),
@@ -271,6 +279,7 @@ object TapirEndpoint extends SelfLogging:
       Logout.zServerLogic( logout( appResources ) ),
       Client.zServerLogic( client( appResources ) ),
       PosterInfo.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( posterInfo(appResources) ),
+      Destinations.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( destinations(appResources) ),
       ScalaJsServerEndpoint
     ) ++ rootAsClient.toList
 

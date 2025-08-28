@@ -6,7 +6,7 @@ import java.sql.Connection
 import javax.sql.DataSource
 
 import protopost.{BadSeismicNodeId,EmailAddress,PosterWithAuth,PosterId,SeismicNodeWithId,UnknownPoster}
-import protopost.api.{Destination,PosterNoAuth}
+import protopost.api.{Destination,DestinationNickname,PosterNoAuth}
 import protopost.common.Protocol
 
 import com.mchange.rehash.*
@@ -24,6 +24,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Poster.selectAll( conn )
   def destinationsByPosterId( posterId : PosterId)( conn : Connection ) : Set[Destination] =
     Schema.Join.selectDestinationsForPosterId( posterId )( conn )
+  def destinationNicknamesByPosterId( posterId : PosterId)( conn : Connection ) : Set[DestinationNickname] =
+    Schema.Join.selectDestinationNicknamesForPosterId( posterId )( conn )
   def destinationDefined( seismicNodeId : Int, name : String )( conn : Connection ) : Boolean =
     Schema.Table.Destination.defined( seismicNodeId, name )( conn )
   def fetchHashForPoster( posterId : PosterId )( conn : Connection ) : Option[BCryptHash] =
