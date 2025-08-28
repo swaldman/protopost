@@ -338,7 +338,7 @@ object PgSchema extends SelfLogging:
            |FROM destination
            |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id""".stripMargin
       val SelectDestinationsForPosterId =
-        """|SELECT seismic_node.id, seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name
+        """|SELECT seismic_node.id, seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name, destination_poster.nickname
            |FROM destination_poster
            |INNER JOIN destination ON destination_poster.seismic_node_id = destination.seismic_node_id AND destination_poster.destination_name = destination_name
            |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id
@@ -359,14 +359,20 @@ object PgSchema extends SelfLogging:
         val protocol = Protocol.valueOf(protocolStr)
         val apiSeismicNode = api.SeismicNode( snid, algcrv, pubkey.hex0x, protocol, host, port )
         Destination(apiSeismicNode, name)
+      private def extractDestinationNickname( rs : ResultSet ) : DestinationNickname =
+        val destination = extractDestination(rs)
+        val nickname = rs.getString(8)
+        DestinationNickname( destination, nickname )
       def selectAllDestinations( conn : Connection ) : Set[Destination] =
         Using.resource( conn.prepareStatement(SelectAllDestinations) ): ps =>
           Using.resource( ps.executeQuery() )( toSet(extractDestination) )
-      def selectDestinationsForPosterId( posterId : PosterId )( conn : Connection ) : Set[Destination] =
+      def selectDestinationNicknamesForPosterId( posterId : PosterId )( conn : Connection ) : Set[DestinationNickname] =
         val pid = PosterId.i(posterId)
         Using.resource( conn.prepareStatement(SelectDestinationsForPosterId) ): ps =>
           ps.setInt(1, pid)
-          Using.resource( ps.executeQuery() )( toSet(extractDestination) )
+          Using.resource( ps.executeQuery() )( toSet(extractDestinationNickname) )
+      def selectDestinationsForPosterId( posterId : PosterId )( conn : Connection ) : Set[Destination] =
+        (selectDestinationNicknamesForPosterId( posterId )( conn )).map( _.destination )
       def selectPostersBySeismicNodeIdDestinationName( snid : Int, destinationName : String )( conn : Connection ) : Set[PosterWithAuth] =
         Using.resource( conn.prepareStatement(SelectPostersBySeismicNodeIdDestinationName) ): ps =>
           ps.setInt(1, snid)

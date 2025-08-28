@@ -23,6 +23,8 @@ case class SeismicNode( id : Int, algcrv : String, publicKeyHex0x : String, prot
 
 case class Destination( seismicNode : SeismicNode, name : String )
 
+case class DestinationNickname( destination : Destination, nickname : String )
+
 // json codecs -- jsoniter-scala
 given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:
   def decodeValue(in : JsonReader, default : EmailAddress) : EmailAddress = EmailAddress(in.readString(null))
@@ -40,12 +42,14 @@ given JsonValueCodec[PosterId] = new JsonValueCodec[PosterId]:
   def encodeValue(x : PosterId, out: JsonWriter): Unit = out.writeVal(i(x))
   def nullValue : PosterId = (-1).asInstanceOf[PosterId]
 
-given JsonValueCodec[LoginStatus]   = JsonCodecMaker.make
+given JsonValueCodec[LoginStatus] = JsonCodecMaker.make
 
 given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 
-given JsonValueCodec[PosterNoAuth]  = JsonCodecMaker.make
+given JsonValueCodec[PosterNoAuth] = JsonCodecMaker.make
 
-given JsonValueCodec[SeismicNode]  = JsonCodecMaker.make
+given JsonValueCodec[SeismicNode] = JsonCodecMaker.make
 
-given JsonValueCodec[Destination]  = JsonCodecMaker.make
+given JsonValueCodec[Destination] = JsonCodecMaker.make
+
+given JsonValueCodec[DestinationNickname] = JsonCodecMaker.make
