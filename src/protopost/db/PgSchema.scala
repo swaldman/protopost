@@ -222,7 +222,6 @@ object PgSchema extends SelfLogging:
              |  seismic_node_id       INTEGER NOT NULL,
              |  destination_name      VARCHAR(256) NOT NULL,
              |  owner                 INTEGER NOT NULL,
-             |  content_type          VARCHAR(256) NOT NULL,
              |  title                 VARCHAR(1024),
              |  post_anchor           VARCHAR(256),
              |  sprout                BOOLEAN,
@@ -237,12 +236,12 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY(seismic_node_id, destination_name) REFERENCES destination(seismic_node_id,name)
              |)""".stripMargin
         val Select =
-          """|SELECT id, seismic_node_id, destination_name, owner, content_type, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed
+          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed
              |FROM post
              |WHERE id = ?""".stripMargin
         val Insert =
           """|INSERT INTO
-             |post(id, seismic_node_id, destination_name, owner, content_type, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed)
+             |post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed)
              |VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
         private def extract( rs : ResultSet ) : PostDefinition =
           PostDefinition(
@@ -250,15 +249,14 @@ object PgSchema extends SelfLogging:
             destinationSeismicNodeId = rs.getInt(2),
             destinationName = rs.getString(3),
             owner = PosterId( rs.getInt(4) ),
-            contentType = rs.getString(5),
-            title = Option( rs.getString(6) ),
-            postAnchor = Option( rs.getString(7) ),
-            sprout = getBooleanOptionalAtPosition( rs, 8 ),
-            inReplyToHref = Option( rs.getString(9) ),
-            inReplyToMimeType = Option( rs.getString(10) ),
-            inReplyToGuid = Option( rs.getString(11) ),
-            publicationAttempted = rs.getBoolean(12),
-            publicationConfirmed = rs.getBoolean(13)
+            title = Option( rs.getString(5) ),
+            postAnchor = Option( rs.getString(6) ),
+            sprout = getBooleanOptionalAtPosition( rs, 7 ),
+            inReplyToHref = Option( rs.getString(8) ),
+            inReplyToMimeType = Option( rs.getString(9) ),
+            inReplyToGuid = Option( rs.getString(10) ),
+            publicationAttempted = rs.getBoolean(11),
+            publicationConfirmed = rs.getBoolean(12)
           )
         def select( postId : Int )( conn : Connection ) : Option[PostDefinition] =
           Using.resource( conn.prepareStatement(Select) ): ps =>
@@ -269,7 +267,6 @@ object PgSchema extends SelfLogging:
           destinationSeismicNodeId : Int,
           destinationName          : String,
           owner                    : PosterId,
-          contentType              : String,
           title                    : Option[String],
           postAnchor               : Option[String],
           sprout                   : Option[Boolean],
@@ -284,15 +281,14 @@ object PgSchema extends SelfLogging:
             ps.setInt(2, destinationSeismicNodeId)
             ps.setString(3, destinationName)
             ps.setInt(4, PosterId.i(owner))
-            ps.setString( 5, contentType )
-            setStringOptional( ps, 6, Types.VARCHAR, title )
-            setStringOptional( ps, 7, Types.VARCHAR, postAnchor ) 
-            setBooleanOptional( ps, 8, sprout )
-            setStringOptional( ps, 9, Types.VARCHAR, inReplyToHref )
-            setStringOptional( ps, 10, Types.VARCHAR, inReplyToMimeType )
-            setStringOptional( ps, 11, Types.VARCHAR, inReplyToGuid )
-            ps.setBoolean( 12, publicationAttempted )
-            ps.setBoolean( 13, publicationConfirmed )
+            setStringOptional( ps, 5, Types.VARCHAR, title )
+            setStringOptional( ps, 6, Types.VARCHAR, postAnchor ) 
+            setBooleanOptional( ps, 7, sprout )
+            setStringOptional( ps, 8, Types.VARCHAR, inReplyToHref )
+            setStringOptional( ps, 9, Types.VARCHAR, inReplyToMimeType )
+            setStringOptional( ps, 10, Types.VARCHAR, inReplyToGuid )
+            ps.setBoolean( 11, publicationAttempted )
+            ps.setBoolean( 12, publicationConfirmed )
             ps.executeUpdate()
       end Post
       // post_href, post_guid, post_rss
@@ -349,8 +345,9 @@ object PgSchema extends SelfLogging:
       object PostRevision extends Creatable:
         override val Create =
           """|CREATE TABLE post_revision (
-             |  post_id        INTEGER,
-             |  save_time      TIMESTAMP,
+             |  post_id        INTEGER NOT NULL,
+             |  save_time      TIMESTAMP NOT NULL,
+             |  content_type   VARCHAR(256) NOT NULL,
              |  body           TEXT,
              |  PRIMARY KEY ( post_id, save_time ),
              |  FOREIGN KEY(post_id) REFERENCES post(id)

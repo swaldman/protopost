@@ -19,7 +19,6 @@ case class PostDefinition(
   destinationSeismicNodeId : Int,
   destinationName          : String,
   owner                    : PosterId,
-  contentType              : String,
   title                    : Option[String],
   postAnchor               : Option[String],
   sprout                   : Option[Boolean],
