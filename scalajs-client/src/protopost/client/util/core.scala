@@ -81,7 +81,9 @@ object sttp:
       val future = request.send(backend).map( _.body ).map( decodeOrThrow )
 
       future.onComplete:
-        case Success(result) => laminarVar.set(transformation(result))
+        case Success(result) =>
+          //println( s"Setting result: ${result}" )
+          laminarVar.set(transformation(result))
         case Failure(t) => errorHandler(t)
     catch
       case NonFatal(t) => errorHandler(t)

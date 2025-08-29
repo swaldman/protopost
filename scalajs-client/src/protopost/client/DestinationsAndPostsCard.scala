@@ -19,8 +19,17 @@ object DestinationsAndPostsCard:
           dnset.toVector.map( dn => DestinationPane.create(dn) ).toSeq
     div(
       idAttr("destinations-and-posts-panel"),
-      //backgroundColor("green"),
+      // backgroundColor("green"),
       height.percent(100),
+      fontWeight.bold,
+      marginLeft.rem(0.5),
+      marginRight.rem(0.5),
+      div(
+        fontSize.pt(18),
+        fontWeight.bold,
+        "Destinations"
+      ),
+      util.laminar.blackHr(),
       children <-- destinationPanesSignal
     )
 
@@ -60,15 +69,6 @@ object DestinationsAndPostsCard:
           """.stripMargin
         ),
         cls("destination-pane"),
-        fontWeight.bold,
-        marginLeft.rem(0.5),
-        marginRight.rem(0.5),
-        div(
-          fontSize.pt(18),
-          fontWeight.bold,
-          "Destinations"
-        ),
-        util.laminar.blackHr(),
         div(
           fontSize.pt(12),
           span(
