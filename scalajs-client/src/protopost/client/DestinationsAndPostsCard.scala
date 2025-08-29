@@ -11,7 +11,7 @@ import sttp.model.*
 import scala.collection.immutable
 
 import Client.TinyLinkFontSize
-import protopost.api.{DestinationNickname,PostDefinition,PosterNoAuth}
+import protopost.api.{DestinationNickname,PostDefinition,PostDefinitionCreate,PosterNoAuth}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
@@ -47,7 +47,7 @@ object DestinationsAndPostsCard:
                   onClick.flatMapTo(posterNoAuthSignal) --> { mbPna =>
                     mbPna match
                       case Some(posterNoAuth) =>
-                        val postDefinition = new PostDefinition(-1, dn.destination.seismicNode.id, dn.destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
+                        val postDefinition = new PostDefinitionCreate( dn.destination.seismicNode.id, dn.destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
                         util.sttp.hardUpdateNewPostDefinition( protopostLocation, postDefinition, backend, currentPostDefinitionVar )
                         locationVar.set(Tab.currentPost)
                       case None =>

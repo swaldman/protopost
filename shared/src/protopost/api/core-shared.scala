@@ -14,8 +14,7 @@ case class LoginStatus( highSecuritySecondsRemaining : Long, lowSecuritySecondsR
 
 case class EmailPassword( email : EmailAddress, password : Password )
 
-case class PostDefinition(
-  postId                   : Int,
+case class PostDefinitionCreate(
   destinationSeismicNodeId : Int,
   destinationName          : String,
   owner                    : PosterId,
@@ -25,12 +24,10 @@ case class PostDefinition(
   inReplyToHref            : Option[String]  = None,
   inReplyToMimeType        : Option[String]  = None,
   inReplyToGuid            : Option[String]  = None,
-  publicationAttempted     : Boolean         = false,
-  publicationConfirmed     : Boolean         = false,
   authors                  : Seq[String]     = Seq.empty
 )
 
-case class PostDefinitionUpdatables(
+case class PostDefinitionUpdate(
   postId                   : Int,
   title                    : Option[String],
   postAnchor               : Option[String],
@@ -40,6 +37,22 @@ case class PostDefinitionUpdatables(
   inReplyToGuid            : Option[String],
   authors                  : Seq[String]
 )
+
+case class PostDefinition(
+  postId                   : Int,
+  destination              : Destination,
+  owner                    : PosterNoAuth,
+  title                    : Option[String],
+  postAnchor               : Option[String],
+  sprout                   : Option[Boolean],
+  inReplyToHref            : Option[String],
+  inReplyToMimeType        : Option[String],
+  inReplyToGuid            : Option[String],
+  publicationAttempted     : Boolean,
+  publicationConfirmed     : Boolean,
+  authors                  : Seq[String]
+)
+
 
 case class PosterNoAuth( id : PosterId, email : EmailAddress, fullName : String )
 
@@ -82,8 +95,8 @@ given JsonValueCodec[LoginStatus] = JsonCodecMaker.make
 given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 
 given JsonValueCodec[PostDefinition] = JsonCodecMaker.make
-
-given JsonValueCodec[PostDefinitionUpdatables] = JsonCodecMaker.make
+given JsonValueCodec[PostDefinitionCreate] = JsonCodecMaker.make
+given JsonValueCodec[PostDefinitionUpdate] = JsonCodecMaker.make
 
 given JsonValueCodec[PosterNoAuth] = JsonCodecMaker.make
 

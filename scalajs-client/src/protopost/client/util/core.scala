@@ -3,7 +3,7 @@ package protopost.client.util
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import protopost.api.PostDefinition
+import protopost.api.{PostDefinition,PostDefinitionCreate}
 
 def epochSecondsNow() : Long = System.currentTimeMillis()/1000
 
@@ -46,14 +46,14 @@ object sttp:
 
   def hardUpdateNewPostDefinition(
     protopostLocation : Uri,
-    postDefinition : PostDefinition,
+    postDefinitionCreate : PostDefinitionCreate,
     backend : WebSocketBackend[scala.concurrent.Future],
     postDefinitionVar : com.raquo.laminar.api.L.Var[Option[PostDefinition]]
   )(using ec : ExecutionContext) =
     val request =
       basicRequest
         .post( protopostLocation.addPath("protopost", "new-post") )
-        .body( asJson(postDefinition) )
+        .body( asJson(postDefinitionCreate) )
         .response( asJson[Option[PostDefinition]] )
     setVarFromApiResult( request, backend, postDefinitionVar )
 

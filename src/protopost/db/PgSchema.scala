@@ -243,8 +243,8 @@ object PgSchema extends SelfLogging:
           """|INSERT INTO
              |post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed)
              |VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
-        private def extract( rs : ResultSet ) : PostDefinition =
-          PostDefinition(
+        private def extract( rs : ResultSet ) : PostDefinitionRaw =
+          PostDefinitionRaw(
             postId = rs.getInt(1),
             destinationSeismicNodeId = rs.getInt(2),
             destinationName = rs.getString(3),
@@ -256,13 +256,12 @@ object PgSchema extends SelfLogging:
             inReplyToMimeType = Option( rs.getString(9) ),
             inReplyToGuid = Option( rs.getString(10) ),
             publicationAttempted = rs.getBoolean(11),
-            publicationConfirmed = rs.getBoolean(12),
-            authors = Seq.empty
+            publicationConfirmed = rs.getBoolean(12)
           )
-        def select( postId : Int )( conn : Connection ) : Option[PostDefinition] =
+        def select( postId : Int )( conn : Connection ) : Option[PostDefinitionRaw] =
           Using.resource( conn.prepareStatement(Select) ): ps =>
             ps.setInt(1, postId)
-            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-post-by-id")( extract) )
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-post-by-id")(extract) )
         def insert(
           newPostId                : Int,
           destinationSeismicNodeId : Int,

@@ -10,6 +10,21 @@ import com.mchange.cryptoutil.given
 
 import scala.collection.immutable
 
+case class PostDefinitionRaw(
+  postId                   : Int,
+  destinationSeismicNodeId : Int,
+  destinationName          : String,
+  owner                    : PosterId,
+  title                    : Option[String]  = None,
+  postAnchor               : Option[String]  = None,
+  sprout                   : Option[Boolean] = None,
+  inReplyToHref            : Option[String]  = None,
+  inReplyToMimeType        : Option[String]  = None,
+  inReplyToGuid            : Option[String]  = None,
+  publicationAttempted     : Boolean         = false,
+  publicationConfirmed     : Boolean         = false
+)
+
 case class PosterWithAuth( id : PosterId, email : EmailAddress, fullName : String, auth : BCryptHash ):
   lazy val toApiPosterNoAuth : api.PosterNoAuth = api.PosterNoAuth( id, email, fullName )
 
