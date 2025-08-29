@@ -26,7 +26,8 @@ case class PostDefinition(
   inReplyToMimeType        : Option[String],
   inReplyToGuid            : Option[String],
   publicationAttempted     : Boolean,
-  publicationConfirmed     : Boolean
+  publicationConfirmed     : Boolean,
+  authors                  : Seq[String]
 )
 
 case class PostDefinitionUpdatables(
@@ -35,7 +36,8 @@ case class PostDefinitionUpdatables(
   sprout                   : Option[Boolean],
   inReplyToHref            : Option[String],
   inReplyToMimeType        : Option[String],
-  inReplyToGuid            : Option[String]
+  inReplyToGuid            : Option[String],
+  authors                  : Seq[String]
 )
 
 case class PosterNoAuth( id : PosterId, email : EmailAddress, fullName : String )

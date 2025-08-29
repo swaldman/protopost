@@ -64,7 +64,9 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.SeismicNode.insert( newId, algcrv, pubkey, protocol, host, port )( conn )
     newId
   def postDefinitionForId( id : Int )( conn : Connection ) : Option[PostDefinition] =
-    Schema.Table.Post.select( id )( conn )
+    Schema.Table.Post.select( id )( conn ).map: postDefinitionNoAuthors  =>
+      val authors = Schema.Table.PostAuthor.select( id )( conn )
+      postDefinitionNoAuthors.copy( authors = authors )
   def posterForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
     Schema.Table.Poster.selectPosterWithAuthByEmail( email )( conn )
   def posterById( id : PosterId )( conn : Connection ) : Option[PosterWithAuth] =

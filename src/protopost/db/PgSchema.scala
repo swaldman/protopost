@@ -256,7 +256,8 @@ object PgSchema extends SelfLogging:
             inReplyToMimeType = Option( rs.getString(9) ),
             inReplyToGuid = Option( rs.getString(10) ),
             publicationAttempted = rs.getBoolean(11),
-            publicationConfirmed = rs.getBoolean(12)
+            publicationConfirmed = rs.getBoolean(12),
+            authors = Seq.empty
           )
         def select( postId : Int )( conn : Connection ) : Option[PostDefinition] =
           Using.resource( conn.prepareStatement(Select) ): ps =>
@@ -341,6 +342,11 @@ object PgSchema extends SelfLogging:
              |  PRIMARY KEY ( post_id, placement ),
              |  FOREIGN KEY(post_id) REFERENCES post(id)
              |)""".stripMargin
+        val Select = "SELECT full_name FROM post_author WHERE post_id = ? ORDER BY placement"
+        def select( postId : Int )( conn : Connection ) : Seq[String] =
+          Using.resource( conn.prepareStatement( Select ) ): ps =>
+            ps.setInt(1,postId)
+            Using.resource( ps.executeQuery() )( toSeq( _.getString(1) ) )
       end PostAuthor
       object PostRevision extends Creatable:
         override val Create =
