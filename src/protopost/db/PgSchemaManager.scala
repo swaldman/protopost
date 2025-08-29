@@ -65,10 +65,7 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
           PgSchema.V1.Sequence.SeismicNodeId.create( stmt )
           PgSchema.V1.Sequence.PosterId.create( stmt )
           PgSchema.V1.Sequence.PostId.create( stmt )
-          PgSchema.V1.Index.PosterEmail.create( stmt )
-          PgSchema.V1.Index.PostPublishedPermalink.create( stmt )
-          PgSchema.V1.Index.SeismicNodeByHostPort.create( stmt )
-          PgSchema.V1.Index.SeismicNodeByPubkey.create( stmt )
+          //PgSchema.V1.Index.PosterEmail.create( stmt )
         updateMetadataKeys(
           conn,
           (MetadataKey.SchemaVersion, "1"),

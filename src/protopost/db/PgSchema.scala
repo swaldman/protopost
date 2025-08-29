@@ -417,14 +417,9 @@ object PgSchema extends SelfLogging:
       end PostId
     end Sequence
     object Index:
-      object PosterEmail extends Creatable:
-        protected val Create = "CREATE INDEX poster_email ON poster(email)"
-      object PostPublishedPermalink extends Creatable:
-        protected val Create = "CREATE INDEX post_published_permalink ON post(published_permalink)"
-      object SeismicNodeByHostPort extends Creatable:
-        protected val Create = "CREATE INDEX seismic_node_host_port ON seismic_node(host, port)"
-      object SeismicNodeByPubkey extends Creatable:
-        protected val Create = "CREATE INDEX seismic_node_pubkey ON seismic_node(pubkey)"
+      /* No need -- the UNIQUE constraint build this implicitly. */
+      //object PosterEmail extends Creatable:
+      //  protected val Create = "CREATE INDEX poster_email ON poster(email)"
     end Index
     object Join:
       val SelectAllDestinations =
