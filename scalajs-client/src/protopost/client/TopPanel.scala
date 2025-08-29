@@ -19,6 +19,7 @@ import protopost.client.util.epochSecondsNow
 
 import Client.TinyLinkFontSize
 import scala.util.control.NonFatal
+import protopost.api.PostDefinition
 
 object TopPanel:
   private final val LoginStatusUpdateIntervalMsecs         = 6000
@@ -37,6 +38,7 @@ object TopPanel:
     val loginLevelChangeEvents = loginLevelSignal.changes.distinct
     val posterNoAuthVar : Var[Option[PosterNoAuth]] = Var(None)
     val destinationsVar : Var[immutable.SortedSet[DestinationNickname]] = Var( immutable.SortedSet.empty )
+    val currentPostDefinitionVar : Var[Option[PostDefinition]] = Var(None)
 
     val locationVar : Var[Tab] = Var(Tab.profile)
 
