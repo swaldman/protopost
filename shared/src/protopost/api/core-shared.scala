@@ -30,7 +30,7 @@ case class PostDefinition(
   publicationConfirmed     : Boolean
 )
 
-case class PostUpdatables(
+case class PostDefinitionUpdatables(
   title                    : Option[String],
   postAnchor               : Option[String],
   sprout                   : Option[Boolean],
@@ -81,7 +81,7 @@ given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 
 given JsonValueCodec[PostDefinition] = JsonCodecMaker.make
 
-given JsonValueCodec[PostUpdatables] = JsonCodecMaker.make
+given JsonValueCodec[PostDefinitionUpdatables] = JsonCodecMaker.make
 
 given JsonValueCodec[PosterNoAuth] = JsonCodecMaker.make
 
