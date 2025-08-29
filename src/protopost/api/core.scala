@@ -81,4 +81,5 @@ given Schema[Protocol]            = Schema.derived
 given Schema[SeismicNode]         = Schema.derived
 given Schema[Destination]         = Schema.derived
 given Schema[DestinationNickname] = Schema.derived
+given Schema[PostDefinition]      = Schema.derived
 

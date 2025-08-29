@@ -343,10 +343,22 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY(post_id) REFERENCES post(id)
              |)""".stripMargin
         val Select = "SELECT full_name FROM post_author WHERE post_id = ? ORDER BY placement"
+        val DeleteByPost = "DELETE FROM post_author WHERE post_id = ?"
+        val Insert = "INSERT INTO post_author( post_id, placement, full_name ) VALUES (?,?,?)"
         def select( postId : Int )( conn : Connection ) : Seq[String] =
           Using.resource( conn.prepareStatement( Select ) ): ps =>
             ps.setInt(1,postId)
             Using.resource( ps.executeQuery() )( toSeq( _.getString(1) ) )
+        def deleteByPost( postId : Int )( conn : Connection ) =
+          Using.resource( conn.prepareStatement( DeleteByPost ) ): ps =>
+            ps.setInt(1,postId)
+            ps.executeUpdate()
+        def insert( postId : Int, placement : Int, fullName : String )( conn : Connection ) =
+          Using.resource( conn.prepareStatement( Insert ) ): ps =>
+            ps.setInt(1,postId)
+            ps.setInt(2,placement)
+            ps.setString(3,fullName)
+            ps.executeUpdate()
       end PostAuthor
       object PostRevision extends Creatable:
         override val Create =

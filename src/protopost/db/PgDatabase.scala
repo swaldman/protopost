@@ -54,10 +54,12 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     inReplyToMimeType        : Option[String]  = None,
     inReplyToGuid            : Option[String]  = None,
     publicationAttempted     : Boolean = false,
-    publicationConfirmed     : Boolean = false
+    publicationConfirmed     : Boolean = false,
+    authors                  : Seq[String] = Seq.empty
   )( conn : Connection ) : Int =
     val postId = Schema.Sequence.PostId.selectNext( conn )
     Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, title, postAnchor, sprout, inReplyToHref, inReplyToMimeType, inReplyToGuid, publicationAttempted, publicationConfirmed )( conn )
+    if authors.nonEmpty then replaceAuthorsForPost( postId, authors )( conn )
     postId
   def newSeismicNode( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Int =
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
@@ -73,6 +75,9 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Poster.select( id )( conn )
   def postersBySeismicNodeIdDestinationName( snid : Int, destinationName : String )( conn : Connection ) : Set[PosterWithAuth] =
     Schema.Join.selectPostersBySeismicNodeIdDestinationName(snid,destinationName)(conn)
+  def replaceAuthorsForPost( postId : Int, authors : Seq[String] )( conn : Connection ) : Unit =
+    Schema.Table.PostAuthor.deleteByPost(postId)(conn)
+    authors.zipWithIndex.map( ( author, placement ) => Schema.Table.PostAuthor.insert( postId, placement, author )(conn) )
   def seismicNodeByHostPort( host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByHostPort( host, port )( conn )
   def seismicNodeById( seismicNodeId : Int )( conn : Connection ) : Option[SeismicNodeWithId] =

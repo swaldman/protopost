@@ -9,7 +9,7 @@ import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.{AppResources,EmailAddress,ExternalConfig,MissingConfig,Password,PosterId}
+import protopost.{ApparentBug,AppResources,BadPostDefinition,EmailAddress,ExternalConfig,MissingConfig,Password,PosterId}
 import protopost.LoggingApi.*
 
 import protopost.db.PgDatabase
@@ -22,6 +22,7 @@ import java.time.temporal.ChronoUnit
 import com.mchange.sc.zsqlutil.*
 import protopost.{BadCookieSettings,BadCredentials,NotLoggedIn,jwt}
 import sttp.model.headers.CookieValueWithMeta
+import protopost.InsufficientPermissions
 
 object TapirEndpoint extends SelfLogging:
 
@@ -81,6 +82,8 @@ object TapirEndpoint extends SelfLogging:
   val PosterInfo = PosterAuthenticated.get.in("poster-info").out(jsonBody[PosterNoAuth])
 
   val Destinations = PosterAuthenticated.get.in("destinations").out(jsonBody[Set[DestinationNickname]])
+
+  val NewPost = PosterAuthenticated.post.in("new-post").in(jsonBody[PostDefinition]).out(jsonBody[PostDefinition])
 
   val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
 
@@ -145,6 +148,41 @@ object TapirEndpoint extends SelfLogging:
       val subject = parseSubject( authenticatedPoster )
       withConnectionTransactional(ds): conn =>
         db.destinationNicknamesByPosterId(subject.posterId)(conn)
+
+  def newPost( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postDefinition : PostDefinition ) : ZOut[PostDefinition] =
+    ZOut.fromTask:
+      val db = appResources.database
+      val ds = appResources.dataSource
+      val subject = parseSubject( authenticatedPoster )
+      if postDefinition.postId >= 0 then
+        ZIO.fail( new BadPostDefinition( s"Can't make a new post with predefined, potentially valid (non-negative) ID ${postDefinition.postId}" ) )
+      else if postDefinition.owner != subject.posterId then
+        ZIO.fail( new InsufficientPermissions(s"Poster #{subject.posterId} can not create a post that will be owned by specified owner #${postDefinition.owner}") )
+      else if postDefinition.publicationAttempted || postDefinition.publicationConfirmed then
+        ZIO.fail(
+          new BadPostDefinition(
+            s"A post cannot be already published, or attempted to be published, upon first definition (publicationAttempted: ${postDefinition.publicationAttempted}, publicationConfirmed: ${postDefinition.publicationConfirmed})"
+          )
+        )
+      else
+        withConnectionTransactional(ds): conn =>
+          val postId = db.newPost(
+            destinationSeismicNodeId = postDefinition.destinationSeismicNodeId,
+            destinationName          = postDefinition.destinationName,
+            owner                    = postDefinition.owner,
+            postAnchor               = postDefinition.postAnchor,
+            sprout                   = postDefinition.sprout,
+            inReplyToHref            = postDefinition.inReplyToHref,
+            inReplyToMimeType        = postDefinition.inReplyToMimeType,
+            inReplyToGuid            = postDefinition.inReplyToGuid,
+            publicationAttempted     = postDefinition.publicationAttempted,
+            publicationConfirmed     = postDefinition.publicationConfirmed,
+            authors                  = postDefinition.authors
+          )( conn )
+          db.postDefinitionForId( postId )( conn ).getOrElse:
+            throw new ApparentBug( s"We created a new post in the database with id #${postId}, yet when we look it up there is no post?" )
+
+
 
   def jwks( appResources : AppResources )(u : Unit) : ZOut[jwt.Jwks] =
     ZOut.fromTask:

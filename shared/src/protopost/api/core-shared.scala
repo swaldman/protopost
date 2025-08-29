@@ -31,6 +31,7 @@ case class PostDefinition(
 )
 
 case class PostDefinitionUpdatables(
+  postId                   : Int,
   title                    : Option[String],
   postAnchor               : Option[String],
   sprout                   : Option[Boolean],
