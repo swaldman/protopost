@@ -19,15 +19,24 @@ case class PostDefinition(
   destinationSeismicNodeId : Int,
   destinationName          : String,
   owner                    : PosterId,
+  contentType              : String,
   title                    : Option[String],
   postAnchor               : Option[String],
   sprout                   : Option[Boolean],
   inReplyToHref            : Option[String],
   inReplyToMimeType        : Option[String],
   inReplyToGuid            : Option[String],
-  contentType              : Option[String],
   publicationAttempted     : Boolean,
   publicationConfirmed     : Boolean
+)
+
+case class PostUpdatables(
+  title                    : Option[String],
+  postAnchor               : Option[String],
+  sprout                   : Option[Boolean],
+  inReplyToHref            : Option[String],
+  inReplyToMimeType        : Option[String],
+  inReplyToGuid            : Option[String]
 )
 
 case class PosterNoAuth( id : PosterId, email : EmailAddress, fullName : String )
@@ -71,6 +80,8 @@ given JsonValueCodec[LoginStatus] = JsonCodecMaker.make
 given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 
 given JsonValueCodec[PostDefinition] = JsonCodecMaker.make
+
+given JsonValueCodec[PostUpdatables] = JsonCodecMaker.make
 
 given JsonValueCodec[PosterNoAuth] = JsonCodecMaker.make
 

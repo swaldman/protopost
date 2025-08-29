@@ -47,18 +47,18 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     destinationSeismicNodeId : Int,
     destinationName          : String,
     owner                    : PosterId,
+    contentType              : String,
     title                    : Option[String]  = None,
     postAnchor               : Option[String]  = None,
     sprout                   : Option[Boolean] = None,
     inReplyToHref            : Option[String]  = None,
     inReplyToMimeType        : Option[String]  = None,
     inReplyToGuid            : Option[String]  = None,
-    contentType              : Option[String]  = None,
     publicationAttempted     : Boolean = false,
     publicationConfirmed     : Boolean = false
   )( conn : Connection ) : Int =
     val postId = Schema.Sequence.PostId.selectNext( conn )
-    Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, title, postAnchor, sprout, inReplyToHref, inReplyToMimeType, inReplyToGuid, contentType, publicationAttempted, publicationConfirmed )( conn )
+    Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, contentType, title, postAnchor, sprout, inReplyToHref, inReplyToMimeType, inReplyToGuid, publicationAttempted, publicationConfirmed )( conn )
     postId
   def newSeismicNode( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Int =
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
