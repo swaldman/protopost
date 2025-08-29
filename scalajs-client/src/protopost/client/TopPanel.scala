@@ -37,6 +37,7 @@ object TopPanel:
     val loginLevelSignal : Signal[LoginLevel] = loginStatusVar.signal.map( _.fold(LoginLevel.unknown)( (ls,_) => LoginLevel.fromLoginStatus(ls) ) )
     val loginLevelChangeEvents = loginLevelSignal.changes.distinct
     val posterNoAuthVar : Var[Option[PosterNoAuth]] = Var(None)
+    val posterNoAuthSignal : Signal[Option[PosterNoAuth]] = posterNoAuthVar.signal
     val destinationsVar : Var[immutable.SortedSet[DestinationNickname]] = Var( immutable.SortedSet.empty )
     val currentPostDefinitionVar : Var[Option[PostDefinition]] = Var(None)
 
@@ -63,8 +64,9 @@ object TopPanel:
 
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
-    val destinationsAndPostsCard = DestinationsAndPostsCard.create(destinationsVar)
-    val profileCard = ProfileCard.create(posterNoAuthVar)
+    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostDefinitionVar,destinationsVar,locationVar,posterNoAuthSignal)
+    val currentPostCard = CurrentPostCard.create( currentPostDefinitionVar )
+    val profileCard = ProfileCard.create(posterNoAuthSignal)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>
       val transformation : LoginStatus => Option[(LoginStatus,Long)] = loginStatus => Some(Tuple2(loginStatus, epochSecondsNow()))
@@ -208,6 +210,9 @@ object TopPanel:
             marginBottom.auto,
             destinationsAndPostsCard.amend(
               display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.destinationsAndPosts) then "block" else "none" ),
+            ),
+            currentPostCard.amend(
+              display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.currentPost) then "block" else "none" ),
             ),
             profileCard.amend(
               display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.profile) then "block" else "none" )

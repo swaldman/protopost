@@ -3,6 +3,7 @@ package protopost.client.util
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
+import protopost.api.PostDefinition
 
 def epochSecondsNow() : Long = System.currentTimeMillis()/1000
 
@@ -42,6 +43,19 @@ object sttp:
     rawBody match
       case Left( oops ) => throw oops //new Exception( oops.toString() )
       case Right( loginStatus ) => loginStatus
+
+  def hardUpdateNewPostDefinition(
+    protopostLocation : Uri,
+    postDefinition : PostDefinition,
+    backend : WebSocketBackend[scala.concurrent.Future],
+    postDefinitionVar : com.raquo.laminar.api.L.Var[Option[PostDefinition]]
+  )(using ec : ExecutionContext) =
+    val request =
+      basicRequest
+        .post( protopostLocation.addPath("protopost", "new-post") )
+        .body( asJson(postDefinition) )
+        .response( asJson[Option[PostDefinition]] )
+    setVarFromApiResult( request, backend, postDefinitionVar )
 
   def hardUpdateLoginStatus(
         protopostLocation : Uri,
@@ -87,6 +101,14 @@ object sttp:
         case Failure(t) => errorHandler(t)
     catch
       case NonFatal(t) => errorHandler(t)
+
+  def setVarFromApiResult[T : JsonValueCodec](
+        request : Request[Either[ResponseException[String], T]],
+        backend : WebSocketBackend[scala.concurrent.Future],
+        laminarVar : com.raquo.laminar.api.L.Var[T],
+        errorHandler : Throwable => Unit = DefaultErrorHandler
+  )( using ec : ExecutionContext ) : Unit =
+    setVarFromTransformedApiResult[T,T]( request, backend, laminarVar, scala.Predef.identity, errorHandler )
 
   def setVarFromTransformedApiGetResult[T : JsonValueCodec,U](
         endpointUri : Uri, // will be a get request!

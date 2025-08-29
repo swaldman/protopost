@@ -5,11 +5,8 @@ import protopost.api.{PosterNoAuth, given}
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
-// import sttp.model.Uri
-// import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
-
 object ProfileCard:
-  def create(posterNoAuthVar : Var[Option[PosterNoAuth]]) : HtmlElement =
+  def create(posterNoAuthSignal : Signal[Option[PosterNoAuth]]) : HtmlElement =
     div(
       idAttr("profile-panel"),
       //backgroundColor("#ccccff"),
@@ -27,7 +24,7 @@ object ProfileCard:
         idAttr := "profile-name-pane",
         fontSize.pt(18),
         fontWeight.bold,
-        text <-- posterNoAuthVar.signal.map: mbPna =>
+        text <-- posterNoAuthSignal.map: mbPna =>
           mbPna match
             case Some( pna ) => s"Hello, ${pna.fullName}!"
             case None => ""

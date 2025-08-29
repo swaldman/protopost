@@ -318,6 +318,7 @@ object TapirEndpoint extends SelfLogging:
       Client.zServerLogic( client( appResources ) ),
       PosterInfo.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( posterInfo(appResources) ),
       Destinations.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( destinations(appResources) ),
+      NewPost.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( newPost(appResources) ),
       ScalaJsServerEndpoint
     ) ++ rootAsClient.toList
 

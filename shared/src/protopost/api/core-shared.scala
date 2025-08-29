@@ -19,15 +19,15 @@ case class PostDefinition(
   destinationSeismicNodeId : Int,
   destinationName          : String,
   owner                    : PosterId,
-  title                    : Option[String],
-  postAnchor               : Option[String],
-  sprout                   : Option[Boolean],
-  inReplyToHref            : Option[String],
-  inReplyToMimeType        : Option[String],
-  inReplyToGuid            : Option[String],
-  publicationAttempted     : Boolean,
-  publicationConfirmed     : Boolean,
-  authors                  : Seq[String]
+  title                    : Option[String]  = None,
+  postAnchor               : Option[String]  = None,
+  sprout                   : Option[Boolean] = None,
+  inReplyToHref            : Option[String]  = None,
+  inReplyToMimeType        : Option[String]  = None,
+  inReplyToGuid            : Option[String]  = None,
+  publicationAttempted     : Boolean         = false,
+  publicationConfirmed     : Boolean         = false,
+  authors                  : Seq[String]     = Seq.empty
 )
 
 case class PostDefinitionUpdatables(

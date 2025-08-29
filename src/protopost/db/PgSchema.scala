@@ -242,7 +242,7 @@ object PgSchema extends SelfLogging:
         val Insert =
           """|INSERT INTO
              |post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed)
-             |VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
+             |VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
         private def extract( rs : ResultSet ) : PostDefinition =
           PostDefinition(
             postId = rs.getInt(1),
