@@ -33,11 +33,11 @@ object DestinationsAndPostsCard:
         object PostsPane:
           def create() : HtmlElement =
             div(
-                cls("posts-pane"),
-                marginLeft.em(2),
-                marginTop.rem(0.25),
-                fontWeight.normal,
-                display <-- openVar.signal.map( open => if open then "block" else "none" ),
+              cls("posts-pane"),
+              marginLeft.em(2),
+              marginTop.rem(0.25),
+              fontWeight.normal,
+              display <-- openVar.signal.map( open => if open then "block" else "none" ),
               div(
                 cls("posts-pane-end-menu"),
                 a(

@@ -5,7 +5,7 @@ import zio.*
 import java.sql.Connection
 import javax.sql.DataSource
 
-import protopost.{ApparentBug,BadSeismicNodeId,EmailAddress,PosterWithAuth,PosterId,SeismicNodeWithId,UnknownPoster}
+import protopost.{ApparentBug,BadSeismicNodeId,EmailAddress,PostDefinitionRaw,PosterWithAuth,PosterId,SeismicNodeWithId,UnknownPoster}
 import protopost.api.{Destination,DestinationNickname,PosterNoAuth}
 import protopost.common.Protocol
 
@@ -63,13 +63,18 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
     Schema.Table.SeismicNode.insert( newId, algcrv, pubkey, protocol, host, port )( conn )
     newId
+  private def postDefinitionFromRaw( pdr : PostDefinitionRaw )( conn : Connection ) : PostDefinition =
+    val seismicNode = seismicNodeById( pdr.destinationSeismicNodeId )( conn ).getOrElse( throw new ApparentBug("Seismic node ID we just look up in this transaction must exist by db constraint!") )
+    val owner = posterById( pdr.owner )( conn ).getOrElse( throw new ApparentBug("Owner PosterID we just look up in this transaction must exist by db constraint!") )
+    val authors = Schema.Table.PostAuthor.select( pdr.postId )( conn )
+    val destination = Destination( seismicNode.toApiSeismicNode, pdr.destinationName )
+    PostDefinition( pdr.postId, destination, owner.toApiPosterNoAuth, pdr.title, pdr.postAnchor, pdr.sprout, pdr.inReplyToHref, pdr.inReplyToMimeType, pdr.inReplyToGuid, pdr.publicationAttempted, pdr.publicationConfirmed, authors)
   def postDefinitionForId( id : Int )( conn : Connection ) : Option[PostDefinition] =
-    Schema.Table.Post.select( id )( conn ).map: pdr  =>
-      val seismicNode = seismicNodeById( pdr.destinationSeismicNodeId )( conn ).getOrElse( throw new ApparentBug("Seismic node ID we just look up in this transaction must exist by db constraint!") )
-      val owner = posterById( pdr.owner )( conn ).getOrElse( throw new ApparentBug("Owner PosterID we just look up in this transaction must exist by db constraint!") )
-      val authors = Schema.Table.PostAuthor.select( id )( conn )
-      val destination = Destination( seismicNode.toApiSeismicNode, pdr.destinationName )
-      PostDefinition( id, destination, owner.toApiPosterNoAuth, pdr.title, pdr.postAnchor, pdr.sprout, pdr.inReplyToHref, pdr.inReplyToMimeType, pdr.inReplyToGuid, pdr.publicationAttempted, pdr.publicationConfirmed, authors)
+    Schema.Table.Post.select( id )( conn ).map( postDefinitionFromRaw(_)(conn) )
+  def postDefinitionsForDestination( seismicNodeId : Int, destinationName : String )( conn : Connection ) : Set[PostDefinition] =
+    Schema.Table.Post.selectByDestination( seismicNodeId, destinationName )( conn ).map( postDefinitionFromRaw(_)(conn) )
+  def postDefinitionsForDestinationAndOwner( seismicNodeId : Int, destinationName : String, ownerId : PosterId )( conn : Connection ) : Set[PostDefinition] =
+    Schema.Table.Post.selectByDestinationAndOwner( seismicNodeId, destinationName, ownerId )( conn ).map( postDefinitionFromRaw(_)(conn) )
   def posterForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
     Schema.Table.Poster.selectPosterWithAuthByEmail( email )( conn )
   def posterById( id : PosterId )( conn : Connection ) : Option[PosterWithAuth] =

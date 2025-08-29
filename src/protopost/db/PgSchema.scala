@@ -239,6 +239,14 @@ object PgSchema extends SelfLogging:
           """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed
              |FROM post
              |WHERE id = ?""".stripMargin
+        val SelectByDestination =
+          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed
+             |FROM post
+             |WHERE seismic_node_id = ? AND destination_name = ?""".stripMargin
+        val SelectByDestinationAndOwner =
+          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed
+             |FROM post
+             |WHERE seismic_node_id = ? AND destination_name = ? AND owner = ???""".stripMargin
         val Insert =
           """|INSERT INTO
              |post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed)
@@ -262,6 +270,17 @@ object PgSchema extends SelfLogging:
           Using.resource( conn.prepareStatement(Select) ): ps =>
             ps.setInt(1, postId)
             Using.resource( ps.executeQuery() )( zeroOrOneResult("select-post-by-id")(extract) )
+        def selectByDestination( seismicNodeId : Int, destinationName : String )( conn : Connection ) : Set[PostDefinitionRaw] =
+          Using.resource( conn.prepareStatement(SelectByDestination) ): ps =>
+            ps.setInt(1, seismicNodeId)
+            ps.setString(2, destinationName)
+            Using.resource( ps.executeQuery() )( toSet(extract) )
+        def selectByDestinationAndOwner( seismicNodeId : Int, destinationName : String, owner : PosterId )( conn : Connection ) : Set[PostDefinitionRaw] =
+          Using.resource( conn.prepareStatement(SelectByDestinationAndOwner) ): ps =>
+            ps.setInt(1, seismicNodeId)
+            ps.setString(2, destinationName)
+            ps.setInt(3, PosterId.i(owner) )
+            Using.resource( ps.executeQuery() )( toSet(extract) )
         def insert(
           newPostId                : Int,
           destinationSeismicNodeId : Int,
