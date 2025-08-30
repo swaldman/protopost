@@ -50,6 +50,9 @@ object PgSchema extends SelfLogging:
     override val Version = 0
   object V1 extends Schema:
     override val Version = 1
+    object Type:
+      object ProtocolType extends Creatable:
+        override val Create = "CREATE TYPE protocol_type AS ENUM ('http', 'https')"
     object Table:
       object SeismicNode extends Creatable:
         override val Create =
@@ -57,18 +60,18 @@ object PgSchema extends SelfLogging:
              |  id INTEGER PRIMARY KEY,
              |  algcrv VARCHAR(32),
              |  pubkey bytea,
-             |  protocol VARCHAR(16),
+             |  protocol protocol_type,
              |  host VARCHAR(256),
              |  port INTEGER,
              |  UNIQUE( algcrv, pubkey ),
              |  UNIQUE( host, port ),
              |  UNIQUE( algcrv, pubkey, protocol, host, port ) -- no need to create an index on these, the uniqueness constraint does it, see https://www.postgresql.org/docs/current/indexes-unique.html
              |)""".stripMargin
-        val Insert = "INSERT INTO seismic_node( id, algcrv, pubkey, protocol, host, port ) VALUES ( ?, ?, ?, ?, ?, ? )"
+        val Insert = "INSERT INTO seismic_node( id, algcrv, pubkey, protocol, host, port ) VALUES ( ?, ?, ?, ?::protocol_type, ?, ? )"
         val SelectById = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE id = ?"
         val SelectByHostPort = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE host = ? AND port = ?"
         val SelectByAlgcrvPubkey = "SELECT id, algcrv, pubkey, protocol, host, port FROM seismic_node WHERE algcrv = ? AND pubkey = ?"
-        val SelectIdByComponents = "SELECT id FROM seismic_node WHERE algcrv = ? AND pubkey = ? AND protocol = ? AND host = ? AND port = ?"
+        val SelectIdByComponents = "SELECT id FROM seismic_node WHERE algcrv = ? AND pubkey = ? AND protocol = ?::protocol_type AND host = ? AND port = ?"
         def insert( id : Int, algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) =
           Using.resource( conn.prepareStatement(Insert) ): ps =>
             ps.setInt(1, id)

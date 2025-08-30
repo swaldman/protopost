@@ -48,6 +48,7 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
       ZIO.attemptBlocking:
         TRACE.log( "upMigrateFrom_0()" )
         Using.resource( conn.createStatement() ): stmt =>
+          PgSchema.V1.Type.ProtocolType.create( stmt )
           PgSchema.V1.Table.SeismicNode.create( stmt )
           PgSchema.V1.Table.Destination.create( stmt )
           PgSchema.V1.Table.Poster.create( stmt )
