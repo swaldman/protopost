@@ -49,14 +49,16 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
         TRACE.log( "upMigrateFrom_0()" )
         Using.resource( conn.createStatement() ): stmt =>
           PgSchema.V1.Type.ProtocolType.create( stmt )
+          PgSchema.V1.Type.FeedKind.create( stmt )
+          PgSchema.V1.Type.FeedCurationType.create( stmt )
           PgSchema.V1.Table.SeismicNode.create( stmt )
           PgSchema.V1.Table.Destination.create( stmt )
           PgSchema.V1.Table.Poster.create( stmt )
           PgSchema.V1.Table.DestinationPoster.create( stmt )
           PgSchema.V1.Table.Post.create( stmt )
-          PgSchema.V1.Table.PostHref.create( stmt )
-          PgSchema.V1.Table.PostGuid.create( stmt )
-          PgSchema.V1.Table.PostRss.create( stmt )
+          PgSchema.V1.Table.FeedContainer.create( stmt )
+          PgSchema.V1.Table.PostFeedContainer.create( stmt )
+          PgSchema.V1.Table.PostFeedGuid.create( stmt )
           PgSchema.V1.Table.PostAuthor.create( stmt )
           PgSchema.V1.Table.PostRevision.create( stmt )
           PgSchema.V1.Table.PostPublicationHistory.create( stmt )
@@ -66,7 +68,7 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
           PgSchema.V1.Sequence.SeismicNodeId.create( stmt )
           PgSchema.V1.Sequence.PosterId.create( stmt )
           PgSchema.V1.Sequence.PostId.create( stmt )
-          //PgSchema.V1.Index.PosterEmail.create( stmt )
+          PgSchema.V1.Index.PostFeedGuidIndex.create( stmt )
         updateMetadataKeys(
           conn,
           (MetadataKey.SchemaVersion, "1"),

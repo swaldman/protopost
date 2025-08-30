@@ -53,6 +53,10 @@ object PgSchema extends SelfLogging:
     object Type:
       object ProtocolType extends Creatable:
         override val Create = "CREATE TYPE protocol_type AS ENUM ('http', 'https')"
+      object FeedKind extends Creatable:
+        override val Create = "CREATE TYPE feed_kind AS ENUM ('rss', 'atom')"
+      object FeedCurationType extends Creatable:
+        override val Create = "CREATE TYPE feed_curation_type AS ENUM ('single', 'selection', 'all')"
     object Table:
       object SeismicNode extends Creatable:
         override val Create =
@@ -313,39 +317,31 @@ object PgSchema extends SelfLogging:
             ps.setBoolean( 12, publicationConfirmed )
             ps.executeUpdate()
       end Post
-      // post_href, post_guid, post_rss
-      // are all tables so we can identify comments back to us
-      object PostHref extends Creatable:
+      object FeedContainer extends Creatable:
         override val Create =
-          """|CREATE TABLE post_href (
-             |  post_id INTEGER NOT NULL,
-             |  href    VARCHAR(1024) NOT NULL,
-             |  UNIQUE ( href ),
-             |  PRIMARY KEY (post_id, href),
-             |  FOREIGN KEY (post_id) REFERENCES post(id)
+          """|CREATE TABLE feed_container (
+             |  feed_href          VARCHAR(1024)      NOT NULL,
+             |  kind               feed_kind          NOT NULL,
+             |  container_curation feed_curation_type NOT NULL,
+             |  PRIMARY KEY (feed_href)
              |)""".stripMargin
-      end PostHref
-      object PostGuid extends Creatable:
+      object PostFeedContainer extends Creatable:
         override val Create =
-          """|CREATE TABLE post_guid (
-             |  post_id INTEGER NOT NULL,
+          """|CREATE TABLE post_feed_container (
+             |  post_id            INTEGER       NOT NULL,
+             |  feed_href          VARCHAR(1024) NOT NULL,
+             |  PRIMARY KEY (post_id, feed_href),
+             |  FOREIGN KEY (post_id)   REFERENCES post(id),
+             |  FOREIGN KEY (feed_href) REFERENCES feed_container(feed_href)
+             |)""".stripMargin
+      object PostFeedGuid extends Creatable:
+        override val Create =
+          """|CREATE TABLE post_feed_guid (
+             |  post_id INTEGER       NOT NULL,
              |  guid    VARCHAR(1024) NOT NULL,
-             |  UNIQUE ( guid ),
              |  PRIMARY KEY (post_id, guid),
              |  FOREIGN KEY (post_id) REFERENCES post(id)
              |)""".stripMargin
-      end PostGuid
-      object PostRss extends Creatable:
-        override val Create =
-          """|CREATE TABLE post_rss (
-             |  post_id INTEGER NOT NULL,
-             |  rss     VARCHAR(1024) NOT NULL,
-             |  single  BOOLEAN,
-             |  UNIQUE ( rss ),
-             |  PRIMARY KEY (post_id, rss),
-             |  FOREIGN KEY (post_id) REFERENCES post(id)
-             |)""".stripMargin
-      end PostRss
       object PostAuthor extends Creatable:
         /*
          *  Note that though the types match, full_name is NOT a
@@ -453,9 +449,8 @@ object PgSchema extends SelfLogging:
       end PostId
     end Sequence
     object Index:
-      /* No need -- the UNIQUE constraint build this implicitly. */
-      //object PosterEmail extends Creatable:
-      //  protected val Create = "CREATE INDEX poster_email ON poster(email)"
+      object PostFeedGuidIndex extends Creatable:
+        protected val Create = "CREATE INDEX post_feed_guid_index ON post_feed_guid(guid)"
     end Index
     object Join:
       val SelectAllDestinations =
