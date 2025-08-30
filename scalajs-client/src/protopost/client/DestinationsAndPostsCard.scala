@@ -28,6 +28,7 @@ object DestinationsAndPostsCard:
 
     object DestinationPane:
       def create( dn : DestinationNickname, initOpen : Boolean = false ) : HtmlElement =
+        println( s"DestinationPane.create( $dn, $initOpen )" )
         val openVar : Var[Boolean] = Var(initOpen)
         val openSignal = openVar.signal
         val destinationText = dn.nickname.getOrElse( s"${dn.destination.name}@${dn.destination.seismicNode.locationUrl}" )
@@ -39,22 +40,47 @@ object DestinationsAndPostsCard:
 
           val postOpenObserver : Observer[(Boolean,immutable.SortedSet[PostDefinition])] =
             Observer[(Boolean,immutable.SortedSet[PostDefinition])]: (open : Boolean, pdset : immutable.SortedSet[PostDefinition]) =>
-              if open && pdset.isEmpty then
-                util.sttp.hardUpdatePostDefinitionsForDestination( protopostLocation, DestinationIdentifier( dn.destination.seismicNode.id, dn.destination.name), backend, postDefinitionsVar )
+              if open && pdset.isEmpty then updatePostsList()
+
+          val newPostCreatedObserver = Observer[(Option[PostDefinition],immutable.SortedSet[PostDefinition])]( (mbPostDefinition, currentPostDefinitions) => // currentPostDefinitinVar
+            mbPostDefinition match
+              case Some( postDefinition ) =>
+                if postDefinition.destination == dn.destination && !currentPostDefinitions(postDefinition) then updatePostsList()
+              case None =>
+                /* ignore */
+          )
+
+          val newPostClickBus = new EventBus[dom.MouseEvent]
+          val newPostClicksWithPoster = newPostClickBus.events.withCurrentValueOf(posterNoAuthSignal)
+
+          val newPostClicksObserver = Observer[(dom.MouseEvent,Option[PosterNoAuth])]: (_,mbPna) =>
+            mbPna match
+              case Some(posterNoAuth) =>
+                val postDefinition = new PostDefinitionCreate( dn.destination.seismicNode.id, dn.destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
+                util.sttp.hardUpdateNewPostDefinition( protopostLocation, postDefinition, backend, currentPostDefinitionVar )
+                locationVar.set(Tab.currentPost)
+              case None =>
+                println("Cannot create new post, posterNoAuthSignal seems unset? We are not properly logged in?")
+
+          def updatePostsList() =
+            util.sttp.hardUpdatePostDefinitionsForDestination( protopostLocation, DestinationIdentifier( dn.destination.seismicNode.id, dn.destination.name), backend, postDefinitionsVar )
 
           private def postDiv( pd : PostDefinition ) : HtmlElement =
             val title = pd.title.fold("<untitled post>")(t => s""""$t"""")
-            val authors = commaListAnd( pd.authors ).fold("")( authors => s", by ${authors}" )
+            val authors = commaListAnd( pd.authors ).fold("")( authors => s" by ${authors}" )
             div(
+              fontSize.pt(10),
               span(
                 s"${title}${authors}"
               ),
               " ",
               span(
+                fontSize.pt(8),
                 s"[Post ID #${pd.postId}]"
               )
             )
           def create() : HtmlElement =
+            println( s"PostsPane.create( $dn, $initOpen )" )
             div(
               cls("posts-pane"),
               marginLeft.em(2),
@@ -63,16 +89,27 @@ object DestinationsAndPostsCard:
               display <-- openSignal.map( open => if open then "block" else "none" ),
               children <-- postDefinitionsVar.signal.map( pdset => pdset.toList.map(pd => postDiv(pd)) ),
               onMountCallback { mountContext =>
+                println( s"mount: $mountContext" )
                 given Owner = mountContext.owner
                 openSignal.withCurrentValueOf(postDefinitionsVar).addObserver( postOpenObserver )
+                currentPostDefinitionVar.signal.withCurrentValueOf(postDefinitionsVar).addObserver( newPostCreatedObserver )
+                newPostClicksWithPoster.addObserver( newPostClicksObserver )
+              },
+              onUnmountCallback { mountContext =>
+                println( s"unmount: $mountContext" )
               },
               div(
                 cls("posts-pane-end-menu"),
                 a(
                   fontSize.pt(TinyLinkFontSize),
                   cursor.default,
-                  disabled <-- posterNoAuthSignal.map( _.fold(false)(_ => true) ),
-                  onClick.flatMapTo(posterNoAuthSignal) --> { mbPna =>
+                  //disabled <-- posterNoAuthSignal.map( _.fold(false)(_ => true) ),
+                  onClick --> newPostClickBus,
+                  /*
+                  onClick.sample(posterNoAuthSignal) --> { (_,mbPna) =>
+                    println("In click handler...")
+                    //println("onClick.flatMapTo(posterNoAuthSignal)")
+                    //println(posterNoAuthSignal.tryNow())
                     mbPna match
                       case Some(posterNoAuth) =>
                         val postDefinition = new PostDefinitionCreate( dn.destination.seismicNode.id, dn.destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
@@ -81,6 +118,7 @@ object DestinationsAndPostsCard:
                       case None =>
                         println("Cannot create new post, posterNoAuthSignal seems unset? We are not properly logged in?")
                   },
+                   */
                   "create new post"
                 ),
               )
