@@ -49,7 +49,7 @@ case class PostDefinition(
   inReplyToMimeType        : Option[String],
   inReplyToGuid            : Option[String],
   publicationAttempted     : Boolean,
-  publicationConfirmed     : Boolean,
+  htmlPermalink            : Option[String],
   authors                  : Seq[String]
 )
 

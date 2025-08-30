@@ -22,7 +22,7 @@ case class PostDefinitionRaw(
   inReplyToMimeType        : Option[String]  = None,
   inReplyToGuid            : Option[String]  = None,
   publicationAttempted     : Boolean         = false,
-  publicationConfirmed     : Boolean         = false
+  htmlPermalink            : Option[String]  = None
 )
 
 case class PosterWithAuth( id : PosterId, email : EmailAddress, fullName : String, auth : BCryptHash ):

@@ -236,27 +236,27 @@ object PgSchema extends SelfLogging:
              |  in_reply_to_mime_type VARCHAR(128),
              |  in_reply_to_guid      VARCHAR(1024),
              |  publication_attempted BOOLEAN NOT NULL,
-             |  publication_confirmed BOOLEAN NOT NULL,
+             |  html_permalink        VARCHAR(1024),
              |  UNIQUE ( seismic_node_id, destination_name, post_anchor ), -- anchors should be unique within destinations
              |  PRIMARY KEY ( id ),
              |  FOREIGN KEY(owner) REFERENCES poster(id),
              |  FOREIGN KEY(seismic_node_id, destination_name) REFERENCES destination(seismic_node_id,name)
              |)""".stripMargin
         val Select =
-          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed
+          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink
              |FROM post
              |WHERE id = ?""".stripMargin
         val SelectByDestination =
-          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed
+          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink
              |FROM post
              |WHERE seismic_node_id = ? AND destination_name = ?""".stripMargin
         val SelectByDestinationAndOwner =
-          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed
+          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink
              |FROM post
              |WHERE seismic_node_id = ? AND destination_name = ? AND owner = ???""".stripMargin
         val Insert =
           """|INSERT INTO
-             |post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, publication_confirmed)
+             |post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink)
              |VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
         private def extract( rs : ResultSet ) : PostDefinitionRaw =
           PostDefinitionRaw(
@@ -271,7 +271,7 @@ object PgSchema extends SelfLogging:
             inReplyToMimeType = Option( rs.getString(9) ),
             inReplyToGuid = Option( rs.getString(10) ),
             publicationAttempted = rs.getBoolean(11),
-            publicationConfirmed = rs.getBoolean(12)
+            htmlPermalink = Option( rs.getString(12) )
           )
         def select( postId : Int )( conn : Connection ) : Option[PostDefinitionRaw] =
           Using.resource( conn.prepareStatement(Select) ): ps =>
@@ -300,7 +300,7 @@ object PgSchema extends SelfLogging:
           inReplyToMimeType        : Option[String],
           inReplyToGuid            : Option[String],
           publicationAttempted     : Boolean,
-          publicationConfirmed     : Boolean
+          htmlPermalink            : Option[String]
         )( conn : Connection ) =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
             ps.setInt(1, newPostId)
@@ -314,7 +314,7 @@ object PgSchema extends SelfLogging:
             setStringOptional( ps, 9, Types.VARCHAR, inReplyToMimeType )
             setStringOptional( ps, 10, Types.VARCHAR, inReplyToGuid )
             ps.setBoolean( 11, publicationAttempted )
-            ps.setBoolean( 12, publicationConfirmed )
+            setStringOptional( ps, 12, Types.VARCHAR, htmlPermalink )
             ps.executeUpdate()
       end Post
       object FeedContainer extends Creatable:
