@@ -85,6 +85,8 @@ object TapirEndpoint extends SelfLogging:
 
   val NewPost = PosterAuthenticated.post.in("new-post").in(jsonBody[PostDefinitionCreate]).out(jsonBody[PostDefinition])
 
+  val DestinationPosts = PosterAuthenticated.post.in("destination-posts").in(jsonBody[DestinationIdentifier]).out(jsonBody[Set[PostDefinition]])
+
   val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
 
   private val JtiEntropyBytes = 16
@@ -172,7 +174,13 @@ object TapirEndpoint extends SelfLogging:
           db.postDefinitionForId( postId )( conn ).getOrElse:
             throw new ApparentBug( s"We created a new post in the database with id #${postId}, yet when we look it up there is no post?" )
 
-
+  def destinationPosts( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( destinationIdentifier : DestinationIdentifier ) : ZOut[Set[PostDefinition]] =
+    ZOut.fromTask:
+      val db = appResources.database
+      val ds = appResources.dataSource
+      //val subject = parseSubject( authenticatedPoster )
+      withConnectionTransactional(ds): conn =>
+        db.postDefinitionsForDestination(destinationIdentifier.seismicNodeId, destinationIdentifier.name)(conn)
 
   def jwks( appResources : AppResources )(u : Unit) : ZOut[jwt.Jwks] =
     ZOut.fromTask:
@@ -309,6 +317,7 @@ object TapirEndpoint extends SelfLogging:
       PosterInfo.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( posterInfo(appResources) ),
       Destinations.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( destinations(appResources) ),
       NewPost.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( newPost(appResources) ),
+      DestinationPosts.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( destinationPosts(appResources) ),
       ScalaJsServerEndpoint
     ) ++ rootAsClient.toList
 

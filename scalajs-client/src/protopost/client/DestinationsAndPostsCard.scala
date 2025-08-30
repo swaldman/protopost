@@ -14,6 +14,7 @@ import Client.TinyLinkFontSize
 import protopost.api.{DestinationNickname,PostDefinition,PostDefinitionCreate,PosterNoAuth}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
+import protopost.api.DestinationIdentifier
 
 object DestinationsAndPostsCard:
   def create(
@@ -28,22 +29,49 @@ object DestinationsAndPostsCard:
     object DestinationPane:
       def create( dn : DestinationNickname, initOpen : Boolean = false ) : HtmlElement =
         val openVar : Var[Boolean] = Var(initOpen)
+        val openSignal = openVar.signal
         val destinationText = dn.nickname.getOrElse( s"${dn.destination.name}@${dn.destination.seismicNode.locationUrl}" )
 
         object PostsPane:
+          val postDefinitionsVar : Var[immutable.SortedSet[PostDefinition]] =
+            given Ordering[PostDefinition] = ReverseChronologicalPostDefinitions // also set up in util.hardUpdatePostDefinitionsForDestination
+            Var(immutable.SortedSet.empty)
+
+          val postOpenObserver : Observer[(Boolean,immutable.SortedSet[PostDefinition])] =
+            Observer[(Boolean,immutable.SortedSet[PostDefinition])]: (open : Boolean, pdset : immutable.SortedSet[PostDefinition]) =>
+              if open && pdset.isEmpty then
+                util.sttp.hardUpdatePostDefinitionsForDestination( protopostLocation, DestinationIdentifier( dn.destination.seismicNode.id, dn.destination.name), backend, postDefinitionsVar )
+
+          private def postDiv( pd : PostDefinition ) : HtmlElement =
+            val title = pd.title.fold("<untitled post>")(t => s""""$t"""")
+            val authors = commaListAnd( pd.authors ).fold("")( authors => s", by ${authors}" )
+            div(
+              span(
+                s"${title}${authors}"
+              ),
+              " ",
+              span(
+                s"[Post ID #${pd.postId}]"
+              )
+            )
           def create() : HtmlElement =
             div(
               cls("posts-pane"),
               marginLeft.em(2),
               marginTop.rem(0.25),
               fontWeight.normal,
-              display <-- openVar.signal.map( open => if open then "block" else "none" ),
+              display <-- openSignal.map( open => if open then "block" else "none" ),
+              children <-- postDefinitionsVar.signal.map( pdset => pdset.toList.map(pd => postDiv(pd)) ),
+              onMountCallback { mountContext =>
+                given Owner = mountContext.owner
+                openSignal.withCurrentValueOf(postDefinitionsVar).addObserver( postOpenObserver )
+              },
               div(
                 cls("posts-pane-end-menu"),
                 a(
                   fontSize.pt(TinyLinkFontSize),
                   cursor.default,
-                  disabled <-- posterNoAuthSignal.map( _.fold(false)(_ => true) ), 
+                  disabled <-- posterNoAuthSignal.map( _.fold(false)(_ => true) ),
                   onClick.flatMapTo(posterNoAuthSignal) --> { mbPna =>
                     mbPna match
                       case Some(posterNoAuth) =>
@@ -86,7 +114,7 @@ object DestinationsAndPostsCard:
           ),
           PostsPane.create()
         )
-    end DestinationPane  
+    end DestinationPane
 
     val destinationPanesSignal : Signal[Seq[HtmlElement]] =
       destinationsVar.signal.map: dnset =>

@@ -3,7 +3,8 @@ package protopost.client.util
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import protopost.api.{PostDefinition,PostDefinitionCreate}
+import protopost.api.{DestinationIdentifier,PostDefinition,PostDefinitionCreate,given}
+import scala.collection.immutable
 
 def epochSecondsNow() : Long = System.currentTimeMillis()/1000
 
@@ -29,7 +30,7 @@ object sttp:
   import _root_.sttp.client4.fetch.*
   import _root_.sttp.client4.jsoniter.*
   import protopost.api.{LoginStatus,given}
-  import protopost.client.LoginLevel
+  import protopost.client.{LoginLevel,ReverseChronologicalPostDefinitions}
   import scala.util.{Success,Failure}
 
   /*
@@ -56,6 +57,21 @@ object sttp:
         .body( asJson(postDefinitionCreate) )
         .response( asJson[Option[PostDefinition]] )
     setVarFromApiResult( request, backend, postDefinitionVar )
+
+  def hardUpdatePostDefinitionsForDestination(
+    protopostLocation : Uri,
+    destinationIdentifier : DestinationIdentifier,
+    backend : WebSocketBackend[scala.concurrent.Future],
+    postDefinitionsVar : com.raquo.laminar.api.L.Var[immutable.SortedSet[PostDefinition]]
+  )(using ec : ExecutionContext) =
+    given Ordering[PostDefinition] = ReverseChronologicalPostDefinitions
+    val request =
+      basicRequest
+        .post( protopostLocation.addPath("protopost", "destination-posts") )
+        .body( asJson(destinationIdentifier) )
+        .response( asJson[Set[PostDefinition]] )
+    setVarFromTransformedApiResult[Set[PostDefinition],immutable.SortedSet[PostDefinition]]( request, backend, postDefinitionsVar, immutable.SortedSet.from )
+
 
   def hardUpdateLoginStatus(
         protopostLocation : Uri,

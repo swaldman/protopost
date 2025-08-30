@@ -69,6 +69,8 @@ object Destination:
   given Ordering[Destination] = Ordering.by( d => ( d.seismicNode, d.name ) )
 case class Destination( seismicNode : SeismicNode, name : String )
 
+case class DestinationIdentifier( seismicNodeId : Int, name : String )
+
 object DestinationNickname:
   given Ordering[DestinationNickname] = Ordering.by( dn => (dn.destination, dn.nickname.getOrElse(LastCharString)) )
 case class DestinationNickname( destination : Destination, nickname : Option[String] )
@@ -97,6 +99,7 @@ given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
 given JsonValueCodec[PostDefinition] = JsonCodecMaker.make
 given JsonValueCodec[PostDefinitionCreate] = JsonCodecMaker.make
 given JsonValueCodec[PostDefinitionUpdate] = JsonCodecMaker.make
+given given_JsonValueCodec_Set_PostDefinition : JsonValueCodec[Set[PostDefinition]] = JsonCodecMaker.make
 
 given JsonValueCodec[PosterNoAuth] = JsonCodecMaker.make
 
@@ -104,6 +107,8 @@ given JsonValueCodec[SeismicNode] = JsonCodecMaker.make
 
 given JsonValueCodec[Destination] = JsonCodecMaker.make
 
+given JsonValueCodec[DestinationIdentifier] = JsonCodecMaker.make
+
 given JsonValueCodec[DestinationNickname] = JsonCodecMaker.make
 
-given JsonValueCodec[Set[DestinationNickname]] = JsonCodecMaker.make
+given given_JsonValueCodec_Set_DefinitionNickname : JsonValueCodec[Set[DestinationNickname]] = JsonCodecMaker.make
