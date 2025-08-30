@@ -8,8 +8,6 @@ import sttp.client4.fetch.*
 import sttp.model.*
 
 object Client:
-  final val TinyLinkFontSize = 9 //9pt
-
   @main
   def main() : Unit =
     lazy val container = dom.document.getElementById("root")

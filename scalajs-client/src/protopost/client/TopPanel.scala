@@ -17,7 +17,6 @@ import scala.scalajs.js.timers.*
 import protopost.api.{DestinationNickname, LoginStatus, PosterNoAuth, given}
 import protopost.client.util.epochSecondsNow
 
-import Client.TinyLinkFontSize
 import scala.util.control.NonFatal
 import protopost.api.PostDefinition
 
@@ -146,26 +145,24 @@ object TopPanel:
         |  /* Fixed height bottom section */
         |  flex: 0 0 auto;
         |}
-        |#logout-pane {
+        |a.click-link {
         |  color: blue;
-        |  transition: background-color 0.3s;
         |}
-        |#logout-pane:hover {
+        |a.tiny-link {
+        |  color: blue;
+        |}
+        |a.tiny-link:hover {
         |  color: red;
         |}
         |.tab-pane {
         |  color: blue;
-        |  transition: background-color 0.3s;
         |}
-        |.tab-pane:hover {
+        |.tab-pane a.tiny-link:hover {
         |  color: green;
         |}
-        |.tab-pane.current {
+        |.tab-pane.current a.tiny-link {
         |  color: black;
         |  font-weight: bold;
-        |}
-        |.tab-pane.current:hover {
-        |  color: black;
         |}
         """.stripMargin
       ),
@@ -193,12 +190,9 @@ object TopPanel:
             //backgroundColor.black,
             paddingTop.px(4),
             paddingRight.px(4),
-            fontSize.pt(TinyLinkFontSize),
-            a(
-              idAttr("logout-pane"),
-              "logout",
+            TinyLink.create("logout").amend(
+              idAttr("logout-link"),
               onClick --> logoutSubmitter, //{ event => dom.window.alert("logout") },
-              cursor("default"),
             )
           ),
           div(
@@ -244,10 +238,7 @@ object TopPanel:
       cls := "tab-pane",
       cls <-- locationVar.signal.map( t => if t == tab then "current" else "" ),
       textAlign.center,
-      a(
-        fontSize.pt(TinyLinkFontSize),
+      TinyLink.create(tab.label).amend(
         onClick.map(_ => tab) --> locationVar,
-        cursor.default,
-        tab.label
       ),
     )

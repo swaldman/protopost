@@ -10,7 +10,6 @@ import sttp.model.*
 
 import scala.collection.immutable
 
-import Client.TinyLinkFontSize
 import protopost.api.{DestinationNickname,PostDefinition,PostDefinitionCreate,PosterNoAuth}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
@@ -28,7 +27,7 @@ object DestinationsAndPostsCard:
 
     object DestinationPane:
       def create( dn : DestinationNickname, initOpen : Boolean = false ) : HtmlElement =
-        println( s"DestinationPane.create( $dn, $initOpen )" )
+        // println( s"DestinationPane.create( $dn, $initOpen )" )
         val openVar : Var[Boolean] = Var(initOpen)
         val openSignal = openVar.signal
         val destinationText = dn.nickname.getOrElse( s"${dn.destination.name}@${dn.destination.seismicNode.locationUrl}" )
@@ -66,12 +65,19 @@ object DestinationsAndPostsCard:
             util.sttp.hardUpdatePostDefinitionsForDestination( protopostLocation, DestinationIdentifier( dn.destination.seismicNode.id, dn.destination.name), backend, postDefinitionsVar )
 
           private def postDiv( pd : PostDefinition ) : HtmlElement =
-            val title = pd.title.fold("<untitled post>")(t => s""""$t"""")
-            val authors = commaListAnd( pd.authors ).fold("")( authors => s" by ${authors}" )
+            val title = pd.title.fold("(untitled post)")(t => s""""$t"""")
+            val authors = commaListAnd( pd.authors ).fold("")( authors => s"by ${authors}" )
             div(
               fontSize.pt(10),
+              ClickLink.create(title).amend(
+                onClick --> { _ =>
+                  currentPostDefinitionVar.set(Some(pd))
+                  locationVar.set(Tab.currentPost)
+                }
+              ),
+              " ",
               span(
-                s"${title}${authors}"
+                authors,
               ),
               " ",
               span(
@@ -80,47 +86,35 @@ object DestinationsAndPostsCard:
               )
             )
           def create() : HtmlElement =
-            println( s"PostsPane.create( $dn, $initOpen )" )
+            // println( s"PostsPane.create( $dn, $initOpen )" )
             div(
               cls("posts-pane"),
-              marginLeft.em(2),
+              marginLeft.rem(1),
               marginTop.rem(0.25),
               fontWeight.normal,
               display <-- openSignal.map( open => if open then "block" else "none" ),
               children <-- postDefinitionsVar.signal.map( pdset => pdset.toList.map(pd => postDiv(pd)) ),
               onMountCallback { mountContext =>
-                println( s"mount: $mountContext" )
+                // println( s"mount: $mountContext" )
                 given Owner = mountContext.owner
                 openSignal.withCurrentValueOf(postDefinitionsVar).addObserver( postOpenObserver )
                 currentPostDefinitionVar.signal.withCurrentValueOf(postDefinitionsVar).addObserver( newPostCreatedObserver )
                 newPostClicksWithPoster.addObserver( newPostClicksObserver )
               },
-              onUnmountCallback { mountContext =>
-                println( s"unmount: $mountContext" )
-              },
+              // onUnmountCallback { mountContext =>
+              //   println( s"unmount: $mountContext" )
+              // },
               div(
-                cls("posts-pane-end-menu"),
-                a(
-                  fontSize.pt(TinyLinkFontSize),
-                  cursor.default,
+                marginLeft.rem(0.25),
+                verticalAlign.middle,
+                "\u00BB ",
+                ClickLink.create("create new post").amend(
+                  fontSize.pt(10),
+                  cls("posts-pane-end-menu"),
                   //disabled <-- posterNoAuthSignal.map( _.fold(false)(_ => true) ),
                   onClick --> newPostClickBus,
-                  /*
-                  onClick.sample(posterNoAuthSignal) --> { (_,mbPna) =>
-                    println("In click handler...")
-                    //println("onClick.flatMapTo(posterNoAuthSignal)")
-                    //println(posterNoAuthSignal.tryNow())
-                    mbPna match
-                      case Some(posterNoAuth) =>
-                        val postDefinition = new PostDefinitionCreate( dn.destination.seismicNode.id, dn.destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
-                        util.sttp.hardUpdateNewPostDefinition( protopostLocation, postDefinition, backend, currentPostDefinitionVar )
-                        locationVar.set(Tab.currentPost)
-                      case None =>
-                        println("Cannot create new post, posterNoAuthSignal seems unset? We are not properly logged in?")
-                  },
-                   */
-                  "create new post"
                 ),
+                " \u00AB",
               )
             )
 
@@ -143,9 +137,10 @@ object DestinationsAndPostsCard:
               display.inlineBlock,
               marginRight.rem(0.25),
               fontWeight.normal,
-              fontSize.smaller,
+              fontSize.pt(8),
               verticalAlign.middle,
-              text <-- openVar.signal.map( open => if open then "\u25BC" else "\u25B6" ),
+              cursor.pointer,
+              text <-- openVar.signal.map( open => if open then /*"\u25BE"*/ "\u25BC" else /*"\u25B8"*/ "\u25B6" ),
               onClick --> { _ => openVar.update(o => !o) }
             ),
             destinationText
