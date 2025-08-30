@@ -57,6 +57,8 @@ object PgSchema extends SelfLogging:
         override val Create = "CREATE TYPE feed_kind AS ENUM ('rss', 'atom')"
       object FeedCurationType extends Creatable:
         override val Create = "CREATE TYPE feed_curation_type AS ENUM ('single', 'selection', 'all')"
+      object PublicationEventType extends Creatable:
+        override val Create = "CREATE TYPE publication_event_type AS ENUM ('publish', 'delete')"
     object Table:
       object SeismicNode extends Creatable:
         override val Create =
@@ -394,32 +396,13 @@ object PgSchema extends SelfLogging:
              |  post_id                   INTEGER,
              |  save_time                 TIMESTAMP,
              |  update_time               TIMESTAMP,
+             |  publication_event         publication_event_type,
              |  major_update_description  VARCHAR(2048),
              |  update_confirmation_state VARCHAR(128),   -- usually a git commit id
              |  PRIMARY KEY ( post_id, update_time ),
              |  FOREIGN KEY(post_id, save_time) REFERENCES post_revision(post_id, save_time)
              |)""".stripMargin
       end PostPublicationHistory
-      object PostDeleteHistory extends Creatable:
-        override val Create =
-          """|CREATE TABLE post_delete_history (
-             |  post_id                   INTEGER,
-             |  delete_time               TIMESTAMP,
-             |  delete_confirmation_state VARCHAR(128),
-             |  PRIMARY KEY ( post_id, delete_time ),
-             |  FOREIGN KEY(post_id) REFERENCES post(id)
-             |)""".stripMargin
-      end PostDeleteHistory
-      object PostUndeleteHistory extends Creatable:
-        override val Create =
-          """|CREATE TABLE post_undelete_history (
-             |  post_id                     INTEGER,
-             |  undelete_time               TIMESTAMP,
-             |  undelete_confirmation_state VARCHAR(128),
-             |  PRIMARY KEY ( post_id, undelete_time ),
-             |  FOREIGN KEY(post_id) REFERENCES post(id)
-             |)""".stripMargin
-      end PostUndeleteHistory
       object PostMedia extends Creatable:
         override val Create =
           """|CREATE TABLE post_media (
