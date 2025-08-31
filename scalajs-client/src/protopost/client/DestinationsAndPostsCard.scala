@@ -37,7 +37,7 @@ object DestinationsAndPostsCard:
             given Ordering[PostDefinition] = ReverseChronologicalPostDefinitions // also set up in util.hardUpdatePostDefinitionsForDestination
             Var(immutable.SortedSet.empty)
 
-          val postOpenObserver : Observer[(Boolean,immutable.SortedSet[PostDefinition])] =
+          val postsOpenObserver : Observer[(Boolean,immutable.SortedSet[PostDefinition])] =
             Observer[(Boolean,immutable.SortedSet[PostDefinition])]: (open : Boolean, pdset : immutable.SortedSet[PostDefinition]) =>
               if open && pdset.isEmpty then updatePostsList()
 
@@ -97,7 +97,7 @@ object DestinationsAndPostsCard:
               onMountCallback { mountContext =>
                 // println( s"mount: $mountContext" )
                 given Owner = mountContext.owner
-                openSignal.withCurrentValueOf(postDefinitionsVar).addObserver( postOpenObserver )
+                openSignal.withCurrentValueOf(postDefinitionsVar).addObserver( postOpensObserver )
                 currentPostDefinitionVar.signal.withCurrentValueOf(postDefinitionsVar).addObserver( newPostCreatedObserver )
                 newPostClicksWithPoster.addObserver( newPostClicksObserver )
               },
@@ -159,11 +159,10 @@ object DestinationsAndPostsCard:
       idAttr("destinations-and-posts-panel"),
       // backgroundColor("green"),
       height.percent(100),
-      fontWeight.bold,
-      marginLeft.rem(0.5),
-      marginRight.rem(0.5),
+      paddingLeft.rem(Client.CardPaddingLeftRightRem),
+      paddingRight.rem(Client.CardPaddingLeftRightRem),
       div(
-        fontSize.pt(18),
+        fontSize.pt(Client.CardTitleFontSizePt),
         fontWeight.bold,
         "Destinations"
       ),

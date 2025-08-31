@@ -8,6 +8,9 @@ import sttp.client4.fetch.*
 import sttp.model.*
 
 object Client:
+  val CardPaddingLeftRightRem = 0.5d
+  val CardTitleFontSizePt = 18
+
   @main
   def main() : Unit =
     lazy val container = dom.document.getElementById("root")
