@@ -136,6 +136,7 @@ object sttp:
         case Success(result) =>
           //println( s"Setting result: ${result}" )
           laminarVar.update(updater(result))
+          sideEffectPostUpdate(result)
         case Failure(t) => errorHandler(t)
     catch
       case NonFatal(t) => errorHandler(t)
