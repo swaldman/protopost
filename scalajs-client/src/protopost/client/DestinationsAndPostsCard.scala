@@ -145,7 +145,8 @@ object DestinationsAndPostsCard:
           ),
           cls("destination-pane"),
           div(
-            fontSize.pt(12),
+            fontSize.pt(11),
+            fontWeight.bold,
             span(
               display.inlineBlock,
               marginRight.rem(0.25),
