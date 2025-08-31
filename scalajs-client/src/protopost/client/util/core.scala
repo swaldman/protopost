@@ -5,6 +5,7 @@ import scala.util.control.NonFatal
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
 import protopost.api.{DestinationIdentifier,PostDefinition,PostDefinitionCreate,given}
 import scala.collection.immutable
+import protopost.api.PostIdentifier
 
 def epochSecondsNow() : Long = System.currentTimeMillis()/1000
 
@@ -47,22 +48,38 @@ object sttp:
 
   def hardUpdateNewPostDefinition(
     protopostLocation : Uri,
+    destinationIdentifier : DestinationIdentifier,
     postDefinitionCreate : PostDefinitionCreate,
     backend : WebSocketBackend[scala.concurrent.Future],
-    postDefinitionVar : com.raquo.laminar.api.L.Var[Option[PostDefinition]]
+    destinationsToKnownPostsVar : com.raquo.laminar.api.L.Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
+    currentPostIdentifierVar : com.raquo.laminar.api.L.Var[Option[PostIdentifier]]
   )(using ec : ExecutionContext) =
     val request =
       basicRequest
         .post( protopostLocation.addPath("protopost", "new-post") )
         .body( asJson(postDefinitionCreate) )
         .response( asJson[Option[PostDefinition]] )
-    setVarFromApiResult( request, backend, postDefinitionVar )
+    val updater : Option[PostDefinition] => Map[DestinationIdentifier,Map[Int,PostDefinition]] => Map[DestinationIdentifier,Map[Int,PostDefinition]] =
+      mbPostDefinition =>
+        mbPostDefinition match
+          case Some( postDefinition ) =>
+            ( map : Map[DestinationIdentifier,Map[Int,PostDefinition]] ) =>
+              val destinationMap =
+                map
+                  .get(destinationIdentifier)
+                  .fold( Map( postDefinition.postId -> postDefinition ) )( dm => dm + (postDefinition.postId -> postDefinition) )
+              map + ( destinationIdentifier -> destinationMap )
+          case None =>
+            println("Attempt to update post definition yielded none, as if the post updated is not known to the server.")
+            scala.Predef.identity
+    val sideEffectPostUpdate = (mbPostDefinition : Option[PostDefinition]) => currentPostIdentifierVar.set( mbPostDefinition.map( pd => PostIdentifier(destinationIdentifier,pd.postId) ) )
+    updateVarFromApiResult[Option[PostDefinition],Map[DestinationIdentifier,Map[Int,PostDefinition]]]( request, backend, destinationsToKnownPostsVar, updater, sideEffectPostUpdate )
 
-  def hardUpdatePostDefinitionsForDestination(
+  def hardUpdateDestinationsToKnownPosts(
     protopostLocation : Uri,
     destinationIdentifier : DestinationIdentifier,
     backend : WebSocketBackend[scala.concurrent.Future],
-    postDefinitionsVar : com.raquo.laminar.api.L.Var[immutable.SortedSet[PostDefinition]]
+    destinationsToKnownPostsVar : com.raquo.laminar.api.L.Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]]
   )(using ec : ExecutionContext) =
     given Ordering[PostDefinition] = ReverseChronologicalPostDefinitions
     val request =
@@ -70,8 +87,11 @@ object sttp:
         .post( protopostLocation.addPath("protopost", "destination-posts") )
         .body( asJson(destinationIdentifier) )
         .response( asJson[Set[PostDefinition]] )
-    setVarFromTransformedApiResult[Set[PostDefinition],immutable.SortedSet[PostDefinition]]( request, backend, postDefinitionsVar, immutable.SortedSet.from )
-
+    val updater : Set[PostDefinition] => Map[DestinationIdentifier,Map[Int,PostDefinition]] => Map[DestinationIdentifier,Map[Int,PostDefinition]] =
+      set =>
+        val newMap = set.map( pd => (pd.postId, pd) ).toMap
+        ( curVal : Map[DestinationIdentifier,Map[Int,PostDefinition]] ) => curVal + Tuple2( destinationIdentifier, newMap )
+    updateVarFromApiResult[Set[PostDefinition],Map[DestinationIdentifier,Map[Int,PostDefinition]]]( request, backend, destinationsToKnownPostsVar, updater )
 
   def hardUpdateLoginStatus(
         protopostLocation : Uri,
@@ -99,6 +119,27 @@ object sttp:
       case Right( theThing ) => theThing
 
   private val DefaultErrorHandler : Throwable => Unit = t => t.printStackTrace()
+
+
+  def updateVarFromApiResult[T : JsonValueCodec,U](
+        request : Request[Either[ResponseException[String], T]],
+        backend : WebSocketBackend[scala.concurrent.Future],
+        laminarVar : com.raquo.laminar.api.L.Var[U],
+        updater : T => U => U,
+        sideEffectPostUpdate : T => Unit = (_ : T) => (),
+        errorHandler : Throwable => Unit = DefaultErrorHandler
+  )( using ec : ExecutionContext ) : Unit =
+    try
+      val future = request.send(backend).map( _.body ).map( decodeOrThrow )
+
+      future.onComplete:
+        case Success(result) =>
+          //println( s"Setting result: ${result}" )
+          laminarVar.update(updater(result))
+        case Failure(t) => errorHandler(t)
+    catch
+      case NonFatal(t) => errorHandler(t)
+
 
   def setVarFromTransformedApiResult[T : JsonValueCodec,U](
         request : Request[Either[ResponseException[String], T]],

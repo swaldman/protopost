@@ -10,7 +10,7 @@ import sttp.model.*
 
 import scala.collection.immutable
 
-import protopost.api.{DestinationNickname,PostDefinition,PostDefinitionCreate,PosterNoAuth}
+import protopost.api.{DestinationNickname,PostDefinition,PostDefinitionCreate,PostIdentifier,PosterNoAuth}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import protopost.api.DestinationIdentifier
@@ -19,8 +19,9 @@ object DestinationsAndPostsCard:
   def create(
     protopostLocation : Uri,
     backend : WebSocketBackend[scala.concurrent.Future],
-    currentPostDefinitionVar : Var[Option[PostDefinition]],
+    currentPostIdentifierVar : Var[Option[PostIdentifier]],
     destinationsVar : Var[immutable.SortedSet[DestinationNickname]],
+    destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
     locationVar : Var[Tab],
     posterNoAuthSignal : Signal[Option[PosterNoAuth]]
   ) : HtmlElement =
@@ -33,18 +34,25 @@ object DestinationsAndPostsCard:
         val destinationText = dn.nickname.getOrElse( s"${dn.destination.name}@${dn.destination.seismicNode.locationUrl}" )
 
         object PostsPane:
-          val postDefinitionsVar : Var[immutable.SortedSet[PostDefinition]] =
-            given Ordering[PostDefinition] = ReverseChronologicalPostDefinitions // also set up in util.hardUpdatePostDefinitionsForDestination
-            Var(immutable.SortedSet.empty)
+          val postDefinitionsSignal : Signal[Option[immutable.SortedSet[PostDefinition]]] =
+            given Ordering[PostDefinition] = ReverseChronologicalPostDefinitions
+            destinationsToKnownPostsVar.signal.map: outerMap =>
+              outerMap.get(dn.destinationIdentifier).map: destinationMap =>
+                val pds = destinationMap.map( (k,v) => v )
+                pds.to(immutable.SortedSet)
 
-          val postsOpenObserver : Observer[(Boolean,immutable.SortedSet[PostDefinition])] =
-            Observer[(Boolean,immutable.SortedSet[PostDefinition])]: (open : Boolean, pdset : immutable.SortedSet[PostDefinition]) =>
-              if open && pdset.isEmpty then updatePostsList()
+          val openPostDefinitionsSignal = Signal.combine(openSignal,postDefinitionsSignal)
 
-          val newPostCreatedObserver = Observer[(Option[PostDefinition],immutable.SortedSet[PostDefinition])]( (mbPostDefinition, currentPostDefinitions) => // currentPostDefinitinVar
-            mbPostDefinition match
-              case Some( postDefinition ) =>
-                if postDefinition.destination == dn.destination && !currentPostDefinitions(postDefinition) then updatePostsList()
+          val postsOpenObserver = Observer[(Boolean,Option[immutable.SortedSet[PostDefinition]])]: (open : Boolean, mbpdset : Option[immutable.SortedSet[PostDefinition]]) =>
+              if open && mbpdset.isEmpty then updatePosts()
+
+          val newPostCreatedObserver = Observer[(Option[PostIdentifier],Option[immutable.SortedSet[PostDefinition]])]( (mbPostIdentifier, mbCurrentPostDefinitions) => 
+            mbPostIdentifier match
+              case Some( postIdentifier ) =>
+                if postIdentifier.destinationIdentifier == dn.destinationIdentifier then
+                  mbCurrentPostDefinitions match
+                    case Some(currentPostDefinitions) if !currentPostDefinitions.exists( _.postId == postIdentifier.postId ) => updatePosts()
+                    case _ => /* ignore */
               case None =>
                 /* ignore */
           )
@@ -55,14 +63,15 @@ object DestinationsAndPostsCard:
           val newPostClicksObserver = Observer[(dom.MouseEvent,Option[PosterNoAuth])]: (_,mbPna) =>
             mbPna match
               case Some(posterNoAuth) =>
+                val di = dn.destinationIdentifier
                 val postDefinition = new PostDefinitionCreate( dn.destination.seismicNode.id, dn.destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
-                util.sttp.hardUpdateNewPostDefinition( protopostLocation, postDefinition, backend, currentPostDefinitionVar )
+                util.sttp.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierVar )
                 locationVar.set(Tab.currentPost)
               case None =>
                 println("Cannot create new post, posterNoAuthSignal seems unset? We are not properly logged in?")
 
-          def updatePostsList() =
-            util.sttp.hardUpdatePostDefinitionsForDestination( protopostLocation, DestinationIdentifier( dn.destination.seismicNode.id, dn.destination.name), backend, postDefinitionsVar )
+          def updatePosts() =
+            util.sttp.hardUpdateDestinationsToKnownPosts( protopostLocation, dn.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
           private def postDiv( pd : PostDefinition ) : HtmlElement =
             val title = pd.title.fold("(untitled post)")(t => s""""$t"""")
@@ -71,7 +80,7 @@ object DestinationsAndPostsCard:
               fontSize.pt(10),
               ClickLink.create(title).amend(
                 onClick --> { _ =>
-                  currentPostDefinitionVar.set(Some(pd))
+                  currentPostIdentifierVar.set(Some(PostIdentifier(dn.destinationIdentifier,pd.postId)))
                   locationVar.set(Tab.currentPost)
                 }
               ),
@@ -93,12 +102,16 @@ object DestinationsAndPostsCard:
               marginTop.rem(0.25),
               fontWeight.normal,
               display <-- openSignal.map( open => if open then "block" else "none" ),
-              children <-- postDefinitionsVar.signal.map( pdset => pdset.toList.map(pd => postDiv(pd)) ),
+              children <-- {postDefinitionsSignal.map: mbPdset =>
+                mbPdset match
+                  case Some( pdset ) => pdset.toList.map(pd => postDiv(pd))
+                  case None => List.empty
+              },
               onMountCallback { mountContext =>
                 // println( s"mount: $mountContext" )
                 given Owner = mountContext.owner
-                openSignal.withCurrentValueOf(postDefinitionsVar).addObserver( postOpensObserver )
-                currentPostDefinitionVar.signal.withCurrentValueOf(postDefinitionsVar).addObserver( newPostCreatedObserver )
+                openPostDefinitionsSignal.addObserver( postsOpenObserver )
+                currentPostIdentifierVar.signal.withCurrentValueOf(postDefinitionsSignal).addObserver( newPostCreatedObserver )
                 newPostClicksWithPoster.addObserver( newPostClicksObserver )
               },
               // onUnmountCallback { mountContext =>

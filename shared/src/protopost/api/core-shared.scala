@@ -71,9 +71,12 @@ case class Destination( seismicNode : SeismicNode, name : String )
 
 case class DestinationIdentifier( seismicNodeId : Int, name : String )
 
+case class PostIdentifier( destinationIdentifier : DestinationIdentifier, postId : Int )
+
 object DestinationNickname:
   given Ordering[DestinationNickname] = Ordering.by( dn => (dn.destination, dn.nickname.getOrElse(LastCharString)) )
-case class DestinationNickname( destination : Destination, nickname : Option[String] )
+case class DestinationNickname( destination : Destination, nickname : Option[String] ):
+  def destinationIdentifier = DestinationIdentifier(destination.seismicNode.id,destination.name)
 
 // json codecs -- jsoniter-scala
 given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:

@@ -14,7 +14,7 @@ import scala.util.{Success,Failure}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import scala.scalajs.js.timers.*
 
-import protopost.api.{DestinationNickname, LoginStatus, PosterNoAuth, given}
+import protopost.api.{DestinationIdentifier, DestinationNickname, LoginStatus, PostIdentifier, PosterNoAuth, given}
 import protopost.client.util.epochSecondsNow
 
 import scala.util.control.NonFatal
@@ -38,7 +38,8 @@ object TopPanel:
     val posterNoAuthVar : Var[Option[PosterNoAuth]] = Var(None)
     val posterNoAuthSignal : Signal[Option[PosterNoAuth]] = posterNoAuthVar.signal
     val destinationsVar : Var[immutable.SortedSet[DestinationNickname]] = Var( immutable.SortedSet.empty )
-    val currentPostDefinitionVar : Var[Option[PostDefinition]] = Var(None)
+    val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
+    val currentPostIdentifierVar : Var[Option[PostIdentifier]] = Var(None)
 
     val locationVar : Var[Tab] = Var(Tab.profile)
 
@@ -63,8 +64,8 @@ object TopPanel:
 
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
-    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostDefinitionVar,destinationsVar,locationVar,posterNoAuthSignal)
-    val currentPostCard = CurrentPostCard.create( currentPostDefinitionVar )
+    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierVar,destinationsVar,destinationsToKnownPostsVar,locationVar,posterNoAuthSignal)
+    val currentPostCard = CurrentPostCard.create( destinationsToKnownPostsVar, currentPostIdentifierVar )
     val profileCard = ProfileCard.create(posterNoAuthSignal)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>

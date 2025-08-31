@@ -1,25 +1,30 @@
 package protopost.client
 
-import protopost.api.{PostDefinition, given}
+import protopost.api.{DestinationIdentifier,PostDefinition,PostIdentifier,given}
 
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
 object CurrentPostCard:
-  def create( currentPostDefinitionVar : Var[Option[PostDefinition]] ) : HtmlElement =
-    val currentPostDefinitionSignal = currentPostDefinitionVar.signal
+  def create( destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]], currentPostIdentifierVar : Var[Option[PostIdentifier]] ) : HtmlElement =
+    val currentPostIdentifierSignal = currentPostIdentifierVar.signal
+    val currentPostDefinitionSignal = currentPostIdentifierSignal.withCurrentValueOf(destinationsToKnownPostsVar).map: (mbpi,d2kp) =>
+      mbpi.flatMap: pi =>
+        val mbDestinationMap = d2kp.get(pi.destinationIdentifier)
+        mbDestinationMap.flatMap( dm => dm.get(pi.postId) )
+
     div(
       idAttr := "current-post-card",
       paddingLeft.rem(Client.CardPaddingLeftRightRem),
       paddingRight.rem(Client.CardPaddingLeftRightRem),
       div(
         idAttr := "current-post-card-no-post-pane",
-        display <-- currentPostDefinitionSignal.map( opt => if opt.isEmpty then "block" else "none" ),
+        display <-- currentPostIdentifierSignal.map( opt => if opt.isEmpty then "block" else "none" ),
         "No post chosen"
       ),
       div(
         idAttr := "current-post-card-with-post-pane",
-        display <-- currentPostDefinitionSignal.map( opt => if opt.isEmpty then "none" else "block" ),
+        display <-- currentPostIdentifierSignal.map( opt => if opt.isEmpty then "none" else "block" ),
         div(
           fontSize.pt(Client.CardTitleFontSizePt),
           fontWeight.bold,
