@@ -118,7 +118,9 @@ object sttp:
       case Left( oops ) => throw oops //new Exception( oops.toString() )
       case Right( theThing ) => theThing
 
-  private val DefaultErrorHandler : Throwable => Unit = t => t.printStackTrace()
+  private val DefaultErrorHandler : Throwable => Unit =
+    t => t.printStackTrace()
+    org.scalajs.dom.window.alert( t.toString() )
 
 
   def updateVarFromApiResult[T : JsonValueCodec,U](
