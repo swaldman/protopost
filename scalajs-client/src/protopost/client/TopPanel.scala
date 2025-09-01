@@ -66,7 +66,7 @@ object TopPanel:
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
     val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierVar,destinationsVar,destinationsToKnownPostsVar,locationVar,posterNoAuthSignal)
-    val currentPostCard = CurrentPostCard.create( destinationsToKnownPostsVar, currentPostIdentifierVar, posterNoAuthSignal )
+    val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierVar, posterNoAuthSignal )
     val profileCard = ProfileCard.create(posterNoAuthSignal)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>

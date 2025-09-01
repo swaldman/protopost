@@ -87,7 +87,7 @@ object TapirEndpoint extends SelfLogging:
 
   val DestinationPosts = PosterAuthenticated.post.in("destination-posts").in(jsonBody[DestinationIdentifier]).out(jsonBody[Set[PostDefinition]])
 
-  val UpdatePostDefinition = PosterAuthenticated.post.in("update-post-definition").in(jsonBody[PostDefinitionUpdate]).out(jsonBody[PostDefinition])
+  val UpdatePostDefinition = PosterAuthenticated.post.in("update-post").in(jsonBody[PostDefinitionUpdate]).out(jsonBody[PostDefinition])
 
   val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
 
@@ -199,6 +199,7 @@ object TapirEndpoint extends SelfLogging:
       case `leave-alone` => existingValue
 
   def updatePostDefinition( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( pdu : PostDefinitionUpdate ) : ZOut[PostDefinition] =
+    // println( pdu )
     ZOut.fromTask:
       val db = appResources.database
       val ds = appResources.dataSource
@@ -216,8 +217,6 @@ object TapirEndpoint extends SelfLogging:
               val inReplyToMimeType : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.inReplyToMimeType, pdu.inReplyToMimeType )
               val inReplyToGuid     : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.inReplyToGuid, pdu.inReplyToGuid )
 
-              val updateAuthors = pdu.authors != UpdateValue.`leave-alone`
-
               db.updatePostDefinitionMain(
                 postId = postId,
                 title = title,
@@ -227,6 +226,8 @@ object TapirEndpoint extends SelfLogging:
                 inReplyToMimeType = inReplyToMimeType,
                 inReplyToGuid = inReplyToGuid
               )( conn )
+
+              val updateAuthors = pdu.authors != UpdateValue.`leave-alone`
 
               if updateAuthors then
                 val newSeq = translateSeqUpdateValueToDb( currentPostDefinition.authors, pdu.authors )

@@ -262,12 +262,12 @@ object PgSchema extends SelfLogging:
              |VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
         val UpdateMain =
           """|UPDATE post
-             |SET title             = ?,
-             |    post_anchor       = ?,
-             |    sprout            = ?,
-             |    inReplyToHref     = ?,
-             |    inReplyToMimeType = ?,
-             |    inReplyToGuid     = ?
+             |SET title                 = ?,
+             |    post_anchor           = ?,
+             |    sprout                = ?,
+             |    in_reply_to_href      = ?,
+             |    in_reply_to_mime_type = ?,
+             |    in_reply_to_guid      = ?
              |WHERE id = ?""".stripMargin
         private def extract( rs : ResultSet ) : PostDefinitionRaw =
           PostDefinitionRaw(

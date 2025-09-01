@@ -3,7 +3,7 @@ package protopost.client.util
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import protopost.api.{DestinationIdentifier,PostDefinition,PostDefinitionCreate,given}
+import protopost.api.{DestinationIdentifier,PostDefinition,PostDefinitionCreate,PostDefinitionUpdate,given}
 import scala.collection.immutable
 import protopost.api.PostIdentifier
 
@@ -74,6 +74,28 @@ object sttp:
             scala.Predef.identity
     val sideEffectPostUpdate = (mbPostDefinition : Option[PostDefinition]) => currentPostIdentifierVar.set( mbPostDefinition.map( pd => PostIdentifier(destinationIdentifier,pd.postId) ) )
     updateVarFromApiResult[Option[PostDefinition],Map[DestinationIdentifier,Map[Int,PostDefinition]]]( request, backend, destinationsToKnownPostsVar, updater, sideEffectPostUpdate )
+
+  def hardUpdatePostDefinitionUpdate(
+    protopostLocation : Uri,
+    destinationIdentifier : DestinationIdentifier,
+    postDefinitionUpdate : PostDefinitionUpdate,
+    backend : WebSocketBackend[scala.concurrent.Future],
+    destinationsToKnownPostsVar : com.raquo.laminar.api.L.Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
+    sideEffectPostUpdate : PostDefinition => Unit
+  )(using ec : ExecutionContext) =
+    val request =
+      basicRequest
+        .post( protopostLocation.addPath("protopost", "update-post") )
+        .body( asJson(postDefinitionUpdate) )
+        .response( asJson[PostDefinition] )
+    val updater : PostDefinition => Map[DestinationIdentifier,Map[Int,PostDefinition]] => Map[DestinationIdentifier,Map[Int,PostDefinition]] = postDefinition =>
+      ( map : Map[DestinationIdentifier,Map[Int,PostDefinition]] ) =>
+        val destinationMap =
+          map
+            .get(destinationIdentifier)
+            .fold( Map( postDefinition.postId -> postDefinition ) )( dm => dm + (postDefinition.postId -> postDefinition) )
+        map + ( destinationIdentifier -> destinationMap )
+    updateVarFromApiResult[PostDefinition,Map[DestinationIdentifier,Map[Int,PostDefinition]]]( request, backend, destinationsToKnownPostsVar, updater, sideEffectPostUpdate )
 
   def hardUpdateDestinationsToKnownPosts(
     protopostLocation : Uri,

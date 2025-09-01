@@ -35,13 +35,13 @@ case class PostDefinitionCreate(
 
 case class PostDefinitionUpdate(
   postId                   : Int,
-  title                    : UpdateValue[String],
-  postAnchor               : UpdateValue[String],
-  sprout                   : UpdateValue[Boolean],
-  inReplyToHref            : UpdateValue[String],
-  inReplyToMimeType        : UpdateValue[String],
-  inReplyToGuid            : UpdateValue[String],
-  authors                  : UpdateValue[Seq[String]]
+  title                    : UpdateValue[String]      = UpdateValue.`leave-alone`,
+  postAnchor               : UpdateValue[String]      = UpdateValue.`leave-alone`,
+  sprout                   : UpdateValue[Boolean]     = UpdateValue.`leave-alone`,
+  inReplyToHref            : UpdateValue[String]      = UpdateValue.`leave-alone`,
+  inReplyToMimeType        : UpdateValue[String]      = UpdateValue.`leave-alone`,
+  inReplyToGuid            : UpdateValue[String]      = UpdateValue.`leave-alone`,
+  authors                  : UpdateValue[Seq[String]] = UpdateValue.`leave-alone`
 )
 
 case class PostDefinition(
@@ -73,7 +73,8 @@ case class SeismicNode( id : Int, algcrv : String, publicKeyHex0x : String, prot
 
 object Destination:
   given Ordering[Destination] = Ordering.by( d => ( d.seismicNode, d.name ) )
-case class Destination( seismicNode : SeismicNode, name : String )
+case class Destination( seismicNode : SeismicNode, name : String ):
+  def destinationIdentifier = DestinationIdentifier(seismicNode.id,name)
 
 case class DestinationIdentifier( seismicNodeId : Int, name : String )
 

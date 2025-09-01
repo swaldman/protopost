@@ -112,7 +112,7 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
       inReplyToHref = inReplyToHref,
       inReplyToMimeType = inReplyToMimeType,
       inReplyToGuid = inReplyToGuid
-    )
+    )( conn )
 
   object txn:
     def createUser( authManager : AuthManager[PosterId] )( email : EmailAddress, fullName : String, password : Password )( ds : DataSource ) : Task[PosterId] =
