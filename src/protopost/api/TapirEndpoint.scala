@@ -9,7 +9,7 @@ import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.{ApparentBug,AppResources,BadPostDefinition,EmailAddress,ExternalConfig,MissingConfig,Password,PosterId}
+import protopost.{ApparentBug,AppResources,BadPostDefinition,EmailAddress,ExternalConfig,MissingConfig,Password,PosterId,UnknownPost}
 import protopost.LoggingApi.*
 
 import protopost.db.PgDatabase
@@ -86,6 +86,8 @@ object TapirEndpoint extends SelfLogging:
   val NewPost = PosterAuthenticated.post.in("new-post").in(jsonBody[PostDefinitionCreate]).out(jsonBody[PostDefinition])
 
   val DestinationPosts = PosterAuthenticated.post.in("destination-posts").in(jsonBody[DestinationIdentifier]).out(jsonBody[Set[PostDefinition]])
+
+  val UpdatePostDefinition = PosterAuthenticated.post.in("update-post-definition").in(jsonBody[PostDefinitionUpdate]).out(jsonBody[PostDefinition])
 
   val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
 
@@ -181,6 +183,60 @@ object TapirEndpoint extends SelfLogging:
       //val subject = parseSubject( authenticatedPoster )
       withConnectionTransactional(ds): conn =>
         db.postDefinitionsForDestination(destinationIdentifier.seismicNodeId, destinationIdentifier.name)(conn)
+
+  private def translateUpdateValueToDb[T]( existingValue : Option[T], update : Option[UpdateValue[T]] ) : Option[T] =
+    update match
+      case Some( uv ) =>
+        uv match
+          case UpdateValue.Value( value ) => Some(value)
+          case UpdateValue.Null           => None
+      case None =>
+        existingValue
+
+  private def translateNonNullUpdateToDb[T]( existingValue : T, update : Option[T] ) : Option[T] =
+    update match
+      case Some( t ) => Some(t)
+      case None => Some(existingValue)
+  
+  def updatePostDefinition( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( pdu : PostDefinitionUpdate ) : ZOut[PostDefinition] =
+    ZOut.fromTask:
+      val db = appResources.database
+      val ds = appResources.dataSource
+      val subject = parseSubject( authenticatedPoster )
+
+      withConnectionTransactional(ds): conn =>
+        db.postDefinitionForId( pdu.postId )( conn ) match
+          case Some( currentPostDefinition ) =>
+            if currentPostDefinition.owner.id == subject.posterId then
+              val postId            : Int             = pdu.postId
+              val title             : Option[String]  = translateUpdateValueToDb(currentPostDefinition.title, pdu.title )
+              val postAnchor        : Option[String]  = translateUpdateValueToDb(currentPostDefinition.postAnchor, pdu.postAnchor )
+              val sprout            : Option[Boolean] = translateUpdateValueToDb(currentPostDefinition.sprout, pdu.sprout )
+              val inReplyToHref     : Option[String]  = translateUpdateValueToDb(currentPostDefinition.inReplyToHref, pdu.inReplyToHref )
+              val inReplyToMimeType : Option[String]  = translateUpdateValueToDb(currentPostDefinition.inReplyToMimeType, pdu.inReplyToMimeType )
+              val inReplyToGuid     : Option[String]  = translateUpdateValueToDb(currentPostDefinition.inReplyToGuid, pdu.inReplyToGuid )
+
+              val updateAuthors = pdu.authors.nonEmpty
+
+              db.updatePostDefinitionMain(
+                postId = postId,
+                title = title,
+                postAnchor = postAnchor,
+                sprout = sprout,
+                inReplyToHref = inReplyToHref,
+                inReplyToMimeType = inReplyToMimeType,
+                inReplyToGuid = inReplyToGuid
+              )( conn )
+
+              if updateAuthors then
+                db.replaceAuthorsForPost( postId, pdu.authors.get )( conn ) // we know authors is nonEmpty if updateAuthors is true
+
+              db.postDefinitionForId( pdu.postId )( conn ).getOrElse:
+                throw new ApparentBug( s"In same transaction as a successful update of post with id ${postId}, the post no longer exists?!?" )
+            else
+              throw new InsufficientPermissions( s"User ${subject.posterId} cannot update a post owned by user ${currentPostDefinition.owner.id}" )
+          case None =>
+            throw new UnknownPost( s"No post with is ${pdu.postId} exists to update." )
 
   def jwks( appResources : AppResources )(u : Unit) : ZOut[jwt.Jwks] =
     ZOut.fromTask:
@@ -318,6 +374,7 @@ object TapirEndpoint extends SelfLogging:
       Destinations.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( destinations(appResources) ),
       NewPost.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( newPost(appResources) ),
       DestinationPosts.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( destinationPosts(appResources) ),
+      UpdatePostDefinition.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( updatePostDefinition(appResources) ),
       ScalaJsServerEndpoint
     ) ++ rootAsClient.toList
 

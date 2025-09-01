@@ -260,6 +260,15 @@ object PgSchema extends SelfLogging:
           """|INSERT INTO
              |post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink)
              |VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
+        val UpdateMain =
+          """|UPDATE post
+             |SET title             = ?,
+             |    post_anchor       = ?,
+             |    sprout            = ?,
+             |    inReplyToHref     = ?,
+             |    inReplyToMimeType = ?,
+             |    inReplyToGuid     = ?
+             |WHERE id = ?""".stripMargin
         private def extract( rs : ResultSet ) : PostDefinitionRaw =
           PostDefinitionRaw(
             postId = rs.getInt(1),
@@ -317,6 +326,24 @@ object PgSchema extends SelfLogging:
             setStringOptional( ps, 10, Types.VARCHAR, inReplyToGuid )
             ps.setBoolean( 11, publicationAttempted )
             setStringOptional( ps, 12, Types.VARCHAR, htmlPermalink )
+            ps.executeUpdate()
+        def updateMain(
+          postId : Int,
+          title : Option[String],
+          postAnchor : Option[String],
+          sprout : Option[Boolean],
+          inReplyToHref : Option[String],
+          inReplyToMimeType : Option[String],
+          inReplyToGuid : Option[String]
+        )( conn : Connection ) =
+          Using.resource(conn.prepareStatement(UpdateMain)): ps =>
+            setStringOptional( ps, 1, Types.VARCHAR, title )
+            setStringOptional( ps, 2, Types.VARCHAR, postAnchor )
+            setBooleanOptional( ps, 3, sprout )
+            setStringOptional( ps, 4, Types.VARCHAR, inReplyToHref )
+            setStringOptional( ps, 5, Types.VARCHAR, inReplyToMimeType )
+            setStringOptional( ps, 6, Types.VARCHAR, inReplyToGuid )
+            ps.setInt( 7, postId )
             ps.executeUpdate()
       end Post
       object FeedContainer extends Creatable:

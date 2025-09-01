@@ -15,6 +15,7 @@ import com.mchange.sc.sqlutil.*
 import com.mchange.sc.zsqlutil.*
 import protopost.EmailIsAlreadyRegistered
 import protopost.api.PostDefinition
+import protopost.api.PostDefinitionUpdate
 
 class PgDatabase( val SchemaManager : PgSchemaManager ):
   val Schema = SchemaManager.LatestSchema
@@ -94,6 +95,24 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.SeismicNode.selectByComponents( algcrv, pubkey, protocol, host, port )( conn )
   def updateHashForPoster( posterId : PosterId, hash : BCryptHash )( conn : Connection ) : Unit =
     Schema.Table.Poster.updateHash( posterId, hash )( conn )
+  def updatePostDefinitionMain( 
+    postId : Int,
+    title : Option[String],
+    postAnchor : Option[String],
+    sprout : Option[Boolean],
+    inReplyToHref : Option[String],
+    inReplyToMimeType : Option[String],
+    inReplyToGuid : Option[String]
+  )( conn : Connection ) =
+    Schema.Table.Post.updateMain(
+      postId = postId,
+      title = title,
+      postAnchor = postAnchor,
+      sprout = sprout,
+      inReplyToHref = inReplyToHref,
+      inReplyToMimeType = inReplyToMimeType,
+      inReplyToGuid = inReplyToGuid
+    )
 
   object txn:
     def createUser( authManager : AuthManager[PosterId] )( email : EmailAddress, fullName : String, password : Password )( ds : DataSource ) : Task[PosterId] =

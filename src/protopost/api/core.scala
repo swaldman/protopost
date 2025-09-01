@@ -86,6 +86,8 @@ given Schema[PostDefinition]        = Schema.derived
 given Schema[PostDefinitionCreate]  = Schema.derived
 given Schema[PostDefinitionUpdate]  = Schema.derived
 
+given [T : Schema] : Schema[UpdateValue[T]] = Schema.derived[UpdateValue[T]]
+
 
 
 

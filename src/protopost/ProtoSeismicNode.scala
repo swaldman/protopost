@@ -12,7 +12,9 @@ object ProtoSeismicNode:
     def location : Location.Simple
 
   case class fromLocationSimple( location : Location.Simple ) extends ProtoSeismicNode, Located
-  case class fromIdentifier( algcrv : String, publicKeyBytes : immutable.ArraySeq[Byte] ) extends ProtoSeismicNode
+  case class fromIdentifier( algcrv : String, publicKeyBytes : immutable.ArraySeq[Byte] ) extends ProtoSeismicNode:
+    override def toString() : String =
+      s"${Service.seismic}[$algcrv]${publicKeyBytes.hex0x}"
 
   case class fromPublicIdentity( publicIdentity : PublicIdentity[?] ) extends ProtoSeismicNode, Located:
     lazy val location = publicIdentity.location

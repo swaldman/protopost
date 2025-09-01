@@ -1,4 +1,4 @@
-//| mill-version: 1.0.4
+//| mill-version: 1.0.3
 //| mill-jvm-version: 21
 //| mvnDeps: ["com.mchange::untemplate-mill:0.3.0-SNAPSHOT","com.mchange::mill-daemon:0.2.1-SNAPSHOT","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
 //+-------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -9,6 +9,7 @@ import mill.*, scalalib.*, scalajslib.*
 import mill.api.BuildCtx
 import mill.scalajslib.api.ModuleKind
 import mill.contrib.buildinfo.BuildInfo
+import mill.javalib.testrunner.TestResult
 import untemplate.mill.UntemplateModule
 import com.mchange.milldaemon.DaemonModule
 
@@ -109,6 +110,24 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
         mvn"com.mchange::mailutil:${mailutilVersion}"
       )
     object js extends SharedModule, ProtopostScalaJSModule
+
+  /*
+  object test extends DefaultTaskModule:
+    override def defaultTask() = "testForked"
+
+    def testForked(args: String*): Task.Command[(msg: String, results: Seq[TestResult])] = Task.Command:
+      val tut = `test-utest`.testForked(args*)()
+      val tsc = `test-utest`.testForked(args*)()
+      val msg = tut(0) + "\n" + tsc(0)
+      val results = tut(1) ++ tsc(1)
+      ( msg, results )
+   */
+
+  object `test-utest` extends ScalaTests with TestModule.Utest:
+    def mvnDeps = Seq(
+      mvn"com.lihaoyi::utest:0.9.0"
+    )
+
 
   object `test-scalacheck` extends ScalaTests with TestModule.ScalaCheck:
     def mvnDeps = Seq(

@@ -21,6 +21,7 @@ final class NotLoggedIn( message : String, cause : Throwable = null ) extends Pr
 final class SignatureDoesNotVerify( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class UnknownAlgorithmOrCurve( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class UnknownDestination( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
+final class UnknownPost( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class UnknownPoster( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class UnknownSeismicNode( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class UnsupportedProtocol( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )

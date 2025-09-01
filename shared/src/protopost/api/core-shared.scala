@@ -14,6 +14,11 @@ case class LoginStatus( highSecuritySecondsRemaining : Long, lowSecuritySecondsR
 
 case class EmailPassword( email : EmailAddress, password : Password )
 
+object UpdateValue:
+  case class Value[+T]( value : T ) extends UpdateValue[T]
+  case object Null extends UpdateValue[Nothing]
+sealed trait UpdateValue[+T]
+
 case class PostDefinitionCreate(
   destinationSeismicNodeId : Int,
   destinationName          : String,
@@ -29,13 +34,13 @@ case class PostDefinitionCreate(
 
 case class PostDefinitionUpdate(
   postId                   : Int,
-  title                    : Option[String],
-  postAnchor               : Option[String],
-  sprout                   : Option[Boolean],
-  inReplyToHref            : Option[String],
-  inReplyToMimeType        : Option[String],
-  inReplyToGuid            : Option[String],
-  authors                  : Seq[String]
+  title                    : Option[UpdateValue[String]],
+  postAnchor               : Option[UpdateValue[String]],
+  sprout                   : Option[UpdateValue[Boolean]],
+  inReplyToHref            : Option[UpdateValue[String]],
+  inReplyToMimeType        : Option[UpdateValue[String]],
+  inReplyToGuid            : Option[UpdateValue[String]],
+  authors                  : Option[Seq[String]] //cannot be NULL
 )
 
 case class PostDefinition(
@@ -95,9 +100,27 @@ given JsonValueCodec[PosterId] = new JsonValueCodec[PosterId]:
   def encodeValue(x : PosterId, out: JsonWriter): Unit = out.writeVal(i(x))
   def nullValue : PosterId = (-1).asInstanceOf[PosterId]
 
+given [T : JsonValueCodec] : JsonValueCodec[UpdateValue[T]] = new JsonValueCodec[UpdateValue[T]]:
+  val baseCodec = summon[JsonValueCodec[T]]
+  def decodeValue(in : JsonReader, default : UpdateValue[T]) : UpdateValue[T] =
+    val tOrNull = baseCodec.decodeValue(in,baseCodec.nullValue)
+    if tOrNull == null then UpdateValue.Null else UpdateValue.Value(tOrNull)
+  def encodeValue(x : UpdateValue[T], out: JsonWriter): Unit =
+    val baseCodec = summon[JsonValueCodec[T]]
+    x match
+      case protopost.api.UpdateValue.Value( value ) => baseCodec.encodeValue( value, out )
+      case protopost.api.UpdateValue.Null => baseCodec.nullValue
+  def nullValue : UpdateValue[T] = UpdateValue.Null
+
 given JsonValueCodec[LoginStatus] = JsonCodecMaker.make
 
 given JsonValueCodec[EmailPassword] = JsonCodecMaker.make
+
+//given JsonValueCodec[UpdateValue.Value[String]] = JsonCodecMaker.make
+//given JsonValueCodec[UpdateValue.Value[Boolean]] = JsonCodecMaker.make
+//given JsonValueCodec[UpdateValue.Null.type] = JsonCodecMaker.make
+//given JsonValueCodec[UpdateValue[String]] = JsonCodecMaker.make
+//given JsonValueCodec[UpdateValue[Boolean]] = JsonCodecMaker.make
 
 given JsonValueCodec[PostDefinition] = JsonCodecMaker.make
 given JsonValueCodec[PostDefinitionCreate] = JsonCodecMaker.make

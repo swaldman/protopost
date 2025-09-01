@@ -23,6 +23,7 @@ import protopost.api.PostDefinition
 object TopPanel:
   private final val LoginStatusUpdateIntervalMsecs         = 6000
   private final val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
+  private final val LoginStatusUpdateIfNotUpdatedLastSecs  = 15
 
   private final val TopPanelMargin = 2 //2px
 
@@ -65,7 +66,7 @@ object TopPanel:
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
     val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierVar,destinationsVar,destinationsToKnownPostsVar,locationVar,posterNoAuthSignal)
-    val currentPostCard = CurrentPostCard.create( destinationsToKnownPostsVar, currentPostIdentifierVar )
+    val currentPostCard = CurrentPostCard.create( destinationsToKnownPostsVar, currentPostIdentifierVar, posterNoAuthSignal )
     val profileCard = ProfileCard.create(posterNoAuthSignal)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>
@@ -86,7 +87,8 @@ object TopPanel:
             val now = epochSecondsNow()
             val elapsedSeconds = now - lastUpdated
             val newStatus = LoginStatus( math.max(0,ls.highSecuritySecondsRemaining - elapsedSeconds), math.max(0,ls.lowSecuritySecondsRemaining - elapsedSeconds) )
-            hardUpdate = math.random < LoginStatusUpdateHardUpdateProbability
+            // println( s"newStatus, lastUpdated: ${newStatus}, ${lastUpdated}" )
+            hardUpdate = elapsedSeconds > LoginStatusUpdateIfNotUpdatedLastSecs || math.random < LoginStatusUpdateHardUpdateProbability
             if hardUpdate then
               println(s"hardUpdate: $hardUpdate")
             Some(Tuple2(newStatus, now))
