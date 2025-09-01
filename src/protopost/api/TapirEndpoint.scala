@@ -184,20 +184,20 @@ object TapirEndpoint extends SelfLogging:
       withConnectionTransactional(ds): conn =>
         db.postDefinitionsForDestination(destinationIdentifier.seismicNodeId, destinationIdentifier.name)(conn)
 
-  private def translateUpdateValueToDb[T]( existingValue : Option[T], update : Option[UpdateValue[T]] ) : Option[T] =
-    update match
-      case Some( uv ) =>
-        uv match
-          case UpdateValue.Value( value ) => Some(value)
-          case UpdateValue.Null           => None
-      case None =>
-        existingValue
+  private def translateNullableUpdateValueToDb[T]( existingValue : Option[T], updater : UpdateValue[T] ) : Option[T] =
+    import UpdateValue.*
+    updater match
+      case `update`( t ) => Some(t)
+      case `set-to-none` => None
+      case `leave-alone` => existingValue
 
-  private def translateNonNullUpdateToDb[T]( existingValue : T, update : Option[T] ) : Option[T] =
-    update match
-      case Some( t ) => Some(t)
-      case None => Some(existingValue)
-  
+  private def translateSeqUpdateValueToDb[T]( existingValue : Seq[T], updater : UpdateValue[Seq[T]] ) : Seq[T] =
+    import UpdateValue.*
+    updater match
+      case `update`( seq ) => seq
+      case `set-to-none` => Seq.empty
+      case `leave-alone` => existingValue
+
   def updatePostDefinition( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( pdu : PostDefinitionUpdate ) : ZOut[PostDefinition] =
     ZOut.fromTask:
       val db = appResources.database
@@ -209,14 +209,14 @@ object TapirEndpoint extends SelfLogging:
           case Some( currentPostDefinition ) =>
             if currentPostDefinition.owner.id == subject.posterId then
               val postId            : Int             = pdu.postId
-              val title             : Option[String]  = translateUpdateValueToDb(currentPostDefinition.title, pdu.title )
-              val postAnchor        : Option[String]  = translateUpdateValueToDb(currentPostDefinition.postAnchor, pdu.postAnchor )
-              val sprout            : Option[Boolean] = translateUpdateValueToDb(currentPostDefinition.sprout, pdu.sprout )
-              val inReplyToHref     : Option[String]  = translateUpdateValueToDb(currentPostDefinition.inReplyToHref, pdu.inReplyToHref )
-              val inReplyToMimeType : Option[String]  = translateUpdateValueToDb(currentPostDefinition.inReplyToMimeType, pdu.inReplyToMimeType )
-              val inReplyToGuid     : Option[String]  = translateUpdateValueToDb(currentPostDefinition.inReplyToGuid, pdu.inReplyToGuid )
+              val title             : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.title, pdu.title )
+              val postAnchor        : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.postAnchor, pdu.postAnchor )
+              val sprout            : Option[Boolean] = translateNullableUpdateValueToDb(currentPostDefinition.sprout, pdu.sprout )
+              val inReplyToHref     : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.inReplyToHref, pdu.inReplyToHref )
+              val inReplyToMimeType : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.inReplyToMimeType, pdu.inReplyToMimeType )
+              val inReplyToGuid     : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.inReplyToGuid, pdu.inReplyToGuid )
 
-              val updateAuthors = pdu.authors.nonEmpty
+              val updateAuthors = pdu.authors != UpdateValue.`leave-alone`
 
               db.updatePostDefinitionMain(
                 postId = postId,
@@ -229,7 +229,8 @@ object TapirEndpoint extends SelfLogging:
               )( conn )
 
               if updateAuthors then
-                db.replaceAuthorsForPost( postId, pdu.authors.get )( conn ) // we know authors is nonEmpty if updateAuthors is true
+                val newSeq = translateSeqUpdateValueToDb( currentPostDefinition.authors, pdu.authors )
+                db.replaceAuthorsForPost( postId, newSeq )( conn ) // we know authors is nonEmpty if updateAuthors is true
 
               db.postDefinitionForId( pdu.postId )( conn ).getOrElse:
                 throw new ApparentBug( s"In same transaction as a successful update of post with id ${postId}, the post no longer exists?!?" )
