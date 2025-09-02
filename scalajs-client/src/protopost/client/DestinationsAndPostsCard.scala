@@ -74,7 +74,7 @@ object DestinationsAndPostsCard:
             util.sttp.hardUpdateDestinationsToKnownPosts( protopostLocation, dn.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
           private def postDiv( pd : PostDefinition ) : HtmlElement =
-            val title = pd.title.fold("(untitled post)")(t => s""""$t"""")
+            val title = pd.title.fold(Client.UntitledPostLabel)(t => s""""$t"""")
             val authors = commaListAnd( pd.authors ).fold("")( authors => s"by ${authors}" )
             div(
               fontSize.pt(10),

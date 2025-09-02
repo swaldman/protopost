@@ -42,7 +42,7 @@ object TopPanel:
     val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
     val currentPostIdentifierVar : Var[Option[PostIdentifier]] = Var(None)
 
-    val locationVar : Var[Tab] = Var(Tab.profile)
+    val locationVar : Var[Tab] = Var(Tab.destinationsAndPosts)
 
     val loggedInLocationSignal = locationVar.signal.combineWithFn(loginLevelSignal): ( loc, level ) =>
       level match

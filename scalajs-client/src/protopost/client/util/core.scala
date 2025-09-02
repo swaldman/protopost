@@ -13,9 +13,13 @@ object laminar:
   import org.scalajs.dom
   import com.raquo.laminar.api.L.{*, given}
 
-  // straight from laminar docs
+  val documentEscapeEvents = documentEvents( _.onKeyDown.filter( ke => ke.keyCode == 27 || ke.key == "Escape" || ke.key == "Esc") )
+  //val onEscapePress: EventProcessor[dom.KeyboardEvent, dom.KeyboardEvent] = onKeyPress.filter(_.keyCode == dom.KeyCode.Escape) // doesn't reliably work!
+
+// straight from laminar docs
   // https://laminar.dev/documentation
   val onEnterPress: EventProcessor[dom.KeyboardEvent, dom.KeyboardEvent] = onKeyPress.filter(_.keyCode == dom.KeyCode.Enter)
+  
 
   def blackHr() : HtmlElement =
     hr(
@@ -143,7 +147,6 @@ object sttp:
   private val DefaultErrorHandler : Throwable => Unit =
     t => t.printStackTrace()
     org.scalajs.dom.window.alert( t.toString() )
-
 
   def updateVarFromApiResult[T : JsonValueCodec,U](
         request : Request[Either[ResponseException[String], T]],

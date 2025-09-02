@@ -2,7 +2,7 @@ package protopost.client
 
 import protopost.api.{DestinationIdentifier,PosterNoAuth,PostDefinition,PostDefinitionUpdate,PostIdentifier,given}
 
-import util.laminar.onEnterPress
+import util.laminar.{documentEscapeEvents,onEnterPress}
 
 import sttp.client4.*
 import sttp.client4.fetch.*
@@ -16,6 +16,7 @@ import protopost.api.{PostDefinitionCreate,UpdateValue}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
 object CurrentPostCard:
+  private val NoPostChosenLabel = "No post chosen"
   def create(
     protopostLocation : Uri,
     backend : WebSocketBackend[scala.concurrent.Future],
@@ -66,7 +67,7 @@ object CurrentPostCard:
       div(
         idAttr := "current-post-card-no-post",
         display <-- currentPostIdentifierSignal.map( opt => if opt.isEmpty then "block" else "none" ),
-        "No post chosen"
+        NoPostChosenLabel
       ),
       div(
         idAttr := "current-post-card-with-post",
@@ -77,7 +78,7 @@ object CurrentPostCard:
             fontWeight.bold,
             contentEditable <-- userIsOwnerSignal,
             backgroundColor <-- titleBackgroundColorSignal,
-            text <-- currentPostDefinitionSignal.map( _.map( _.title.getOrElse("(untitled post)") ).getOrElse("") ),
+            text <-- currentPostDefinitionSignal.map( _.map( _.title.getOrElse(Client.UntitledPostLabel) ).getOrElse("") ),
             inContext { thisNode =>
               //onEnterPress.preventDefault.mapTo(thisNode) --> titleChangeEventBus
               onEnterPress.preventDefault --> { whatever =>
@@ -86,6 +87,13 @@ object CurrentPostCard:
             },
             inContext { thisNode =>
               onBlur.mapTo(thisNode) --> titleChangeEventBus
+            },
+            inContext { thisNode =>
+              documentEscapeEvents.compose( _.withCurrentValueOf(currentPostDefinitionSignal) ) --> { (_,mbCpd) =>
+                if thisNode.ref == dom.document.activeElement then
+                  thisNode.ref.textContent = mbCpd.fold( NoPostChosenLabel )( cpd => cpd.title.getOrElse(Client.UntitledPostLabel) )
+                  thisNode.ref.blur()
+              }
             }
           ),
           " ",

@@ -11,6 +11,8 @@ object Client:
   val CardPaddingLeftRightRem = 0.5d
   val CardTitleFontSizePt = 18
 
+  val UntitledPostLabel = "(untitled post)"
+
   @main
   def main() : Unit =
     lazy val container = dom.document.getElementById("root")
