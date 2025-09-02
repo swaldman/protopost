@@ -19,6 +19,7 @@ import protopost.client.util.epochSecondsNow
 
 import scala.util.control.NonFatal
 import protopost.api.PostDefinition
+import com.raquo.laminar.nodes.ReactiveHtmlElement
 
 object TopPanel:
   private final val LoginStatusUpdateIntervalMsecs         = 6000
@@ -43,6 +44,7 @@ object TopPanel:
     val currentPostIdentifierVar : Var[Option[PostIdentifier]] = Var(None)
 
     val locationVar : Var[Tab] = Var(Tab.destinationsAndPosts)
+    val locationSignal : Signal[Tab] = locationVar.signal
 
     val loggedInLocationSignal = locationVar.signal.combineWithFn(loginLevelSignal): ( loc, level ) =>
       level match
@@ -62,6 +64,16 @@ object TopPanel:
       else
         posterNoAuthVar.set(None)
         destinationsVar.set( immutable.SortedSet.empty )
+
+    val disabledTabsSignal = currentPostIdentifierVar.signal.map: mbPi =>
+      mbPi match
+        case Some(pi) => Set.empty[Tab]
+        case None => Set(Tab.currentPost)
+
+    //val tabModifiers : Map[Tab,Seq[Modifier[HtmlElement]]] =
+    //  Map(
+    //    Tab.currentPost -> Seq( disabled <-- currentPostIdentifierVar.signal.map( _.isEmpty ) )
+    //  )
 
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
@@ -118,6 +130,18 @@ object TopPanel:
         clearInterval( loginStatusHandle.get )
         loginStatusHandle = None
 
+    def createTab( tab : Tab ) : HtmlElement =
+      div(
+        cls := "tab-pane",
+        idAttr := "tab-pane-${tab}",
+        cls <-- locationSignal.map( t => if t == tab then "current" else "" ),
+        cls <-- disabledTabsSignal.map( tabs => if tabs(tab) then "disabled" else ""),
+        textAlign.center,
+        TinyLink.create(tab.label).amend(
+          onClick( _.withCurrentValueOf(disabledTabsSignal).filter((_,disabled) => !disabled(tab)).map(_ => tab)) --> locationVar,
+        ),
+      )
+
     div(
       onMountCallback { mountContext =>
         given Owner = mountContext.owner
@@ -166,6 +190,12 @@ object TopPanel:
         |.tab-pane.current a.tiny-link {
         |  color: black;
         |  font-weight: bold;
+        |}
+        |.tab-pane.disabled a.tiny-link:hover {
+        |  color: gray;
+        |}
+        |.tab-pane.disabled a.tiny-link {
+        |  color: gray;
         |}
         """.stripMargin
       ),
@@ -221,7 +251,7 @@ object TopPanel:
             display.flex,
             flexDirection.row,
             justifyContent.spaceAround,
-            Tab.values.map( t => createTab(t, locationVar) ),
+            Tab.values.map( t => createTab(t) ),
             marginBottom.rem(0.25),
 
             // why don't these seem to have any effect?
@@ -236,12 +266,3 @@ object TopPanel:
       )
     )
 
-  def createTab( tab : Tab, locationVar : Var[Tab] ) : HtmlElement =
-    div(
-      cls := "tab-pane",
-      cls <-- locationVar.signal.map( t => if t == tab then "current" else "" ),
-      textAlign.center,
-      TinyLink.create(tab.label).amend(
-        onClick.map(_ => tab) --> locationVar,
-      ),
-    )

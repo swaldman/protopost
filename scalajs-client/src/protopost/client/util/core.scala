@@ -27,7 +27,7 @@ object laminar:
       borderColor.black,
       borderWidth.px(1)
     )
-  
+
 
 object sttp:
   import _root_.sttp.client4.*
