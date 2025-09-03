@@ -1,6 +1,6 @@
-//| mill-version: 1.0.3
+//| mill-version: 1.0.4
 //| mill-jvm-version: 21
-//| mvnDeps: ["com.mchange::untemplate-mill:0.3.0-SNAPSHOT","com.mchange::mill-daemon:0.2.1-SNAPSHOT","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
+//| mvnDeps: ["com.mchange::untemplate-mill:0.3.0-SNAPSHOT","com.mchange::mill-daemon:0.2.1","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
 //+-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 package build
