@@ -10,8 +10,12 @@ import sttp.model.*
 object Client:
   val CardPaddingLeftRightRem = 0.5d
   val CardTitleFontSizePt = 18
+  val CardSectionTitleFontSizePt = 14
+  val CardBaseTextSizePt = 12
 
   val UntitledPostLabel = "(untitled post)"
+
+  val DefaultComposer = Composer.`text-and-preview`
 
   @main
   def main() : Unit =

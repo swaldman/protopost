@@ -4,6 +4,9 @@ import scala.scalajs.js
 import scala.scalajs.js.annotation.*
 import protopost.api.{LoginStatus,PostDefinition}
 
+import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.github.plokhotnyuk.jsoniter_scala.macros.*
+
 @js.native
 @JSGlobalScope
 object Globals extends js.Object {
@@ -11,21 +14,6 @@ object Globals extends js.Object {
 }
 
 val ReverseChronologicalPostDefinitions = Ordering.by[PostDefinition,Int]( pd => -pd.postId ) // reverse chronological of post creation, since id's are allocated chronologically
-
-/*
-// stolen from conveniences...
-private def commaListXXX(xxx : String)( seq : Seq[String] ) : Option[String] =
-  seq.length match
-    case 0 => None
-    case 1 => Some( seq.head )
-    case 2 => Some( seq.head + s" $xxx " + seq.last )
-    case n =>
-      val anded = seq.init :+ s"$xxx ${seq.last}"
-      Some( anded.mkString(", ") )
-
-def commaListAnd( seq : Seq[String] ) : Option[String] = commaListXXX("and")(seq)
-def commaListOr( seq : Seq[String] )  : Option[String] = commaListXXX("or")(seq)
-*/
 
 object LoginLevel:
   def fromLoginStatus(loginStatus : LoginStatus) : LoginLevel =
@@ -47,4 +35,12 @@ enum Tab( val label : String ):
   case currentPost  extends Tab("current post")
   case profile  extends Tab("profile")
 
+enum Composer( val label : String ):
+  case `text-and-preview` extends Composer("Text and preview (plaintext, markdown, html)")
+  case `WYSIWYG`          extends Composer( "WYSIWYG (html)" )
+
 case class PostInProgress( id : Int, dirtyToLocalStorage : Boolean, dirtyToServer : Boolean, fetchCurrentText : () => String )
+
+given JsonValueCodec[Tab]      = JsonCodecMaker.make
+given JsonValueCodec[Composer] = JsonCodecMaker.make
+

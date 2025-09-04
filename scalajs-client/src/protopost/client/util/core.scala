@@ -28,7 +28,6 @@ object laminar:
       borderWidth.px(1)
     )
 
-
 object sttp:
   import _root_.sttp.client4.*
   import _root_.sttp.model.*

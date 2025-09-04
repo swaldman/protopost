@@ -88,13 +88,17 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
     override def moduleDeps = Seq(shared.js)
     override def scalaVersion = build.scalaVersion
     //override def moduleKind = ModuleKind.ESModule
+    def compileMvnDeps = Seq(
+      mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros::${JsoniterVersion}"
+    )
     override def mvnDeps =
       super.mvnDeps() ++
       Seq(
         mvn"com.raquo::laminar::17.2.1",
         mvn"com.mchange::conveniences::0.0.6-SNAPSHOT",
         mvn"com.softwaremill.sttp.client4::core::${sttpVersion}",
-        mvn"com.softwaremill.sttp.client4::jsoniter::${sttpVersion}"
+        mvn"com.softwaremill.sttp.client4::jsoniter::${sttpVersion}",
+        mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core::${JsoniterVersion}"
       )
 
   // modified from https://mill-build.org/mill/scalalib/web-examples.html

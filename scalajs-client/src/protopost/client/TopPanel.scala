@@ -43,10 +43,16 @@ object TopPanel:
     val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
     val currentPostIdentifierVar : Var[Option[PostIdentifier]] = Var(None)
 
-    val locationVar : Var[Tab] = Var(Tab.destinationsAndPosts)
-    val locationSignal : Signal[Tab] = locationVar.signal
+    val locationLocalStorageItem = LocalStorageItem(LocalStorageItem.Key.location, Tab.destinationsAndPosts )
+    val locationSignal : Signal[Tab] = locationLocalStorageItem.signal
 
-    val loggedInLocationSignal = locationVar.signal.combineWithFn(loginLevelSignal): ( loc, level ) =>
+    val composerLocalStorageItem = LocalStorageItem(LocalStorageItem.Key.composer,Client.DefaultComposer)
+    val composerSignal = composerLocalStorageItem.signal
+
+    //val locationVar = Var(Tab.destinationsAndPosts)
+    //val locationSignal : Signal[Tab] = locationVar.signal
+
+    val loggedInLocationSignal = locationSignal.combineWithFn(loginLevelSignal): ( loc, level ) =>
       level match
         case LoginLevel.high | LoginLevel.low => Some(loc)
         case _ => None
@@ -77,9 +83,9 @@ object TopPanel:
 
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
-    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierVar,destinationsVar,destinationsToKnownPostsVar,locationVar,posterNoAuthSignal)
+    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierVar,destinationsVar,destinationsToKnownPostsVar,locationLocalStorageItem,posterNoAuthSignal)
     val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierVar, posterNoAuthSignal )
-    val profileCard = ProfileCard.create(posterNoAuthSignal)
+    val profileCard = ProfileCard.create(composerLocalStorageItem,composerSignal,posterNoAuthSignal)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>
       val transformation : LoginStatus => Option[(LoginStatus,Long)] = loginStatus => Some(Tuple2(loginStatus, epochSecondsNow()))
@@ -138,7 +144,7 @@ object TopPanel:
         cls <-- disabledTabsSignal.map( tabs => if tabs(tab) then "disabled" else ""),
         textAlign.center,
         TinyLink.create(tab.label).amend(
-          onClick( _.withCurrentValueOf(disabledTabsSignal).filter((_,disabled) => !disabled(tab)).map(_ => tab)) --> locationVar,
+          onClick( _.withCurrentValueOf(disabledTabsSignal).filter((_,disabled) => !disabled(tab)).map(_ => tab)) --> ( t => locationLocalStorageItem.set(t) ),
         ),
       )
 
