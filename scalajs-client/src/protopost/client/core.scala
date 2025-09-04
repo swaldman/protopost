@@ -12,6 +12,7 @@ object Globals extends js.Object {
 
 val ReverseChronologicalPostDefinitions = Ordering.by[PostDefinition,Int]( pd => -pd.postId ) // reverse chronological of post creation, since id's are allocated chronologically
 
+/*
 // stolen from conveniences...
 private def commaListXXX(xxx : String)( seq : Seq[String] ) : Option[String] =
   seq.length match
@@ -24,7 +25,7 @@ private def commaListXXX(xxx : String)( seq : Seq[String] ) : Option[String] =
 
 def commaListAnd( seq : Seq[String] ) : Option[String] = commaListXXX("and")(seq)
 def commaListOr( seq : Seq[String] )  : Option[String] = commaListXXX("or")(seq)
-
+*/
 
 object LoginLevel:
   def fromLoginStatus(loginStatus : LoginStatus) : LoginLevel =

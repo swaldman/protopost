@@ -92,6 +92,7 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
       super.mvnDeps() ++
       Seq(
         mvn"com.raquo::laminar::17.2.1",
+        mvn"com.mchange::conveniences::0.0.6-SNAPSHOT",
         mvn"com.softwaremill.sttp.client4::core::${sttpVersion}",
         mvn"com.softwaremill.sttp.client4::jsoniter::${sttpVersion}"
       )

@@ -10,6 +10,8 @@ import sttp.model.*
 
 import scala.collection.immutable
 
+import com.mchange.conveniences.string.*
+
 import protopost.api.{DestinationNickname,PostDefinition,PostDefinitionCreate,PostIdentifier,PosterNoAuth}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
