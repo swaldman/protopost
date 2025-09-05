@@ -12,6 +12,8 @@ object LocalStorageItem:
     case location extends Key[Tab]
 
 class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T], defaultValue : T):
+  require( defaultValue != null, "The value of a LocalStorageItem cannot be null." )
+
   private val _var = Var[Option[T]](
     Option(dom.window.localStorage.getItem(key.toString())).map( s => readFromString[T](s) )
   )
@@ -20,7 +22,10 @@ class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T], default
 
   def set(value: T): Unit =
     require( value != null, "The value of a LocalStorageItem cannot be null, define an variable of Option type instead." )
-    dom.window.localStorage.setItem(key.toString(), writeToString[T](value))
+    if value == defaultValue then
+      dom.window.localStorage.removeItem(key.toString())
+    else
+      dom.window.localStorage.setItem(key.toString(), writeToString[T](value))
     _var.set(Some(value))
 
   def now(): T = _var.now().getOrElse( defaultValue )
