@@ -13,8 +13,6 @@ import scala.collection.immutable
 
 import java.util.Properties
 
-import scala.annotation.targetName
-
 val LoggingApi = logadapter.zio.ZApi( logadapter.log4j2.Api )
 
 case class PostDefinitionRaw(
@@ -45,7 +43,6 @@ case class SeismicNodeWithId( id : Int, algcrv : String, pubkey : immutable.Arra
 
 object ConfigProperties:
   private[protopost] inline def apply( p : Properties ) : ConfigProperties = p
+  private[protopost] inline def p( cp : ConfigProperties ) : Properties = cp
 opaque type ConfigProperties = Properties
 
-extension( configProperties : ConfigProperties )
-  @targetName("configPropertiesProps") private[protopost] inline def props : Properties = configProperties

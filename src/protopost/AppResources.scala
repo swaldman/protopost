@@ -1,7 +1,7 @@
 package protopost
 
 import protopost.common.{Protocol,Service}
-import protopost.server.{ConfigProperties,props}
+import protopost.server.ConfigProperties
 import protopost.server.crypto.BouncyCastleSecp256r1
 import protopost.server.db.{PgDatabase,PgSchemaManager}
 import protopost.identity.{LocalIdentity,Location}
@@ -10,15 +10,17 @@ import javax.sql.DataSource
 import scala.collection.mutable
 import com.auth0.jwk.{Jwk,JwkProvider,JwkProviderBuilder}
 
+import ConfigProperties.{p as props}
+
 class AppResources( val configProperties : ConfigProperties ):
 
   lazy val dataSource : DataSource =
     import com.mchange.v2.c3p0.*
     val nascent = new ComboPooledDataSource()
-    DataSources.overwriteC3P0PrefixedProperties( nascent, configProperties.props )
+    DataSources.overwriteC3P0PrefixedProperties( nascent, props(configProperties) )
     nascent
 
-  lazy val externalConfig : ExternalConfig =  ExternalConfig.fromProperties( configProperties.props )
+  lazy val externalConfig : ExternalConfig =  ExternalConfig.fromProperties( props(configProperties) )
 
   lazy val schemaManager : PgSchemaManager = new PgSchemaManager( externalConfig )
 
