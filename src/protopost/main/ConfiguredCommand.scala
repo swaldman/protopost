@@ -15,7 +15,7 @@ import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 import protopost.{AppResources,BadService,EmailAddress,ExternalConfig,InconsistentSeismicNodeDefinition,PosterId,ProtopostException,ProtoSeismicNode,SeismicNodeWithId,UnknownDestination,UnknownPoster}
 import protopost.server.LoggingApi.*
 import protopost.api.Destination
-import protopost.server.endpoint.TapirEndpoint
+import protopost.server.endpoint.Tapir
 import protopost.server.db.{PgDatabase,PgSchemaManager}
 import protopost.server.effectlib.encounterProtoSeismicNode
 import protopost.common.Service
@@ -103,7 +103,7 @@ object ConfiguredCommand extends SelfLogging:
         ar       <- ZIO.service[AppResources]
         ec       =  ar.externalConfig
         p        =  port.getOrElse( ec( ExternalConfig.Key.`protopost.api.local.port` ).toInt )
-        seps     =  TapirEndpoint.serverEndpoints(ar)
+        seps     =  Tapir.serverEndpoints(ar)
         httpApp  =  ZioHttpInterpreter(interpreterOptions(verbose)).toHttp(seps)
         _        <- INFO.zlog( s"Serving protopost API on port $p, location with identity '${ar.localIdentity.toPublicIdentity.toIdentifierWithLocation}'" )
         exitCode <- ZServer
