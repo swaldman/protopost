@@ -1,7 +1,8 @@
-package protopost
+package protopost.server
 
 import scala.collection.immutable
 
+import protopost.*
 import protopost.common.{Protocol,Service}
 import protopost.server.identity.{Location,Proto,PublicIdentity}
 
