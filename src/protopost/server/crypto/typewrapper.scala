@@ -1,4 +1,4 @@
-package protopost.crypto
+package protopost.server.crypto
 
 import scala.annotation.targetName
 

@@ -1,4 +1,4 @@
-package protopost.crypto
+package protopost.server.crypto
 
 import org.scalacheck.{Arbitrary,Gen,Properties}
 import org.scalacheck.Prop.*

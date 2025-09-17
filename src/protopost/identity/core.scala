@@ -6,7 +6,7 @@ import com.mchange.cryptoutil.{*, given}
 
 import protopost.UnknownAlgorithmOrCurve
 import protopost.common.{Protocol,Service}
-import protopost.crypto.BouncyCastleSecp256r1
+import protopost.server.crypto.BouncyCastleSecp256r1
 
 object Proto:
   object Identifier:

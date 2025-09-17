@@ -1,4 +1,4 @@
-package protopost.crypto
+package protopost.server.crypto
 
 import java.security.Security
 

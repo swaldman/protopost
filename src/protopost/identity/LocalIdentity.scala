@@ -1,7 +1,7 @@
 package protopost.identity
 
 import protopost.common.Service
-import protopost.crypto.BouncyCastleSecp256r1
+import protopost.server.crypto.BouncyCastleSecp256r1
 
 import java.security.{PrivateKey,PublicKey}
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}

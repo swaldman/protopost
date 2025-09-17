@@ -6,7 +6,7 @@ import com.auth0.jwt.algorithms.Algorithm
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 
 import protopost.common.Service
-import protopost.crypto.BouncyCastleSecp256r1
+import protopost.server.crypto.BouncyCastleSecp256r1
 
 enum SecurityLevel:
   case high, low
