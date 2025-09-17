@@ -1,4 +1,4 @@
-package protopost.main
+package protopost.server.main
 
 object Precommand:
   object Version extends Precommand:

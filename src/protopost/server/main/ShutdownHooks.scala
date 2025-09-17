@@ -1,4 +1,4 @@
-package protopost.main
+package protopost.server.main
 
 case class ShutdownHooks private[main]()
 

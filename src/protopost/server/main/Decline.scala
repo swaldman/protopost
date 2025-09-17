@@ -1,4 +1,4 @@
-package protopost.main
+package protopost.server.main
 
 import com.monovore.decline.*
 import cats.implicits.* // for mapN
@@ -7,7 +7,7 @@ import java.nio.file.{Path as JPath}
 import protopost.{EmailAddress,PosterId,ProtoSeismicNode}
 
 import com.mchange.rehash.Password
-import protopost.main.Decline.Common.fullDestination
+import protopost.server.main.Decline.Common.fullDestination
 
 object Decline:
   object Common:
