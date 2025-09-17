@@ -12,7 +12,7 @@ import sttp.tapir.json.jsoniter.*
 import protopost.{ApparentBug,AppResources,BadPostDefinition,EmailAddress,ExternalConfig,MissingConfig,Password,PosterId,UnknownPost}
 import protopost.LoggingApi.*
 
-import protopost.db.PgDatabase
+import protopost.server.db.PgDatabase
 
 import com.mchange.rehash.*
 

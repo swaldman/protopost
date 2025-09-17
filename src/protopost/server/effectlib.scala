@@ -1,9 +1,9 @@
-package protopost.effectlib
+package protopost.server.effectlib
 
 import protopost.{AppResources,BadIdentifierFormat,BadService,ProtoSeismicNode,SeismicNodeWithId,UnknownSeismicNode}
 import protopost.common.{Protocol,Service}
 import protopost.server.crypto.publicKeyBytesForPublicKey
-import protopost.db.PgDatabase
+import protopost.server.db.PgDatabase
 import protopost.identity.*
 
 import zio.*

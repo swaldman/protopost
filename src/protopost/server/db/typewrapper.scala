@@ -1,4 +1,4 @@
-package protopost.db
+package protopost.server.db
 
 import scala.annotation.targetName
 

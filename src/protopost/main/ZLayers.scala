@@ -12,7 +12,7 @@ import javax.sql.DataSource
 
 import com.mchange.milldaemon.util.PidFileManager
 
-import protopost.db.PgSchemaManager
+import protopost.server.db.PgSchemaManager
 
 object ZLayers:
 

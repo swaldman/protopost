@@ -1,4 +1,4 @@
-package protopost.db
+package protopost.server.db
 
 import java.sql.*
 import scala.Array
@@ -20,7 +20,7 @@ import protopost.identity.*
 import protopost.LoggingApi.*
 
 import EmailAddress.{s => es}
-import protopost.db.PgSchema.V1.Table.Poster.posterExistsForEmail
+import protopost.server.db.PgSchema.V1.Table.Poster.posterExistsForEmail
 
 object PgSchema extends SelfLogging:
   object Unversioned:

@@ -15,8 +15,8 @@ import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 import protopost.{AppResources,BadService,EmailAddress,ExternalConfig,InconsistentSeismicNodeDefinition,PosterId,ProtopostException,ProtoSeismicNode,SeismicNodeWithId,UnknownDestination,UnknownPoster}
 import protopost.LoggingApi.*
 import protopost.api.{Destination,TapirEndpoint}
-import protopost.db.{PgDatabase,PgSchemaManager}
-import protopost.effectlib.encounterProtoSeismicNode
+import protopost.server.db.{PgDatabase,PgSchemaManager}
+import protopost.server.effectlib.encounterProtoSeismicNode
 import protopost.common.Service
 import protopost.identity.PublicIdentity
 
@@ -28,7 +28,6 @@ import com.mchange.sc.zsqlutil.*
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
 import com.mchange.milldaemon.util.PidFileManager
-import protopost.effectlib.encounterProtoSeismicNode
 import protopost.PosterWithAuth
 import protopost.api.Destination
 

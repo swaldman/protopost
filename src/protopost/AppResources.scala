@@ -2,7 +2,7 @@ package protopost
 
 import protopost.common.{Protocol,Service}
 import protopost.server.crypto.BouncyCastleSecp256r1
-import protopost.db.{PgDatabase,PgSchemaManager}
+import protopost.server.db.{PgDatabase,PgSchemaManager}
 import protopost.identity.{LocalIdentity,Location}
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 import javax.sql.DataSource
