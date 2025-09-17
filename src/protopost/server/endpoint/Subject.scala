@@ -1,4 +1,4 @@
-package protopost.api
+package protopost.server.endpoint
 
 import protopost.{BadSubject,EmailAddress,PosterId}
 import scala.util.control.NonFatal

@@ -1,7 +1,8 @@
-package protopost.api
+package protopost.server.endpoint
 
 import zio.*
 
+import protopost.api.*
 import protopost.{EmailAddress,Password,PosterId,SignatureDoesNotVerify}
 import protopost.common.Protocol
 import protopost.server.crypto.{*,given}
