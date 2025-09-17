@@ -1,10 +1,11 @@
 package protopost.server
 
-import protopost.{MissingConfig,PosterId}
+import protopost.PosterId
 import protopost.common.{Protocol,Service}
 import protopost.server.{ExternalConfig,ConfigProperties}
 import protopost.server.crypto.BouncyCastleSecp256r1
 import protopost.server.db.{PgDatabase,PgSchemaManager}
+import protopost.server.exception.MissingConfig
 import protopost.server.identity.{LocalIdentity,Location}
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 import javax.sql.DataSource

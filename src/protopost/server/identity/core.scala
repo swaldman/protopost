@@ -4,9 +4,9 @@ import scala.collection.immutable
 
 import com.mchange.cryptoutil.{*, given}
 
-import protopost.UnknownAlgorithmOrCurve
 import protopost.common.{Protocol,Service}
 import protopost.server.crypto.BouncyCastleSecp256r1
+import protopost.server.exception.UnknownAlgorithmOrCurve
 
 object Proto:
   object Identifier:

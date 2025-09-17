@@ -1,6 +1,6 @@
 package protopost.server.crypto
 
-import protopost.UnknownAlgorithmOrCurve
+import protopost.server.exception.UnknownAlgorithmOrCurve
 
 import scala.collection.immutable
 

@@ -2,8 +2,8 @@ package protopost.server
 
 import scala.collection.immutable
 
-import protopost.*
 import protopost.common.{Protocol,Service}
+import protopost.server.exception.{BadService,UnknownSeismicNode}
 import protopost.server.identity.{Location,Proto,PublicIdentity}
 
 import com.mchange.cryptoutil.{*,given}

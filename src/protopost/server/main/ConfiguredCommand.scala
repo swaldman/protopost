@@ -12,13 +12,14 @@ import zio.http.Server as ZServer
 import sttp.tapir.server.interceptor.log.DefaultServerLog
 import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
-import protopost.{BadService,EmailAddress,InconsistentSeismicNodeDefinition,PosterId,ProtopostException,UnknownDestination,UnknownPoster}
+import protopost.{EmailAddress,PosterId}
 import protopost.server.{AppResources,ExternalConfig,ProtoSeismicNode,SeismicNodeWithId}
 import protopost.server.LoggingApi.*
 import protopost.api.Destination
 import protopost.server.endpoint.Tapir
 import protopost.server.db.{PgDatabase,PgSchemaManager}
 import protopost.server.effectlib.encounterProtoSeismicNode
+import protopost.server.exception.{BadService,InconsistentSeismicNodeDefinition,ProtopostException,UnknownDestination,UnknownPoster}
 import protopost.common.Service
 import protopost.server.identity.PublicIdentity
 

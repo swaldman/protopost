@@ -5,16 +5,17 @@ import zio.*
 import java.sql.Connection
 import javax.sql.DataSource
 
-import protopost.{ApparentBug,BadSeismicNodeId,EmailAddress,PosterId,UnknownPoster}
+import protopost.{EmailAddress,PosterId}
 import protopost.api.{Destination,DestinationNickname,PosterNoAuth}
 import protopost.common.Protocol
 import protopost.server.{PostDefinitionRaw,PosterWithAuth,SeismicNodeWithId}
+import protopost.server.exception.{ApparentBug,BadSeismicNodeId,UnknownPoster}
 
 import com.mchange.rehash.*
 
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.zsqlutil.*
-import protopost.EmailIsAlreadyRegistered
+import protopost.server.exception.EmailIsAlreadyRegistered
 import protopost.api.PostDefinition
 import protopost.api.PostDefinitionUpdate
 

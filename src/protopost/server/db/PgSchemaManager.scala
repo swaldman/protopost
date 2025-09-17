@@ -9,9 +9,10 @@ import zio.*
 
 import scala.util.Using
 
-import protopost.{BuildInfo,MissingConfig}
+import protopost.BuildInfo
 import protopost.server.ExternalConfig
 import protopost.server.LoggingApi.*
+import protopost.server.exception.MissingConfig
 
 class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Postgres[PgSchema.V1.type], SelfLogging:
   override val LatestSchema      = PgSchema.V1

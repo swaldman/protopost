@@ -3,10 +3,10 @@ package protopost.server.endpoint
 import zio.*
 
 import protopost.api.*
-import protopost.{EmailAddress,Password,PosterId,SignatureDoesNotVerify}
+import protopost.{EmailAddress,Password,PosterId}
 import protopost.common.Protocol
 import protopost.server.crypto.{*,given}
-
+import protopost.server.exception.SignatureDoesNotVerify
 import protopost.server.jwt.{Jwk,Jwks,Jwt}
 
 import com.mchange.conveniences.throwable.*

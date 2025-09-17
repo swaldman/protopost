@@ -2,7 +2,7 @@ package protopost.server
 
 import java.util.Properties
 import scala.jdk.CollectionConverters.*
-import protopost.MissingConfig
+import protopost.server.exception.MissingConfig
 import protopost.server.identity.Location
 
 object ExternalConfig:

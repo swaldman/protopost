@@ -2,7 +2,7 @@ package protopost.server.identity
 
 import com.mchange.cryptoutil.{*,given}
 
-import protopost.{BadIdentifierFormat,UnknownAlgorithmOrCurve}
+import protopost.server.exception.{BadIdentifierFormat,UnknownAlgorithmOrCurve}
 import protopost.common.{Protocol,Service}
 import protopost.server.crypto.BouncyCastleSecp256r1
 

@@ -1,4 +1,4 @@
-package protopost
+package protopost.server.exception
 
 class ProtopostException( message : String, cause : Throwable = null ) extends Exception( message, cause )
 

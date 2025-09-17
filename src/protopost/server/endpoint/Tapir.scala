@@ -9,10 +9,11 @@ import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.{ApparentBug,BadPostDefinition,EmailAddress,MissingConfig,Password,PosterId,UnknownPost}
+import protopost.{EmailAddress,Password,PosterId}
 import protopost.api.{*,given}
 import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*
+import protopost.server.exception.{ApparentBug,BadPostDefinition,MissingConfig,UnknownPost}
 
 import protopost.server.db.PgDatabase
 
@@ -22,10 +23,9 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 import com.mchange.sc.zsqlutil.*
-import protopost.{BadCookieSettings,BadCredentials,NotLoggedIn}
+import protopost.server.exception.{BadCookieSettings,BadCredentials,InsufficientPermissions,NotLoggedIn}
 import protopost.server.jwt
 import sttp.model.headers.CookieValueWithMeta
-import protopost.InsufficientPermissions
 
 object Tapir extends SelfLogging:
 
