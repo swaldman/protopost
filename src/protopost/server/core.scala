@@ -11,6 +11,10 @@ import com.mchange.cryptoutil.given
 
 import scala.collection.immutable
 
+import java.util.Properties
+
+import scala.annotation.targetName
+
 val LoggingApi = logadapter.zio.ZApi( logadapter.log4j2.Api )
 
 case class PostDefinitionRaw(
@@ -37,3 +41,11 @@ case class SeismicNodeWithId( id : Int, algcrv : String, pubkey : immutable.Arra
   lazy val identifierWithLocation = s"${identifier}:${location.toUrl}"
   lazy val toApiSeismicNode : api.SeismicNode = api.SeismicNode(id, algcrv, pubkey.hex0x, protocol, host, port)
 
+// typewrappers
+
+object ConfigProperties:
+  private[protopost] inline def apply( p : Properties ) : ConfigProperties = p
+opaque type ConfigProperties = Properties
+
+extension( configProperties : ConfigProperties )
+  @targetName("configPropertiesProps") private[protopost] inline def props : Properties = configProperties

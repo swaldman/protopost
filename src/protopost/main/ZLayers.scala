@@ -4,7 +4,8 @@ import java.util.Properties
 
 import zio.*
 
-import protopost.{AppResources,ConfigProperties,ExternalConfig,InsecureConfigurationPropertiesFile,MissingConfig}
+import protopost.{AppResources,ExternalConfig,InsecureConfigurationPropertiesFile,MissingConfig}
+import protopost.server.ConfigProperties
 
 import com.mchange.conveniences.javautil.*
 import com.mchange.v2.c3p0.*

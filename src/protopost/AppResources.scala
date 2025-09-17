@@ -1,6 +1,7 @@
 package protopost
 
 import protopost.common.{Protocol,Service}
+import protopost.server.{ConfigProperties,props}
 import protopost.server.crypto.BouncyCastleSecp256r1
 import protopost.server.db.{PgDatabase,PgSchemaManager}
 import protopost.identity.{LocalIdentity,Location}
