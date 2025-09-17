@@ -1,4 +1,4 @@
-package protopost.identity
+package protopost.server.identity
 
 import scala.collection.immutable
 
@@ -25,19 +25,19 @@ object Proto:
       raw"""($protocols)\:\/\/([^\:\/]+)(?:\:(\d+))?\/?"""
     val regex = s"""^${regexInnerString}$$""".r
   case class Location( protocol : Protocol, host : String, port : Int ) extends Proto:
-    def complete : protopost.identity.Location.Simple = protopost.identity.Location.Simple( protocol, host, port )
+    def complete : protopost.server.identity.Location.Simple = protopost.server.identity.Location.Simple( protocol, host, port )
     def plus( identifier : Proto.Identifier ) : Proto.PublicIdentity =
       PublicIdentity( identifier.service, identifier.algcrv, identifier.publicKeyHex, protocol, host, port )
 
   object PublicIdentity:
     val regex = raw"""^${Identifier.regexInnerString}\:${Location.regexInnerString}$$""".r
   case class PublicIdentity( service : Service, algcrv : String, publicKeyHex : String, protocol : Protocol, host : String, port : Int ) extends Proto:
-    def complete : protopost.identity.PublicIdentity[?] =
+    def complete : protopost.server.identity.PublicIdentity[?] =
       algcrv.toUpperCase match
-        case protopost.identity.PublicIdentity.ES256.algcrv =>
+        case protopost.server.identity.PublicIdentity.ES256.algcrv =>
           val uncompressedFormatPublicKey = publicKeyHex.decodeHex
           val publicKey = BouncyCastleSecp256r1.publicKeyFromUncompressedFormatBytes(uncompressedFormatPublicKey)
-          protopost.identity.PublicIdentity.ES256(protopost.identity.Location.Simple(protocol,host,port),service,publicKey)
+          protopost.server.identity.PublicIdentity.ES256(protopost.server.identity.Location.Simple(protocol,host,port),service,publicKey)
         case _ => throw new UnknownAlgorithmOrCurve(algcrv)
 
 sealed trait Proto

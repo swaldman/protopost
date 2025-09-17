@@ -3,7 +3,7 @@ package protopost.server
 import protopost.{EmailAddress,PosterId}
 import protopost.api
 import protopost.common.{Protocol,Service}
-import protopost.identity.Location
+import protopost.server.identity.Location
 
 import com.mchange.rehash.BCryptHash
 

@@ -3,7 +3,7 @@ package protopost
 import java.util.Properties
 import scala.jdk.CollectionConverters.*
 import protopost.MissingConfig
-import protopost.identity.Location
+import protopost.server.identity.Location
 
 object ExternalConfig:
   enum Key:

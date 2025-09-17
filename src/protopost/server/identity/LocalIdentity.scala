@@ -1,4 +1,4 @@
-package protopost.identity
+package protopost.server.identity
 
 import protopost.common.Service
 import protopost.server.crypto.BouncyCastleSecp256r1

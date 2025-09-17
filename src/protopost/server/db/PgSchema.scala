@@ -17,7 +17,7 @@ import protopost.{EmailAddress,PosterId,UnknownPoster,api}
 import protopost.server.{PosterWithAuth,PostDefinitionRaw,SeismicNodeWithId}
 import protopost.api.*
 import protopost.common.*
-import protopost.identity.*
+import protopost.server.identity.*
 import protopost.server.LoggingApi.*
 
 import EmailAddress.{s => es}

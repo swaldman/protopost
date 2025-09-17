@@ -20,7 +20,7 @@ import protopost.server.endpoint.Tapir
 import protopost.server.db.{PgDatabase,PgSchemaManager}
 import protopost.server.effectlib.encounterProtoSeismicNode
 import protopost.common.Service
-import protopost.identity.PublicIdentity
+import protopost.server.identity.PublicIdentity
 
 import com.mchange.cryptoutil.given
 

@@ -5,7 +5,7 @@ import protopost.common.{Protocol,Service}
 import protopost.server.SeismicNodeWithId
 import protopost.server.crypto.publicKeyBytesForPublicKey
 import protopost.server.db.PgDatabase
-import protopost.identity.*
+import protopost.server.identity.*
 
 import zio.*
 

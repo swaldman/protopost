@@ -9,7 +9,7 @@ import java.security.interfaces.ECPublicKey
 
 def publicKeyBytesForPublicKey( algcrv : String, publicKey : PublicKey ) : immutable.ArraySeq[Byte] =
   algcrv.toUpperCase match
-    case protopost.identity.PublicIdentity.ES256.algcrv =>
+    case protopost.server.identity.PublicIdentity.ES256.algcrv =>
       val bytes = BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(publicKey.asInstanceOf[ECPublicKey])
       immutable.ArraySeq.ofByte(bytes)
     case _ =>

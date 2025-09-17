@@ -1,4 +1,4 @@
-package protopost.identity
+package protopost.server.identity
 
 import com.mchange.conveniences.string.*
 
