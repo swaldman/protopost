@@ -1,4 +1,4 @@
-package protopost.api
+package protopost.common.api
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
@@ -57,7 +57,6 @@ case class PostDefinition(
   htmlPermalink            : Option[String],
   authors                  : Seq[String]
 )
-
 
 case class PosterNoAuth( id : PosterId, email : EmailAddress, fullName : String )
 

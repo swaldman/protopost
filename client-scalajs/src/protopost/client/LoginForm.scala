@@ -12,7 +12,7 @@ import scala.util.{Success,Failure}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
-import protopost.api.{EmailPassword,LoginStatus,given}
+import protopost.common.api.{EmailPassword,LoginStatus,given}
 import protopost.common.{EmailAddress,Password}
 import org.scalajs.dom.KeyboardEvent
 

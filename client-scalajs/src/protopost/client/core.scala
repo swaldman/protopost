@@ -2,7 +2,8 @@ package protopost.client
 
 import scala.scalajs.js
 import scala.scalajs.js.annotation.*
-import protopost.api.{LoginStatus,PostDefinition}
+
+import protopost.common.api.{LoginStatus,PostDefinition}
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*

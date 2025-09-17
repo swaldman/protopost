@@ -2,7 +2,7 @@ package protopost.server.endpoint
 
 import zio.*
 
-import protopost.api.*
+import protopost.common.api.*
 import protopost.common.{EmailAddress,Password,PosterId,Protocol}
 import protopost.server.crypto.{*,given}
 import protopost.server.exception.SignatureDoesNotVerify

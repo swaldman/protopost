@@ -1,6 +1,6 @@
 package protopost.server
 
-import protopost.api
+import protopost.common.api
 import protopost.common.{EmailAddress,PosterId,Protocol,Service}
 import protopost.server.identity.Location
 

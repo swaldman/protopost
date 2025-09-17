@@ -1,6 +1,6 @@
 package protopost.client
 
-import protopost.api.{DestinationIdentifier,PosterNoAuth,PostDefinition,PostDefinitionUpdate,PostIdentifier,given}
+import protopost.common.api.{DestinationIdentifier,PosterNoAuth,PostDefinition,PostDefinitionUpdate,PostIdentifier,given}
 
 import util.laminar.{documentEscapeEvents,onEnterPress}
 
@@ -11,7 +11,7 @@ import sttp.model.*
 
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
-import protopost.api.{PostDefinitionCreate,UpdateValue}
+import protopost.common.api.{PostDefinitionCreate,UpdateValue}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 

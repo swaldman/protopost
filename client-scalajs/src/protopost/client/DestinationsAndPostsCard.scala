@@ -12,10 +12,10 @@ import scala.collection.immutable
 
 import com.mchange.conveniences.string.*
 
-import protopost.api.{DestinationNickname,PostDefinition,PostDefinitionCreate,PostIdentifier,PosterNoAuth}
+import protopost.common.api.{DestinationNickname,PostDefinition,PostDefinitionCreate,PostIdentifier,PosterNoAuth}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
-import protopost.api.DestinationIdentifier
+import protopost.common.api.DestinationIdentifier
 
 object DestinationsAndPostsCard:
   def create(

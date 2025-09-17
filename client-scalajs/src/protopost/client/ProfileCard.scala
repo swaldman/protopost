@@ -1,6 +1,6 @@
 package protopost.client
 
-import protopost.api.{PosterNoAuth, given}
+import protopost.common.api.{PosterNoAuth, given}
 
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}

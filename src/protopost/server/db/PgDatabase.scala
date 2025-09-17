@@ -5,7 +5,7 @@ import zio.*
 import java.sql.Connection
 import javax.sql.DataSource
 
-import protopost.api.{Destination,DestinationNickname,PosterNoAuth}
+import protopost.common.api.{Destination,DestinationNickname,PostDefinition,PostDefinitionUpdate,PosterNoAuth}
 import protopost.common.{EmailAddress,PosterId,Protocol}
 import protopost.server.{PostDefinitionRaw,PosterWithAuth,SeismicNodeWithId}
 import protopost.server.exception.{ApparentBug,BadSeismicNodeId,UnknownPoster}
@@ -15,8 +15,6 @@ import com.mchange.rehash.*
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.zsqlutil.*
 import protopost.server.exception.EmailIsAlreadyRegistered
-import protopost.api.PostDefinition
-import protopost.api.PostDefinitionUpdate
 
 class PgDatabase( val SchemaManager : PgSchemaManager ):
   val Schema = SchemaManager.LatestSchema

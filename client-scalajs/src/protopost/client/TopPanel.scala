@@ -14,11 +14,10 @@ import scala.util.{Success,Failure}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import scala.scalajs.js.timers.*
 
-import protopost.api.{DestinationIdentifier, DestinationNickname, LoginStatus, PostIdentifier, PosterNoAuth, given}
+import protopost.common.api.{DestinationIdentifier, DestinationNickname, LoginStatus, PostDefinition, PostIdentifier, PosterNoAuth, given}
 import protopost.client.util.epochSecondsNow
 
 import scala.util.control.NonFatal
-import protopost.api.PostDefinition
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 
 object TopPanel:

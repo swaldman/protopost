@@ -9,7 +9,7 @@ import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.api.{*,given}
+import protopost.common.api.{*,given}
 import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*

@@ -12,15 +12,14 @@ import zio.http.Server as ZServer
 import sttp.tapir.server.interceptor.log.DefaultServerLog
 import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
-import protopost.common.{EmailAddress,PosterId}
+import protopost.common.api.Destination
+import protopost.common.{EmailAddress,PosterId,Service}
 import protopost.server.{AppResources,ExternalConfig,ProtoSeismicNode,SeismicNodeWithId}
 import protopost.server.LoggingApi.*
-import protopost.api.Destination
-import protopost.server.endpoint.Tapir
 import protopost.server.db.{PgDatabase,PgSchemaManager}
+import protopost.server.endpoint.Tapir
 import protopost.server.effectlib.encounterProtoSeismicNode
 import protopost.server.exception.{BadService,InconsistentSeismicNodeDefinition,ProtopostException,UnknownDestination,UnknownPoster}
-import protopost.common.Service
 import protopost.server.identity.PublicIdentity
 
 import com.mchange.cryptoutil.given
@@ -32,7 +31,6 @@ import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
 import com.mchange.milldaemon.util.PidFileManager
 import protopost.server.PosterWithAuth
-import protopost.api.Destination
 
 object ConfiguredCommand extends SelfLogging:
   private def ensureDestinationExists( psn : ProtoSeismicNode, snid : Int, destinationName : String )(db : PgDatabase, conn : Connection ) : Task[Unit] =

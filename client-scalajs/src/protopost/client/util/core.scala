@@ -1,11 +1,10 @@
 package protopost.client.util
 
+import scala.collection.immutable
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import protopost.api.{DestinationIdentifier,PostDefinition,PostDefinitionCreate,PostDefinitionUpdate,given}
-import scala.collection.immutable
-import protopost.api.PostIdentifier
+import protopost.common.api.{DestinationIdentifier,PostDefinition,PostDefinitionCreate,PostDefinitionUpdate,PostIdentifier,given}
 
 def epochSecondsNow() : Long = System.currentTimeMillis()/1000
 
@@ -33,8 +32,8 @@ object sttp:
   import _root_.sttp.model.*
   import _root_.sttp.client4.fetch.*
   import _root_.sttp.client4.jsoniter.*
-  import protopost.api.{LoginStatus,given}
   import protopost.client.{LoginLevel,ReverseChronologicalPostDefinitions}
+  import protopost.common.api.{LoginStatus,given}
   import scala.util.{Success,Failure}
 
   /*

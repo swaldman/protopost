@@ -9,7 +9,7 @@ import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.api.{*,given}
+import protopost.common.api.{*,given}
 import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*
@@ -267,13 +267,13 @@ object ServerLogic extends SelfLogging:
       ZIO.attempt:
         val highSecurityCookieValue = CookieValueWithMeta.safeApply("irrelevant", expires=Some(Instant.EPOCH), secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
         val lowSecurityCookieValue  = CookieValueWithMeta.safeApply("irrelevant", expires=Some(Instant.EPOCH), secure=appResources.inProduction, httpOnly=true, sameSite=Some(SameSite.Strict))
-        (peel(highSecurityCookieValue), peel(lowSecurityCookieValue), protopost.api.LoginStatus.empty)
+        (peel(highSecurityCookieValue), peel(lowSecurityCookieValue), protopost.common.api.LoginStatus.empty)
 
-  private def loginStatusFromExpirations( highSecurityExpiration : Instant, lowSecurityExpiration : Instant ) : protopost.api.LoginStatus =
+  private def loginStatusFromExpirations( highSecurityExpiration : Instant, lowSecurityExpiration : Instant ) : protopost.common.api.LoginStatus =
     val nowEpochSecond = java.lang.System.currentTimeMillis() / 1000
     val highSecuritySecondsRemaining = math.max(toEpochSecond(highSecurityExpiration) - nowEpochSecond, 0L)
     val lowSecuritySecondsRemaining = math.max(toEpochSecond(lowSecurityExpiration) - nowEpochSecond, 0L)
-    protopost.api.LoginStatus( highSecuritySecondsRemaining, lowSecuritySecondsRemaining )
+    protopost.common.api.LoginStatus( highSecuritySecondsRemaining, lowSecuritySecondsRemaining )
 
   def loginStatus( appResources : AppResources )( highSecurityToken : Option[String], lowSecurityToken : Option[String] ) : ZOut[LoginStatus] =
     ZOut.fromTask:
