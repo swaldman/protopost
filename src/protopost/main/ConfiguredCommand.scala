@@ -12,7 +12,8 @@ import zio.http.Server as ZServer
 import sttp.tapir.server.interceptor.log.DefaultServerLog
 import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
-import protopost.{AppResources,BadService,EmailAddress,ExternalConfig,InconsistentSeismicNodeDefinition,PosterId,ProtopostException,ProtoSeismicNode,SeismicNodeWithId,UnknownDestination,UnknownPoster}
+import protopost.{AppResources,BadService,EmailAddress,ExternalConfig,InconsistentSeismicNodeDefinition,PosterId,ProtopostException,ProtoSeismicNode,UnknownDestination,UnknownPoster}
+import protopost.server.SeismicNodeWithId
 import protopost.server.LoggingApi.*
 import protopost.api.Destination
 import protopost.server.endpoint.Tapir
@@ -29,7 +30,7 @@ import com.mchange.sc.zsqlutil.*
 import com.mchange.sc.sqlutil.migrate.DbVersionStatus
 
 import com.mchange.milldaemon.util.PidFileManager
-import protopost.PosterWithAuth
+import protopost.server.PosterWithAuth
 import protopost.api.Destination
 
 object ConfiguredCommand extends SelfLogging:

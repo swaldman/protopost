@@ -13,7 +13,8 @@ import com.mchange.rehash.*
 
 import com.mchange.cryptoutil.given
 
-import protopost.*
+import protopost.{EmailAddress,PosterId,UnknownPoster,api}
+import protopost.server.{PosterWithAuth,PostDefinitionRaw,SeismicNodeWithId}
 import protopost.api.*
 import protopost.common.*
 import protopost.identity.*
