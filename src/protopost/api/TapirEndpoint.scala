@@ -10,7 +10,7 @@ import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
 import protopost.{ApparentBug,AppResources,BadPostDefinition,EmailAddress,ExternalConfig,MissingConfig,Password,PosterId,UnknownPost}
-import protopost.LoggingApi.*
+import protopost.server.LoggingApi.*
 
 import protopost.server.db.PgDatabase
 

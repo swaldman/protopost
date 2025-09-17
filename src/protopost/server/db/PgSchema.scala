@@ -17,7 +17,7 @@ import protopost.*
 import protopost.api.*
 import protopost.common.*
 import protopost.identity.*
-import protopost.LoggingApi.*
+import protopost.server.LoggingApi.*
 
 import EmailAddress.{s => es}
 import protopost.server.db.PgSchema.V1.Table.Poster.posterExistsForEmail

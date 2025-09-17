@@ -2,7 +2,7 @@ package protopost.main
 
 import zio.*
 
-import protopost.LoggingApi.*
+import protopost.server.LoggingApi.*
 
 import com.monovore.decline.Help
 
