@@ -1,4 +1,4 @@
-package protopost
+package protopost.server
 
 import java.util.Properties
 import scala.jdk.CollectionConverters.*
