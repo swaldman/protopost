@@ -1,4 +1,4 @@
-package protopost.jwt
+package protopost.server.jwt
 
 import java.time.Instant
 import com.auth0.jwt.JWT
@@ -62,4 +62,12 @@ def decodeVerifyJwt( publicKey : ECPublicKey )( token : Jwt ) : Claims =
 
 case class PosterAuthInfo(highSecurityToken : Option[String], lowSecurityToken : Option[String])
 case class AuthenticatedPoster(claims : Claims, level : SecurityLevel)
+
+// typewrappers
+
+object Jwt:
+  private[protopost] inline def apply( s : String ) : Jwt = s
+  private[protopost] inline def s(jwt : Jwt) : String = jwt
+opaque type Jwt = String
+
 

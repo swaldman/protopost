@@ -20,7 +20,8 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 import com.mchange.sc.zsqlutil.*
-import protopost.{BadCookieSettings,BadCredentials,NotLoggedIn,jwt}
+import protopost.{BadCookieSettings,BadCredentials,NotLoggedIn}
+import protopost.server.jwt
 import sttp.model.headers.CookieValueWithMeta
 import protopost.InsufficientPermissions
 

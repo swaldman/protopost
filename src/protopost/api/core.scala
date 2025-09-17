@@ -6,7 +6,7 @@ import protopost.{EmailAddress,Password,PosterId,SignatureDoesNotVerify}
 import protopost.common.Protocol
 import protopost.server.crypto.{*,given}
 
-import protopost.jwt.{Jwk,Jwks,Jwt}
+import protopost.server.jwt.{Jwk,Jwks,Jwt}
 
 import com.mchange.conveniences.throwable.*
 import com.mchange.cryptoutil.{*,given}
