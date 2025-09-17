@@ -1,5 +1,6 @@
-package protopost
+package protopost.server
 
+import protopost.{ExternalConfig,MissingConfig,PosterId}
 import protopost.common.{Protocol,Service}
 import protopost.server.ConfigProperties
 import protopost.server.crypto.BouncyCastleSecp256r1
