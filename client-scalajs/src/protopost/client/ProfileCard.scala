@@ -4,7 +4,7 @@ import protopost.api.{PosterNoAuth, given}
 
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
-import protopost.EmailAddress
+import protopost.common.EmailAddress
 
 object ProfileCard:
   def create(composerLocalStorageItem : LocalStorageItem[Composer], composerSignal : Signal[Composer], posterNoAuthSignal : Signal[Option[PosterNoAuth]]) : HtmlElement =

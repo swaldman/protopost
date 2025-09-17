@@ -1,4 +1,4 @@
-package protopost
+package protopost.common
 
 import scala.scalajs.js.RegExp
 
@@ -13,6 +13,7 @@ object EmailAddress:
     // more validations TK, maybe?
     s
   private[protopost] inline def s( email : EmailAddress ) : String = email
+  
 opaque type EmailAddress = String
 
 

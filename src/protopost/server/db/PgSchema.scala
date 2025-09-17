@@ -13,11 +13,11 @@ import com.mchange.rehash.*
 
 import com.mchange.cryptoutil.given
 
-import protopost.{EmailAddress,PosterId,api}
+import protopost.api
 import protopost.server.{PosterWithAuth,PostDefinitionRaw,SeismicNodeWithId}
 import protopost.server.exception.UnknownPoster
 import protopost.api.*
-import protopost.common.*
+import protopost.common.{EmailAddress,PosterId,Protocol}
 import protopost.server.identity.*
 import protopost.server.LoggingApi.*
 
@@ -453,7 +453,7 @@ object PgSchema extends SelfLogging:
       end SeismicNodeId
       object PosterId extends Creatable:
         protected val Create = "CREATE SEQUENCE poster_id_seq AS INTEGER"
-        def selectNext( conn : Connection ) : protopost.PosterId = Sequence.selectNext( "poster_id_seq" )( protopost.PosterId.apply )( conn )
+        def selectNext( conn : Connection ) : protopost.common.PosterId = Sequence.selectNext( "poster_id_seq" )( protopost.common.PosterId.apply )( conn )
       end PosterId
       object PostId extends Creatable:
         protected val Create = "CREATE SEQUENCE post_id_seq AS INTEGER"

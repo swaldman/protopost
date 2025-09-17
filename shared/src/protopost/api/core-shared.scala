@@ -3,8 +3,7 @@ package protopost.api
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
-import protopost.{EmailAddress,Password,PosterId}
-import protopost.common.{Protocol,Service}
+import protopost.common.{EmailAddress,Password,PosterId,Protocol,Service}
 
 val LastCharString = "\uDBFF\uDFFD"
 

@@ -4,7 +4,7 @@ import com.monovore.decline.*
 import cats.implicits.* // for mapN
 import java.nio.file.{Path as JPath}
 
-import protopost.{EmailAddress,PosterId}
+import protopost.common.{EmailAddress,PosterId}
 import protopost.server.ProtoSeismicNode
 
 import com.mchange.rehash.Password

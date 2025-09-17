@@ -12,7 +12,7 @@ import zio.http.Server as ZServer
 import sttp.tapir.server.interceptor.log.DefaultServerLog
 import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
-import protopost.{EmailAddress,PosterId}
+import protopost.common.{EmailAddress,PosterId}
 import protopost.server.{AppResources,ExternalConfig,ProtoSeismicNode,SeismicNodeWithId}
 import protopost.server.LoggingApi.*
 import protopost.api.Destination

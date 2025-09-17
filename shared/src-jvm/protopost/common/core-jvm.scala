@@ -1,4 +1,4 @@
-package protopost
+package protopost.common
 
 import scala.annotation.targetName
 import com.mchange.mailutil.Smtp

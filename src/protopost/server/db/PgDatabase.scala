@@ -5,9 +5,8 @@ import zio.*
 import java.sql.Connection
 import javax.sql.DataSource
 
-import protopost.{EmailAddress,PosterId}
 import protopost.api.{Destination,DestinationNickname,PosterNoAuth}
-import protopost.common.Protocol
+import protopost.common.{EmailAddress,PosterId,Protocol}
 import protopost.server.{PostDefinitionRaw,PosterWithAuth,SeismicNodeWithId}
 import protopost.server.exception.{ApparentBug,BadSeismicNodeId,UnknownPoster}
 

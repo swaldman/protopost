@@ -9,8 +9,8 @@ import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.{EmailAddress,Password,PosterId}
 import protopost.api.{*,given}
+import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*
 import protopost.server.exception.{ApparentBug,BadPostDefinition,MissingConfig,UnknownPost}
@@ -190,7 +190,7 @@ object ServerLogic extends SelfLogging:
   def client( appResources : AppResources )(unit : Unit) : ZOut[String] =
     ZOut.fromTask( ZIO.attempt(protopost.client.client_top_html( appResources.localIdentity.location.toUrl ).text) )
 
-  extension ( pwd : protopost.Password )
+  extension ( pwd : protopost.common.Password )
     def toRehash : com.mchange.rehash.Password = com.mchange.rehash.Password(Password.s(pwd))
 
   private def peel( either : Either[String,CookieValueWithMeta] ) =

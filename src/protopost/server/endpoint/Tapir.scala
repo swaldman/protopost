@@ -9,8 +9,8 @@ import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
 
-import protopost.{EmailAddress,Password,PosterId}
 import protopost.api.{*,given}
+import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*
 import protopost.server.exception.{ApparentBug,BadPostDefinition,MissingConfig,UnknownPost}

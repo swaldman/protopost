@@ -1,7 +1,6 @@
 package protopost.server
 
-import protopost.PosterId
-import protopost.common.{Protocol,Service}
+import protopost.common.{PosterId,Protocol,Service}
 import protopost.server.{ExternalConfig,ConfigProperties}
 import protopost.server.crypto.BouncyCastleSecp256r1
 import protopost.server.db.{PgDatabase,PgSchemaManager}

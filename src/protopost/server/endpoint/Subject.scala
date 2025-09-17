@@ -1,6 +1,6 @@
 package protopost.server.endpoint
 
-import protopost.{EmailAddress,PosterId}
+import protopost.common.{EmailAddress,PosterId}
 import protopost.server.exception.BadSubject
 import scala.util.control.NonFatal
 
