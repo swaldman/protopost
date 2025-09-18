@@ -1,4 +1,4 @@
-//| mill-version: 1.0.4
+//| mill-version: 1.0.5
 //| mill-jvm-version: 21
 //| mvnDeps: ["com.mchange::untemplate-mill:0.3.0-SNAPSHOT","com.mchange::mill-daemon:0.2.1","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
 //+-------------------------------------------------------------------------------------------------------------------------------------------------------
