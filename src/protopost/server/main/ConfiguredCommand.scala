@@ -50,12 +50,12 @@ object ConfiguredCommand extends SelfLogging:
           db.posterForEmail(eml)(conn).getOrElse:
             throw new UnknownPoster( s"No poster with e-mail address '${eml}' has been defined." )
         pwa.id
-  case class CreateDestination( psn : ProtoSeismicNode, destinationName : String, acceptAdvertised : Boolean ) extends ConfiguredCommand:
+  case class CreateDestination( psn : ProtoSeismicNode, destinationName : String, nickname : Option[String], acceptAdvertised : Boolean ) extends ConfiguredCommand:
     def createDestination( ar : AppResources, db : PgDatabase, conn : Connection ) : Task[Destination]=
       for
         seismicNodeId <- encounterProtoSeismicNode( psn, acceptAdvertised, createInDatabase=true )( ar, db, conn )
       yield
-        db.newDestination( seismicNodeId, destinationName )( conn )
+        db.newDestination( seismicNodeId, destinationName, nickname )( conn )
     override def zcommand =
       for
         ar   <- ZIO.service[AppResources]
@@ -158,13 +158,13 @@ object ConfiguredCommand extends SelfLogging:
         // migrate functions log internally, no need for additional messages here
         0
     end zcommand
-  case class GrantDestination(psn : ProtoSeismicNode, destinationName : String, posterIdOrEmailAddress : (PosterId | EmailAddress), nickname : Option[String], acceptAdvertised : Boolean) extends ConfiguredCommand:
+  case class GrantDestination(psn : ProtoSeismicNode, destinationName : String, posterIdOrEmailAddress : (PosterId | EmailAddress), acceptAdvertised : Boolean) extends ConfiguredCommand:
     def performUpdate( ar : AppResources, db : PgDatabase)( conn : Connection ) : Task[Unit] =
       for
         snid <- encounterProtoSeismicNode(psn,acceptAdvertised,createInDatabase=false)( ar, db, conn )
         pid  <- findPosterId(posterIdOrEmailAddress)( db, conn )
         _    <- ensureDestinationExists(psn, snid, destinationName)(db, conn)
-        _    <- ZIO.attemptBlocking( db.grant( snid, destinationName, pid, nickname )( conn ) )
+        _    <- ZIO.attemptBlocking( db.grant( snid, destinationName, pid )( conn ) )
       yield()
     override def zcommand =
       for

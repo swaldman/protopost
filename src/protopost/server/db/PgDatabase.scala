@@ -5,7 +5,7 @@ import zio.*
 import java.sql.Connection
 import javax.sql.DataSource
 
-import protopost.common.api.{Destination,DestinationNickname,PostDefinition,PostDefinitionUpdate,PosterNoAuth}
+import protopost.common.api.{Destination,PostDefinition,PostDefinitionUpdate,PosterNoAuth}
 import protopost.common.{EmailAddress,PosterId,Protocol}
 import protopost.server.{PostDefinitionRaw,PosterWithAuth,SeismicNodeWithId}
 import protopost.server.exception.{ApparentBug,BadSeismicNodeId,UnknownPoster}
@@ -25,24 +25,22 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Poster.selectAll( conn )
   def destinationsByPosterId( posterId : PosterId)( conn : Connection ) : Set[Destination] =
     Schema.Join.selectDestinationsForPosterId( posterId )( conn )
-  def destinationNicknamesByPosterId( posterId : PosterId)( conn : Connection ) : Set[DestinationNickname] =
-    Schema.Join.selectDestinationNicknamesForPosterId( posterId )( conn )
   def destinationDefined( seismicNodeId : Int, name : String )( conn : Connection ) : Boolean =
     Schema.Table.Destination.defined( seismicNodeId, name )( conn )
   def fetchHashForPoster( posterId : PosterId )( conn : Connection ) : Option[BCryptHash] =
     Schema.Table.Poster.select( posterId )( conn ).map( _.auth )
-  def grant( seismicNodeId : Int, destinationName : String, posterId : PosterId, nickname : Option[String] )( conn : Connection ) : Unit =
-    Schema.Table.DestinationPoster.insert( seismicNodeId, destinationName, posterId, nickname )( conn )
+  def grant( seismicNodeId : Int, destinationName : String, posterId : PosterId )( conn : Connection ) : Unit =
+    Schema.Table.DestinationPoster.insert( seismicNodeId, destinationName, posterId )( conn )
   def identifierWithLocationForSeismicNodeId( seismicNodeId : Int )( conn : Connection ) : String =
     Schema.Table.SeismicNode.selectById( seismicNodeId )( conn ) match
       case Some( seismicNodeWithId ) => seismicNodeWithId.identifierWithLocation
       case None => throw new BadSeismicNodeId( s"Expected a seismic node to be defined in the database with ID $seismicNodeId. Did not find one." )
-  def newDestination( seismicNodeId : Int, name : String )( conn : Connection ) : Destination =
-    Schema.Table.Destination.insert( seismicNodeId, name )( conn )
+  def newDestination( seismicNodeId : Int, name : String, nickname : Option[String] )( conn : Connection ) : Destination =
+    Schema.Table.Destination.insert( seismicNodeId, name, nickname )( conn )
     val sn =
       seismicNodeById( seismicNodeId )( conn ).getOrElse:
         throw new BadSeismicNodeId( s"Expected a seismic node to be defined in the database with ID $seismicNodeId. Did not find one." )
-    Destination( sn.toApiSeismicNode, name )
+    Destination( sn.toApiSeismicNode, name, nickname )
   def newPost(
     destinationSeismicNodeId : Int,
     destinationName          : String,
@@ -67,7 +65,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     val seismicNode = seismicNodeById( pdr.destinationSeismicNodeId )( conn ).getOrElse( throw new ApparentBug("Seismic node ID we just look up in this transaction must exist by db constraint!") )
     val owner = posterById( pdr.owner )( conn ).getOrElse( throw new ApparentBug("Owner PosterID we just look up in this transaction must exist by db constraint!") )
     val authors = Schema.Table.PostAuthor.select( pdr.postId )( conn )
-    val destination = Destination( seismicNode.toApiSeismicNode, pdr.destinationName )
+    val nickname = Schema.Table.Destination.nicknameForDefined( pdr.destinationSeismicNodeId, pdr.destinationName )( conn ) // this should be an already-defined destination!
+    val destination = Destination( seismicNode.toApiSeismicNode, pdr.destinationName, nickname )
     PostDefinition( pdr.postId, destination, owner.toApiPosterNoAuth, pdr.title, pdr.postAnchor, pdr.sprout, pdr.inReplyToHref, pdr.inReplyToMimeType, pdr.inReplyToGuid, pdr.publicationAttempted, pdr.htmlPermalink, authors)
   def postDefinitionForId( id : Int )( conn : Connection ) : Option[PostDefinition] =
     Schema.Table.Post.select( id )( conn ).map( postDefinitionFromRaw(_)(conn) )

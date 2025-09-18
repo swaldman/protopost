@@ -125,23 +125,37 @@ object PgSchema extends SelfLogging:
       object Destination extends Creatable:
         override val Create =
           """|CREATE TABLE destination (
-             |  seismic_node_id INTEGER,
-             |  name VARCHAR(256),
+             |  seismic_node_id INTEGER      NOT NULL,
+             |  name            VARCHAR(256) NOT NULL,
+             |  nickname        VARCHAR(256),           -- can be NULL
+             |  UNIQUE (nickname),
              |  PRIMARY KEY (seismic_node_id, name),
              |  FOREIGN KEY (seismic_node_id) REFERENCES seismic_node(id)
              |)""".stripMargin
         val SelectDefined = "SELECT EXISTS(SELECT 1 FROM destination WHERE seismic_node_id=? AND name=?)"
-        val Insert = "INSERT INTO destination(seismic_node_id, name) VALUES ( ?, ? )"
-        def insert( seismicNodeId : Int, name : String )( conn : Connection ) : Unit =
+        val SelectNickname = "SELECT nickname FROM destination WHERE seismic_node_id = ? AND name = ?"
+        val Insert = "INSERT INTO destination(seismic_node_id, name, nickname) VALUES ( ?, ?, ? )"
+        def insert( seismicNodeId : Int, name : String, nickname : Option[String] )( conn : Connection ) : Unit =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
             ps.setInt( 1, seismicNodeId )
             ps.setString( 2, name )
+            setStringOptional( ps, 3, Types.VARCHAR, nickname )
             ps.executeUpdate()
         def defined( seismicNodeId : Int, name : String )( conn : Connection ) : Boolean =
           Using.resource( conn.prepareStatement( SelectDefined ) ): ps =>
             ps.setInt(1, seismicNodeId)
             ps.setString(2, name)
             Using.resource( ps.executeQuery() )( uniqueResult( "destination-defined" )( _.getBoolean(1) ) )
+        def nicknameForDefined( seismicNodeId : Int, name : String )( conn : Connection ) : Option[String] =
+          Using.resource( conn.prepareStatement( SelectDefined ) ): ps =>
+            ps.setInt(1, seismicNodeId)
+            ps.setString(2, name)
+            Using.resource( ps.executeQuery() )( uniqueResult( "nickname-for-defined" )( rs => Option(rs.getString(1)) ) )
+        def nickname( seismicNodeId : Int, name : String )( conn : Connection ) : Option[Option[String]] =
+          Using.resource( conn.prepareStatement( SelectDefined ) ): ps =>
+            ps.setInt(1, seismicNodeId)
+            ps.setString(2, name)
+            Using.resource( ps.executeQuery() )( zeroOrOneResult( "nickname" )( rs => Option(rs.getString(1)) ) )
       end Destination
       object Poster extends Creatable:
         override val Create =
@@ -211,19 +225,16 @@ object PgSchema extends SelfLogging:
              |  seismic_node_id  INTEGER NOT NULL,
              |  destination_name VARCHAR(256) NOT NULL,
              |  poster_id        INTEGER NOT NULL,
-             |  nickname         VARCHAR(256),
-             |  UNIQUE ( poster_id, nickname ), -- each destination's nickname should be unique to each poster
              |  PRIMARY KEY ( seismic_node_id, destination_name, poster_id ),
              |  FOREIGN KEY ( seismic_node_id ) references seismic_node(id),
              |  FOREIGN KEY ( poster_id ) references poster(id)
              |)""".stripMargin
-        val Insert = s"INSERT INTO destination_poster(seismic_node_id, destination_name, poster_id, nickname) VALUES (?,?,?,?)"
-        def insert( seismicNodeId : Int, destinationName : String, posterId : PosterId, nickname : Option[String] )( conn : Connection ) =
+        val Insert = s"INSERT INTO destination_poster(seismic_node_id, destination_name, poster_id) VALUES (?,?,?)"
+        def insert( seismicNodeId : Int, destinationName : String, posterId : PosterId )( conn : Connection ) =
           Using.resource( conn.prepareStatement(Insert) ): ps =>
             ps.setInt(1, seismicNodeId)
             ps.setString(2, destinationName)
             ps.setInt(3, PosterId.i(posterId))
-            setStringOptional( ps, 4, Types.VARCHAR, nickname )
             ps.executeUpdate()
       end DestinationPoster
       object Post extends Creatable:
@@ -466,11 +477,11 @@ object PgSchema extends SelfLogging:
     end Index
     object Join:
       val SelectAllDestinations =
-        """|SELECT seismic_node.id, seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name
+        """|SELECT seismic_node.id, seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name, destination.nickname
            |FROM destination
            |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id""".stripMargin
       val SelectDestinationsForPosterId =
-        """|SELECT seismic_node.id, seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name, destination_poster.nickname
+        """|SELECT seismic_node.id, seismic_node.algcrv, seismic_node.pubkey, seismic_node.protocol, seismic_node.host, seismic_node.port, destination.name, destination.nickname
            |FROM destination_poster
            |INNER JOIN destination ON destination_poster.seismic_node_id = destination.seismic_node_id AND destination_poster.destination_name = destination_name
            |INNER JOIN seismic_node ON destination.seismic_node_id = seismic_node.id
@@ -488,23 +499,18 @@ object PgSchema extends SelfLogging:
         val host        = rs.getString(5)
         val port        = rs.getInt(6)
         val name        = rs.getString(7)
+        val nickname    = Option(rs.getString(8))
         val protocol = Protocol.valueOf(protocolStr)
         val apiSeismicNode = api.SeismicNode( snid, algcrv, pubkey.hex0x, protocol, host, port )
-        Destination(apiSeismicNode, name)
-      private def extractDestinationNickname( rs : ResultSet ) : DestinationNickname =
-        val destination = extractDestination(rs)
-        val nickname = rs.getString(8)
-        DestinationNickname( destination, Option(nickname) )
+        Destination(apiSeismicNode, name, nickname)
       def selectAllDestinations( conn : Connection ) : Set[Destination] =
         Using.resource( conn.prepareStatement(SelectAllDestinations) ): ps =>
           Using.resource( ps.executeQuery() )( toSet(extractDestination) )
-      def selectDestinationNicknamesForPosterId( posterId : PosterId )( conn : Connection ) : Set[DestinationNickname] =
+      def selectDestinationsForPosterId( posterId : PosterId )( conn : Connection ) : Set[Destination] =
         val pid = PosterId.i(posterId)
         Using.resource( conn.prepareStatement(SelectDestinationsForPosterId) ): ps =>
           ps.setInt(1, pid)
-          Using.resource( ps.executeQuery() )( toSet(extractDestinationNickname) )
-      def selectDestinationsForPosterId( posterId : PosterId )( conn : Connection ) : Set[Destination] =
-        (selectDestinationNicknamesForPosterId( posterId )( conn )).map( _.destination )
+          Using.resource( ps.executeQuery() )( toSet(extractDestination) )
       def selectPostersBySeismicNodeIdDestinationName( snid : Int, destinationName : String )( conn : Connection ) : Set[PosterWithAuth] =
         Using.resource( conn.prepareStatement(SelectPostersBySeismicNodeIdDestinationName) ): ps =>
           ps.setInt(1, snid)

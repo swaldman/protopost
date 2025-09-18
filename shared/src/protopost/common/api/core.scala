@@ -70,18 +70,13 @@ case class SeismicNode( id : Int, algcrv : String, publicKeyHex0x : String, prot
     s"${Service.seismic}[${algcrv}]${publicKeyHex0x}:${locationUrl}"
 
 object Destination:
-  given Ordering[Destination] = Ordering.by( d => ( d.seismicNode, d.name ) )
-case class Destination( seismicNode : SeismicNode, name : String ):
+  given Ordering[Destination] = Ordering.by( d => ( d.nickname.getOrElse(LastCharString), d.seismicNode, d.name ) )
+case class Destination( seismicNode : SeismicNode, name : String, nickname : Option[String] ):
   def destinationIdentifier = DestinationIdentifier(seismicNode.id,name)
 
 case class DestinationIdentifier( seismicNodeId : Int, name : String )
 
 case class PostIdentifier( destinationIdentifier : DestinationIdentifier, postId : Int )
-
-object DestinationNickname:
-  given Ordering[DestinationNickname] = Ordering.by( dn => (dn.destination, dn.nickname.getOrElse(LastCharString)) )
-case class DestinationNickname( destination : Destination, nickname : Option[String] ):
-  def destinationIdentifier = DestinationIdentifier(destination.seismicNode.id,destination.name)
 
 // json codecs -- jsoniter-scala
 given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:
@@ -119,6 +114,7 @@ given JsonValueCodec[Destination] = JsonCodecMaker.make
 
 given JsonValueCodec[DestinationIdentifier] = JsonCodecMaker.make
 
-given JsonValueCodec[DestinationNickname] = JsonCodecMaker.make
+given JsonValueCodec[Set[Destination]] = JsonCodecMaker.make
 
-given given_JsonValueCodec_Set_DefinitionNickname : JsonValueCodec[Set[DestinationNickname]] = JsonCodecMaker.make
+
+

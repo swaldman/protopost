@@ -82,7 +82,7 @@ object Tapir extends SelfLogging:
 
   val PosterInfo = PosterAuthenticated.get.in("poster-info").out(jsonBody[PosterNoAuth])
 
-  val Destinations = PosterAuthenticated.get.in("destinations").out(jsonBody[Set[DestinationNickname]])
+  val Destinations = PosterAuthenticated.get.in("destinations").out(jsonBody[Set[Destination]])
 
   val NewPost = PosterAuthenticated.post.in("new-post").in(jsonBody[PostDefinitionCreate]).out(jsonBody[PostDefinition])
 

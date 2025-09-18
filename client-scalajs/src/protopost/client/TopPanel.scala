@@ -14,7 +14,7 @@ import scala.util.{Success,Failure}
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import scala.scalajs.js.timers.*
 
-import protopost.common.api.{DestinationIdentifier, DestinationNickname, LoginStatus, PostDefinition, PostIdentifier, PosterNoAuth, given}
+import protopost.common.api.{DestinationIdentifier, Destination, LoginStatus, PostDefinition, PostIdentifier, PosterNoAuth, given}
 import protopost.client.util.epochSecondsNow
 
 import scala.util.control.NonFatal
@@ -38,7 +38,7 @@ object TopPanel:
     val loginLevelChangeEvents = loginLevelSignal.changes.distinct
     val posterNoAuthVar : Var[Option[PosterNoAuth]] = Var(None)
     val posterNoAuthSignal : Signal[Option[PosterNoAuth]] = posterNoAuthVar.signal
-    val destinationsVar : Var[immutable.SortedSet[DestinationNickname]] = Var( immutable.SortedSet.empty )
+    val destinationsVar : Var[immutable.SortedSet[Destination]] = Var( immutable.SortedSet.empty )
     val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
     val currentPostIdentifierVar : Var[Option[PostIdentifier]] = Var(None)
 
@@ -60,7 +60,7 @@ object TopPanel:
       println(s"loginObserver - level: ${level}")
       if level.isLoggedIn then
         util.sttp.setOptionalVarFromApiGetResult[PosterNoAuth]( protopostLocation.addPath("protopost", "poster-info"), backend, posterNoAuthVar )
-        util.sttp.setVarFromTransformedApiGetResult[immutable.Set[DestinationNickname],immutable.SortedSet[DestinationNickname]](
+        util.sttp.setVarFromTransformedApiGetResult[immutable.Set[Destination],immutable.SortedSet[Destination]](
           protopostLocation.addPath("protopost", "destinations"),
           backend,
           destinationsVar,

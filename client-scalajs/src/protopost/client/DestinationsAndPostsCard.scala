@@ -12,7 +12,7 @@ import scala.collection.immutable
 
 import com.mchange.conveniences.string.*
 
-import protopost.common.api.{DestinationNickname,PostDefinition,PostDefinitionCreate,PostIdentifier,PosterNoAuth}
+import protopost.common.api.{Destination,PostDefinition,PostDefinitionCreate,PostIdentifier,PosterNoAuth}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import protopost.common.api.DestinationIdentifier
@@ -22,24 +22,24 @@ object DestinationsAndPostsCard:
     protopostLocation : Uri,
     backend : WebSocketBackend[scala.concurrent.Future],
     currentPostIdentifierVar : Var[Option[PostIdentifier]],
-    destinationsVar : Var[immutable.SortedSet[DestinationNickname]],
+    destinationsVar : Var[immutable.SortedSet[Destination]],
     destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
     locationLocalStorageItem : LocalStorageItem[Tab],
     posterNoAuthSignal : Signal[Option[PosterNoAuth]]
   ) : HtmlElement =
 
     object DestinationPane:
-      def create( dn : DestinationNickname, initOpen : Boolean = false ) : HtmlElement =
-        // println( s"DestinationPane.create( $dn, $initOpen )" )
+      def create( destination : Destination, initOpen : Boolean = false ) : HtmlElement =
+        // println( s"DestinationPane.create( $destination, $initOpen )" )
         val openVar : Var[Boolean] = Var(initOpen)
         val openSignal = openVar.signal
-        val destinationText = dn.nickname.getOrElse( s"${dn.destination.name}@${dn.destination.seismicNode.locationUrl}" )
+        val destinationText = destination.nickname.getOrElse( s"${destination.name}@${destination.seismicNode.locationUrl}" )
 
         object PostsPane:
           val postDefinitionsSignal : Signal[Option[immutable.SortedSet[PostDefinition]]] =
             given Ordering[PostDefinition] = ReverseChronologicalPostDefinitions
             destinationsToKnownPostsVar.signal.map: outerMap =>
-              outerMap.get(dn.destinationIdentifier).map: destinationMap =>
+              outerMap.get(destination.destinationIdentifier).map: destinationMap =>
                 val pds = destinationMap.map( (k,v) => v )
                 pds.to(immutable.SortedSet)
 
@@ -51,7 +51,7 @@ object DestinationsAndPostsCard:
           val newPostCreatedObserver = Observer[(Option[PostIdentifier],Option[immutable.SortedSet[PostDefinition]])]( (mbPostIdentifier, mbCurrentPostDefinitions) => 
             mbPostIdentifier match
               case Some( postIdentifier ) =>
-                if postIdentifier.destinationIdentifier == dn.destinationIdentifier then
+                if postIdentifier.destinationIdentifier == destination.destinationIdentifier then
                   mbCurrentPostDefinitions match
                     case Some(currentPostDefinitions) if !currentPostDefinitions.exists( _.postId == postIdentifier.postId ) => updatePosts()
                     case _ => /* ignore */
@@ -65,15 +65,15 @@ object DestinationsAndPostsCard:
           val newPostClicksObserver = Observer[(dom.MouseEvent,Option[PosterNoAuth])]: (_,mbPna) =>
             mbPna match
               case Some(posterNoAuth) =>
-                val di = dn.destinationIdentifier
-                val postDefinition = new PostDefinitionCreate( dn.destination.seismicNode.id, dn.destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
+                val di = destination.destinationIdentifier
+                val postDefinition = new PostDefinitionCreate( destination.seismicNode.id, destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
                 util.sttp.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierVar )
                 locationLocalStorageItem.set(Tab.currentPost)
               case None =>
                 println("Cannot create new post, posterNoAuthSignal seems unset? We are not properly logged in?")
 
           def updatePosts() =
-            util.sttp.hardUpdateDestinationsToKnownPosts( protopostLocation, dn.destinationIdentifier, backend, destinationsToKnownPostsVar )
+            util.sttp.hardUpdateDestinationsToKnownPosts( protopostLocation, destination.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
           private def postDiv( pd : PostDefinition ) : HtmlElement =
             val title = pd.title.fold(Client.UntitledPostLabel)(t => s""""$t"""")
@@ -82,7 +82,7 @@ object DestinationsAndPostsCard:
               fontSize.pt(10),
               ClickLink.create(title).amend(
                 onClick --> { _ =>
-                  currentPostIdentifierVar.set(Some(PostIdentifier(dn.destinationIdentifier,pd.postId)))
+                  currentPostIdentifierVar.set(Some(PostIdentifier(destination.destinationIdentifier,pd.postId)))
                   locationLocalStorageItem.set(Tab.currentPost)
                 }
               ),
@@ -97,7 +97,7 @@ object DestinationsAndPostsCard:
               )
             )
           def create() : HtmlElement =
-            // println( s"PostsPane.create( $dn, $initOpen )" )
+            // println( s"PostsPane.create( $destination, $initOpen )" )
             div(
               cls("posts-pane"),
               marginLeft.rem(1),
@@ -166,11 +166,11 @@ object DestinationsAndPostsCard:
     end DestinationPane
 
     val destinationPanesSignal : Signal[Seq[HtmlElement]] =
-      destinationsVar.signal.map: dnset =>
-        if dnset.size == 1 then
-          List( DestinationPane.create(dnset.head, initOpen = true ) )
+      destinationsVar.signal.map: dset =>
+        if dset.size == 1 then
+          List( DestinationPane.create(dset.head, initOpen = true ) )
         else
-          dnset.toVector.map( dn => DestinationPane.create(dn) ).toSeq
+          dset.toVector.map( destination => DestinationPane.create(destination) ).toSeq
     div(
       idAttr("destinations-and-posts-panel"),
       // backgroundColor("green"),

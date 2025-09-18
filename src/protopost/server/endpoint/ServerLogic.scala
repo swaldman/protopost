@@ -85,13 +85,13 @@ object ServerLogic extends SelfLogging:
       withConnectionTransactional(ds): conn =>
         db.posterById(subject.posterId)(conn).map( _.toApiPosterNoAuth )
 
-  def destinations( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[Set[DestinationNickname]] =
+  def destinations( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[Set[Destination]] =
     ZOut.fromTask:
       val db = appResources.database
       val ds = appResources.dataSource
       val subject = parseSubject( authenticatedPoster )
       withConnectionTransactional(ds): conn =>
-        db.destinationNicknamesByPosterId(subject.posterId)(conn)
+        db.destinationsByPosterId(subject.posterId)(conn)
 
   def newPost( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postDefinitionCreate : PostDefinitionCreate ) : ZOut[PostDefinition] =
     ZOut.fromTask:

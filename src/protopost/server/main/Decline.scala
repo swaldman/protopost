@@ -35,8 +35,11 @@ object Decline:
     val createDestination =
       val header = "Create a new destination, a reference to a site on a seismic node to which posts can be published."
       val opts =
-        ( Common.seismicNode, Common.destinationName, Common.acceptAdvertised ) mapN: (sn, n, aa) =>
-          ConfiguredCommand.CreateDestination( sn, n, aa )
+        val nickname =
+          val help = s"A nickname for the destination."
+          Opts.option[String]("nickname", help=help).orNone 
+        ( Common.seismicNode, Common.destinationName, nickname, Common.acceptAdvertised ) mapN: (sn, n, nn, aa) =>
+          ConfiguredCommand.CreateDestination( sn, n, nn, aa )
       Command("create-destination", header=header )( opts )
     val createUser =
       val header = "Create a new user."
@@ -85,11 +88,8 @@ object Decline:
     val grantDestination =
       val header = "Grant a user the right to post a destination."
       val opts =
-        val nickname =
-          val help = s"A nickname for the destination visible to the poster."
-          Opts.option[String]("nickname", help=help).orNone 
-        ( Common.seismicNode, Common.destinationName, Common.posterIdOrEmailAddress, nickname, Common.acceptAdvertised ) mapN: (sn, n, poea, nn, aa) =>
-          ConfiguredCommand.GrantDestination( sn, n, poea, nn, aa )
+        ( Common.seismicNode, Common.destinationName, Common.posterIdOrEmailAddress, Common.acceptAdvertised ) mapN: (sn, n, poea, aa) =>
+          ConfiguredCommand.GrantDestination( sn, n, poea, aa )
       Command("grant-destination", header=header )( opts )
     val generatePrivateKey =
       val header = "Generate and print to the console a hex value suitable for use in config as 'protopost.server.private-key-hex'"
