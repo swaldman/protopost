@@ -10,7 +10,6 @@ import com.mchange.conveniences.string.*
     </script>
     <style>
       * {
-          font-family: sans-serif;
           box-sizing: border-box;
       }
       body {
@@ -19,6 +18,7 @@ import com.mchange.conveniences.string.*
           margin: 0;
           padding: 0;
           overflow: clip;
+          font-family: sans-serif;
       }
       #root {
           width: 97.5vw;

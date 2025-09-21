@@ -40,7 +40,9 @@ object TopPanel:
     val posterNoAuthSignal : Signal[Option[PosterNoAuth]] = posterNoAuthVar.signal
     val destinationsVar : Var[immutable.SortedSet[Destination]] = Var( immutable.SortedSet.empty )
     val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
-    val currentPostIdentifierVar : Var[Option[PostIdentifier]] = Var(None)
+
+    val currentPostIdentifierLocalStorageItem = LocalStorageItem(LocalStorageItem.Key.currentPostIdentifier, None )
+    val currentPostIdentifierSignal = currentPostIdentifierLocalStorageItem.signal
 
     val locationLocalStorageItem = LocalStorageItem(LocalStorageItem.Key.location, Tab.destinationsAndPosts )
     val locationSignal : Signal[Tab] = locationLocalStorageItem.signal
@@ -70,7 +72,7 @@ object TopPanel:
         posterNoAuthVar.set(None)
         destinationsVar.set( immutable.SortedSet.empty )
 
-    val disabledTabsSignal = currentPostIdentifierVar.signal.map: mbPi =>
+    val disabledTabsSignal = currentPostIdentifierSignal.map: mbPi =>
       mbPi match
         case Some(pi) => Set.empty[Tab]
         case None => Set(Tab.currentPost)
@@ -82,8 +84,8 @@ object TopPanel:
 
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
-    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierVar,destinationsVar,destinationsToKnownPostsVar,locationLocalStorageItem,posterNoAuthSignal)
-    val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierVar, posterNoAuthSignal )
+    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLocalStorageItem,destinationsVar,destinationsToKnownPostsVar,locationLocalStorageItem,posterNoAuthSignal)
+    val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierLocalStorageItem, posterNoAuthSignal )
     val profileCard = ProfileCard.create(composerLocalStorageItem,composerSignal,posterNoAuthSignal)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>
@@ -171,7 +173,6 @@ object TopPanel:
         |#app-card-panel {
         |  /* Flexible middle section that takes remaining space */
         |  flex: 1 1 auto;
-        |  overflow: auto;
         |}
         |#app-tab-panel {
         |  /* Fixed height bottom section */
@@ -238,6 +239,7 @@ object TopPanel:
             idAttr("app-card-panel"),
             width.percent(100),
             height.percent(100),
+            overflowX := "clip",
             //marginTop.auto,
             marginBottom.auto,
             destinationsAndPostsCard.amend(

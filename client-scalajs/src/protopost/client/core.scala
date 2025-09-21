@@ -33,14 +33,16 @@ enum LoginLevel( val cssColor : String, val isLoggedIn : Boolean ):
 enum Tab( val label : String ):
   //case newPost  extends Tab("new post")
   case destinationsAndPosts extends Tab("destinations and posts")
-  case currentPost  extends Tab("current post")
-  case profile  extends Tab("profile")
+  case currentPost          extends Tab("current post")
+  case profile              extends Tab("profile")
 
 enum Composer( val label : String ):
-  case `text-and-preview` extends Composer("Text and preview (plaintext, markdown, html)")
+  case `text-and-preview` extends Composer( "Text and preview (plaintext, markdown, html)" )
   case `WYSIWYG`          extends Composer( "WYSIWYG (html)" )
 
-case class PostInProgress( id : Int, dirtyToLocalStorage : Boolean, dirtyToServer : Boolean, fetchCurrentText : () => String )
+case class PostContent( contentType : String, text : String )
+
+case class PostInProgress( id : Int, dirtyToLocalStorage : Boolean, dirtyToServer : Boolean, fetchCurrentText : () => PostContent )
 
 given JsonValueCodec[Tab]      = JsonCodecMaker.make
 given JsonValueCodec[Composer] = JsonCodecMaker.make

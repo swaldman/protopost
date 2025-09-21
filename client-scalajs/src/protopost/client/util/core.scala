@@ -32,7 +32,7 @@ object sttp:
   import _root_.sttp.model.*
   import _root_.sttp.client4.fetch.*
   import _root_.sttp.client4.jsoniter.*
-  import protopost.client.{LoginLevel,ReverseChronologicalPostDefinitions}
+  import protopost.client.{LocalStorageItem,LoginLevel,ReverseChronologicalPostDefinitions}
   import protopost.common.api.{LoginStatus,given}
   import scala.util.{Success,Failure}
 
@@ -54,7 +54,7 @@ object sttp:
     postDefinitionCreate : PostDefinitionCreate,
     backend : WebSocketBackend[scala.concurrent.Future],
     destinationsToKnownPostsVar : com.raquo.laminar.api.L.Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
-    currentPostIdentifierVar : com.raquo.laminar.api.L.Var[Option[PostIdentifier]]
+    currentPostIdentifierLocalStorageItem : LocalStorageItem[Option[PostIdentifier]]
   )(using ec : ExecutionContext) =
     val request =
       basicRequest
@@ -74,7 +74,7 @@ object sttp:
           case None =>
             println("Attempt to update post definition yielded none, as if the post updated is not known to the server.")
             scala.Predef.identity
-    val sideEffectPostUpdate = (mbPostDefinition : Option[PostDefinition]) => currentPostIdentifierVar.set( mbPostDefinition.map( pd => PostIdentifier(destinationIdentifier,pd.postId) ) )
+    val sideEffectPostUpdate = (mbPostDefinition : Option[PostDefinition]) => currentPostIdentifierLocalStorageItem.set( mbPostDefinition.map( pd => PostIdentifier(destinationIdentifier,pd.postId) ) )
     updateVarFromApiResult[Option[PostDefinition],Map[DestinationIdentifier,Map[Int,PostDefinition]]]( request, backend, destinationsToKnownPostsVar, updater, sideEffectPostUpdate )
 
   def hardUpdatePostDefinitionUpdate(

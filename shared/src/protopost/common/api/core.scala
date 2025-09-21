@@ -116,5 +116,9 @@ given JsonValueCodec[DestinationIdentifier] = JsonCodecMaker.make
 
 given JsonValueCodec[Set[Destination]] = JsonCodecMaker.make
 
+given JsonValueCodec[Option[PostIdentifier]] = JsonCodecMaker.make
+
+
+
 
 
