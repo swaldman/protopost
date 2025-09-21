@@ -20,6 +20,8 @@ import protopost.client.util.epochSecondsNow
 import scala.util.control.NonFatal
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 
+import LocalStorageItem.given // for JsonValueCodec[String]
+
 object TopPanel:
   private final val LoginStatusUpdateIntervalMsecs         = 6000
   private final val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
@@ -41,22 +43,36 @@ object TopPanel:
     val destinationsVar : Var[immutable.SortedSet[Destination]] = Var( immutable.SortedSet.empty )
     val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
 
-    val currentPostIdentifierLocalStorageItem = LocalStorageItem(LocalStorageItem.Key.currentPostIdentifier, None )
-    val currentPostIdentifierSignal = currentPostIdentifierLocalStorageItem.signal
+    val currentPostIdentifierLsi = LocalStorageItem(LocalStorageItem.Key.currentPostIdentifier, None )
+    val currentPostIdentifierSignal = currentPostIdentifierLsi.signal
 
-    val locationLocalStorageItem = LocalStorageItem(LocalStorageItem.Key.location, Tab.destinationsAndPosts )
-    val locationSignal : Signal[Tab] = locationLocalStorageItem.signal
+    val locationLsi = LocalStorageItem(LocalStorageItem.Key.location, Tab.destinationsAndPosts )
+    val locationSignal : Signal[Tab] = locationLsi.signal
 
-    val composerLocalStorageItem = LocalStorageItem(LocalStorageItem.Key.composer,Client.DefaultComposer)
-    val composerSignal = composerLocalStorageItem.signal
+    val composerLsi = LocalStorageItem(LocalStorageItem.Key.composer,Client.DefaultComposer)
+    val composerSignal = composerLsi.signal
 
-    //val locationVar = Var(Tab.destinationsAndPosts)
-    //val locationSignal : Signal[Tab] = locationVar.signal
+    val currentPostLocalContentTypeLsi = LocalStorageItem(LocalStorageItem.Key.currentPostLocalContentType, "text/plain")
+    val currentPostLocalTextLsi        = LocalStorageItem(LocalStorageItem.Key.currentPostLocalText, "")
 
     val loggedInLocationSignal = locationSignal.combineWithFn(loginLevelSignal): ( loc, level ) =>
       level match
         case LoginLevel.high | LoginLevel.low => Some(loc)
         case _ => None
+
+    val currentPostDefinitionSignal = Signal.combine(currentPostIdentifierSignal,destinationsToKnownPostsVar).map: (mbpi,d2kp) =>
+      mbpi.flatMap: pi =>
+        val mbDestinationMap = d2kp.get(pi.destinationIdentifier)
+        mbDestinationMap.flatMap( dm => dm.get(pi.postId) )
+
+    val currentPostDefinitionChanges =
+      currentPostDefinitionSignal.changes.distinct.scanLeft[Tuple2[Option[PostDefinition],Option[PostDefinition]]](Tuple2(None,None)): (priorTup,newVal) =>
+        (priorTup(1),newVal)
+
+    val disabledTabsSignal = currentPostIdentifierSignal.map: mbPi =>
+      mbPi match
+        case Some(pi) => Set.empty[Tab]
+        case None => Set(Tab.currentPost)
 
     val loginObserver = Observer[LoginLevel]: level =>
       println(s"loginObserver - level: ${level}")
@@ -72,10 +88,9 @@ object TopPanel:
         posterNoAuthVar.set(None)
         destinationsVar.set( immutable.SortedSet.empty )
 
-    val disabledTabsSignal = currentPostIdentifierSignal.map: mbPi =>
-      mbPi match
-        case Some(pi) => Set.empty[Tab]
-        case None => Set(Tab.currentPost)
+    val currentPostDefinitionChangesObserver = Observer[Tuple2[Option[PostDefinition],Option[PostDefinition]]]: (prev, latest) =>
+       println( s"Previous post definition: ${prev}" )
+       println( s"Latest post definition: ${latest}" )
 
     //val tabModifiers : Map[Tab,Seq[Modifier[HtmlElement]]] =
     //  Map(
@@ -84,9 +99,9 @@ object TopPanel:
 
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
-    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLocalStorageItem,destinationsVar,destinationsToKnownPostsVar,locationLocalStorageItem,posterNoAuthSignal)
-    val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierLocalStorageItem, posterNoAuthSignal )
-    val profileCard = ProfileCard.create(composerLocalStorageItem,composerSignal,posterNoAuthSignal)
+    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLsi,destinationsVar,destinationsToKnownPostsVar,locationLsi,posterNoAuthSignal)
+    val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierLsi, currentPostDefinitionSignal, currentPostLocalContentTypeLsi, currentPostLocalTextLsi, posterNoAuthSignal )
+    val profileCard = ProfileCard.create(composerLsi,composerSignal,posterNoAuthSignal)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>
       val transformation : LoginStatus => Option[(LoginStatus,Long)] = loginStatus => Some(Tuple2(loginStatus, epochSecondsNow()))
@@ -145,7 +160,7 @@ object TopPanel:
         cls <-- disabledTabsSignal.map( tabs => if tabs(tab) then "disabled" else ""),
         textAlign.center,
         TinyLink.create(tab.label).amend(
-          onClick( _.withCurrentValueOf(disabledTabsSignal).filter((_,disabled) => !disabled(tab)).map(_ => tab)) --> ( t => locationLocalStorageItem.set(t) ),
+          onClick( _.withCurrentValueOf(disabledTabsSignal).filter((_,disabled) => !disabled(tab)).map(_ => tab)) --> ( t => locationLsi.set(t) ),
         ),
       )
 
@@ -154,6 +169,7 @@ object TopPanel:
         given Owner = mountContext.owner
         maintainLoginStatus()
         loginLevelChangeEvents.addObserver(loginObserver)
+        currentPostDefinitionChanges.addObserver(currentPostDefinitionChangesObserver)
       },
       onUnmountCallback { _ => retireLoginStatus() },
       idAttr("top"),

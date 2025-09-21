@@ -21,14 +21,13 @@ object CurrentPostCard:
     protopostLocation : Uri,
     backend : WebSocketBackend[scala.concurrent.Future],
     destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
-    currentPostIdentifierLocalStorageItem : LocalStorageItem[Option[PostIdentifier]],
+    currentPostIdentifierLsi : LocalStorageItem[Option[PostIdentifier]],
+    currentPostDefinitionSignal : Signal[Option[PostDefinition]],
+    currentPostLocalContentTypeLsi : LocalStorageItem[String],
+    currentPostLocalTextLsi : LocalStorageItem[String],
     posterNoAuthSignal : Signal[Option[PosterNoAuth]]
   ) : HtmlElement =
-    val currentPostIdentifierSignal = currentPostIdentifierLocalStorageItem.signal
-    val currentPostDefinitionSignal = Signal.combine(currentPostIdentifierSignal,destinationsToKnownPostsVar).map: (mbpi,d2kp) =>
-      mbpi.flatMap: pi =>
-        val mbDestinationMap = d2kp.get(pi.destinationIdentifier)
-        mbDestinationMap.flatMap( dm => dm.get(pi.postId) )
+    val currentPostIdentifierSignal = currentPostIdentifierLsi.signal
     val userIsOwnerSignal : Signal[Boolean] = Signal.combine(posterNoAuthSignal,currentPostDefinitionSignal).map: (mbPna, mbCpd) =>
       val mbOut =
         for
@@ -71,7 +70,7 @@ object CurrentPostCard:
         if pd.isEmpty then  
           util.sttp.hardUpdateDestinationsToKnownPosts( protopostLocation, pi.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
-    val composePane = ComposerPane.create()
+    val composePane = ComposerPane.create( currentPostLocalContentTypeLsi, currentPostLocalTextLsi )
 
     div(
       idAttr := "current-post-card",
