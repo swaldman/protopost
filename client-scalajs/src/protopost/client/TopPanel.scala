@@ -20,13 +20,12 @@ import protopost.client.util.epochSecondsNow
 import scala.util.control.NonFatal
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 
-import LocalStorageItem.given // for JsonValueCodec[String]
 import protopost.common.api.NewPostRevision
 
 object TopPanel:
   private final val LoginStatusUpdateIntervalMsecs         = 6000
   private final val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
-  private final val LoginStatusUpdateIfNotUpdatedLastSecs  = 15
+  private final val LoginStatusUpdateIfNotUpdatedLastSecs  = 60
 
   private final val AutosaveCheckFrequencyMsecs = 180000 // autosave every three minutes while actively writing
 
@@ -58,6 +57,8 @@ object TopPanel:
     val currentPostLocalPostContentLsi = LocalStorageItem(LocalStorageItem.Key.currentPostLocalPostContent, PostContent.default)
     val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
 
+    val recoveredRevisionsLsi = LocalStorageItem(LocalStorageItem.Key.recoveredRevisions, Nil)
+
     val localContentDirtyVar : Var[Boolean] = Var(false)
 
     val loggedInLocationSignal = locationSignal.combineWithFn(loginLevelSignal): ( loc, level ) =>
@@ -88,8 +89,8 @@ object TopPanel:
     val loginObserver = Observer[LoginLevel]: level =>
       println(s"loginObserver - level: ${level}")
       if level.isLoggedIn then
-        util.sttp.setOptionalVarFromApiGetResult[PosterNoAuth]( protopostLocation.addPath("protopost", "poster-info"), backend, posterNoAuthVar )
-        util.sttp.setVarFromTransformedApiGetResult[immutable.Set[Destination],immutable.SortedSet[Destination]](
+        util.request.setOptionalVarFromApiGetResult[PosterNoAuth]( protopostLocation.addPath("protopost", "poster-info"), backend, posterNoAuthVar )
+        util.request.setVarFromTransformedApiGetResult[immutable.Set[Destination],immutable.SortedSet[Destination]](
           protopostLocation.addPath("protopost", "destinations"),
           backend,
           destinationsVar,
@@ -100,8 +101,7 @@ object TopPanel:
         destinationsVar.set( immutable.SortedSet.empty )
 
     val currentPostDefinitionChangesObserver = Observer[Tuple2[Option[PostDefinition],Option[PostDefinition]]]: (prev, latest) =>
-       println( s"Previous post definition: ${prev}" )
-       println( s"Latest post definition: ${latest}" )
+      util.request.saveLoadOnCurrentPostSwap(protopostLocation,prev,latest,backend,currentPostLocalPostContentLsi,recoveredRevisionsLsi,localContentDirtyVar)
 
     //val tabModifiers : Map[Tab,Seq[Modifier[HtmlElement]]] =
     //  Map(
@@ -117,7 +117,7 @@ object TopPanel:
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>
       val transformation : LoginStatus => Option[(LoginStatus,Long)] = loginStatus => Some(Tuple2(loginStatus, epochSecondsNow()))
       val request = basicRequest.post( protopostLocation.addPath("protopost","logout") ).response(asJson[LoginStatus])
-      util.sttp.setVarFromTransformedApiResult( request, backend, loginStatusVar, transformation )
+      util.request.setVarFromTransformedApiResult( request, backend, loginStatusVar, transformation )
 
     def updateLoginStatus() : Unit =
       // on initial mount, the update seems sometimes to skip,
@@ -132,10 +132,11 @@ object TopPanel:
             val now = epochSecondsNow()
             val elapsedSeconds = now - lastUpdated
             val newStatus = LoginStatus( math.max(0,ls.highSecuritySecondsRemaining - elapsedSeconds), math.max(0,ls.lowSecuritySecondsRemaining - elapsedSeconds) )
-            // println( s"newStatus, lastUpdated: ${newStatus}, ${lastUpdated}" )
-            hardUpdate = elapsedSeconds > LoginStatusUpdateIfNotUpdatedLastSecs || math.random < LoginStatusUpdateHardUpdateProbability
+            val r : Double = math.random
+            //println( s"newStatus, lastUpdated: ${newStatus}, ${lastUpdated}" )
+            hardUpdate = elapsedSeconds > LoginStatusUpdateIfNotUpdatedLastSecs || r < LoginStatusUpdateHardUpdateProbability
             if hardUpdate then
-              println(s"hardUpdate: $hardUpdate")
+              println(s"hardUpdate: $elapsedSeconds > ${LoginStatusUpdateIfNotUpdatedLastSecs} || $r < ${LoginStatusUpdateHardUpdateProbability}")
             Some(Tuple2(newStatus, now))
           case None =>
             hardUpdate = true
@@ -143,7 +144,7 @@ object TopPanel:
       if hardUpdate then
         try
           println("hard login status request...")
-          protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, backend, loginStatusVar)
+          protopost.client.util.request.hardUpdateLoginStatus(protopostLocation, backend, loginStatusVar)
         catch
           case NonFatal(t) =>
             println("hard login status update request failed...");
@@ -181,7 +182,7 @@ object TopPanel:
         maintainLoginStatus()
         loginLevelChangeEvents.addObserver(loginObserver)
         currentPostDefinitionChanges.addObserver(currentPostDefinitionChangesObserver)
-        autosaveEventStream.addObserver( Observer[NewPostRevision]( npr => util.sttp.saveRevisionToServer(protopostLocation, npr, backend, localContentDirtyVar) ) )
+        autosaveEventStream.addObserver( Observer[NewPostRevision]( npr => util.request.saveRevisionToServer(protopostLocation, npr, backend, localContentDirtyVar) ) )
       },
       onUnmountCallback { _ => retireLoginStatus() },
       idAttr("top"),

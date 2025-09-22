@@ -18,6 +18,7 @@ object LocalStorageItem:
     case location                    extends Key[Tab]
     case currentPostIdentifier       extends Key[Option[PostIdentifier]]
     case currentPostLocalPostContent extends Key[PostContent]
+    case recoveredRevisions          extends Key[List[Tuple2[RevisionTimestamp,NewPostRevision]]]
 
 class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T], defaultValue : T):
   require( defaultValue != null, "The value of a LocalStorageItem cannot be null." )

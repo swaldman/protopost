@@ -1,0 +1,315 @@
+package protopost.client.util.request
+
+import sttp.client4.*
+import sttp.model.*
+import sttp.client4.fetch.*
+import sttp.client4.jsoniter.*
+import com.raquo.laminar.api.L.*
+import protopost.client.util.epochSecondsNow
+import protopost.client.{LocalStorageItem,LoginLevel,ReverseChronologicalPostDefinitions}
+import protopost.common.api.{LoginStatus,given}
+import scala.util.{Success,Failure}
+import scala.collection.immutable
+import scala.concurrent.{ExecutionContext,Future}
+import scala.util.control.NonFatal
+import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
+import protopost.common.api.{DestinationIdentifier,NewPostRevision,PostDefinition,PostDefinitionCreate,PostDefinitionUpdate,PostIdentifier,PostRevisionIdentifier,RetrievedPostRevision,given}
+import protopost.client.PostContent
+import java.time.Instant
+import protopost.common.api.RevisionTimestamp
+
+/*
+def rawBodyToLoginLevelOrThrow( rawBody : Either[ResponseException[String], LoginStatus] ) : LoginLevel =
+  rawBody match
+    case Left( oops ) => throw oops //new Exception( oops.toString() )
+    case Right( loginStatus ) => LoginLevel.fromLoginStatus( loginStatus )
+*/
+
+def saveLoadOnCurrentPostSwap(
+  protopostLocation              : Uri,
+  mbPrevPostDefinition             : Option[PostDefinition],
+  mbNewPostDefinition              : Option[PostDefinition],
+  backend                        : WebSocketBackend[scala.concurrent.Future],
+  currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
+  recoveredRevisionsLsi          : LocalStorageItem[List[Tuple2[RevisionTimestamp,NewPostRevision]]],
+  localContentDirtyVar           : Var[Boolean]
+)(using ec : ExecutionContext) =
+  def saveCurrent(ppd : PostDefinition) : Future[Unit] =
+    val PostContent(contentType, body) = currentPostLocalPostContentLsi.now()
+    val npr = NewPostRevision(ppd.postId, contentType, body)
+    def saveCurrentOrFail() : Future[Unit] =
+        val request =
+          basicRequest
+            .post( protopostLocation.addPath("protopost", "new-draft") )
+            .body( asJson(npr) )
+            .response( asJson[PostRevisionIdentifier] )
+        request.send(backend).map( _.body ).map( _ => localContentDirtyVar.set(false) )
+    def saveAsRecovered() : Unit =
+      val rt = RevisionTimestamp( Instant.now() )
+      recoveredRevisionsLsi.update( list => (rt,npr) :: list )
+    if body.nonEmpty then // don't potentially overwrite latest as strictly empty. more likely a bug than an intention
+      saveCurrentOrFail().recover:
+        case NonFatal(t) =>
+          println("Failed to save revision to server:")
+          t.printStackTrace()
+          println("Saving revision to recovered revisions.")
+          saveAsRecovered()
+    else
+      Future.unit
+  def loadNew(npd : PostDefinition) : Future[Unit] =
+    val request =
+      basicRequest
+        .get( protopostLocation.addPath("protopost", "latest-draft", npd.postId.toString) )
+        .response( asJson[Option[RetrievedPostRevision]] )
+    request.send(backend).map( _.body ).map( decodeOrThrow ).map: mbPostRevision =>
+      mbPostRevision match
+        case Some( pr ) => currentPostLocalPostContentLsi.set( PostContent( pr.contentType, pr.body ) )
+        case None => currentPostLocalPostContentLsi.set( PostContent.default )
+      localContentDirtyVar.set(false)
+/*      
+      case None =>
+        Future:
+          currentPostLocalPostContentLsi.set( PostContent.default )
+          localContentDirtyVar.set(false)
+ */          
+  (mbPrevPostDefinition,mbNewPostDefinition) match
+    case (Some(ppd),Some(npd)) =>
+      saveCurrent(ppd).flatMap( _ => loadNew(npd) )
+    case (None,Some(npd)) => // this occurs on app initialization, we want to preserve local post content
+      localContentDirtyVar.set(currentPostLocalPostContentLsi.now() != PostContent.default)
+    case (Some(npd),None) =>
+      currentPostLocalPostContentLsi.set( PostContent.default )
+    case (None,None) =>
+      /* do nothing, we shouldn't see this */
+end saveLoadOnCurrentPostSwap  
+
+def rawBodyToLoginStatusOrThrow( rawBody : Either[ResponseException[String], LoginStatus] ) : LoginStatus =
+  rawBody match
+    case Left( oops ) => throw oops //new Exception( oops.toString() )
+    case Right( loginStatus ) => loginStatus
+
+def saveRevisionToServer(
+  protopostLocation : Uri,
+  npr : NewPostRevision,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  localContentDirtyVar : Var[Boolean]
+)(using ec : ExecutionContext) =
+  val request =
+    basicRequest
+      .post( protopostLocation.addPath("protopost", "new-draft") )
+      .body( asJson(npr) )
+      .response( asJson[PostRevisionIdentifier] )
+  val updater : PostRevisionIdentifier => Boolean => Boolean = (_ => (_ => false))
+  updateVarFromApiResult[PostRevisionIdentifier,Boolean]( request, backend, localContentDirtyVar, updater )
+
+def hardUpdateNewPostDefinition(
+  protopostLocation : Uri,
+  destinationIdentifier : DestinationIdentifier,
+  postDefinitionCreate : PostDefinitionCreate,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
+  currentPostIdentifierLocalStorageItem : LocalStorageItem[Option[PostIdentifier]]
+)(using ec : ExecutionContext) =
+  val request =
+    basicRequest
+      .post( protopostLocation.addPath("protopost", "new-post") )
+      .body( asJson(postDefinitionCreate) )
+      .response( asJson[Option[PostDefinition]] )
+  val updater : Option[PostDefinition] => Map[DestinationIdentifier,Map[Int,PostDefinition]] => Map[DestinationIdentifier,Map[Int,PostDefinition]] =
+    mbPostDefinition =>
+      mbPostDefinition match
+        case Some( postDefinition ) =>
+          ( map : Map[DestinationIdentifier,Map[Int,PostDefinition]] ) =>
+            val destinationMap =
+              map
+                .get(destinationIdentifier)
+                .fold( Map( postDefinition.postId -> postDefinition ) )( dm => dm + (postDefinition.postId -> postDefinition) )
+            map + ( destinationIdentifier -> destinationMap )
+        case None =>
+          println("Attempt to update post definition yielded none, as if the post updated is not known to the server.")
+          scala.Predef.identity
+  val sideEffectPostUpdate = (mbPostDefinition : Option[PostDefinition]) => currentPostIdentifierLocalStorageItem.set( mbPostDefinition.map( pd => PostIdentifier(destinationIdentifier,pd.postId) ) )
+  updateVarFromApiResult[Option[PostDefinition],Map[DestinationIdentifier,Map[Int,PostDefinition]]]( request, backend, destinationsToKnownPostsVar, updater, sideEffectPostUpdate )
+
+def hardUpdatePostDefinitionUpdate(
+  protopostLocation : Uri,
+  destinationIdentifier : DestinationIdentifier,
+  postDefinitionUpdate : PostDefinitionUpdate,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
+  sideEffectPostUpdate : PostDefinition => Unit
+)(using ec : ExecutionContext) =
+  val request =
+    basicRequest
+      .post( protopostLocation.addPath("protopost", "update-post") )
+      .body( asJson(postDefinitionUpdate) )
+      .response( asJson[PostDefinition] )
+  val updater : PostDefinition => Map[DestinationIdentifier,Map[Int,PostDefinition]] => Map[DestinationIdentifier,Map[Int,PostDefinition]] = postDefinition =>
+    ( map : Map[DestinationIdentifier,Map[Int,PostDefinition]] ) =>
+      val destinationMap =
+        map
+          .get(destinationIdentifier)
+          .fold( Map( postDefinition.postId -> postDefinition ) )( dm => dm + (postDefinition.postId -> postDefinition) )
+      map + ( destinationIdentifier -> destinationMap )
+  updateVarFromApiResult[PostDefinition,Map[DestinationIdentifier,Map[Int,PostDefinition]]]( request, backend, destinationsToKnownPostsVar, updater, sideEffectPostUpdate )
+
+def hardUpdateDestinationsToKnownPosts(
+  protopostLocation : Uri,
+  destinationIdentifier : DestinationIdentifier,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]]
+)(using ec : ExecutionContext) =
+  given Ordering[PostDefinition] = ReverseChronologicalPostDefinitions
+  val request =
+    basicRequest
+      .post( protopostLocation.addPath("protopost", "destination-posts") )
+      .body( asJson(destinationIdentifier) )
+      .response( asJson[Set[PostDefinition]] )
+  val updater : Set[PostDefinition] => Map[DestinationIdentifier,Map[Int,PostDefinition]] => Map[DestinationIdentifier,Map[Int,PostDefinition]] =
+    set =>
+      val newMap = set.map( pd => (pd.postId, pd) ).toMap
+      ( curVal : Map[DestinationIdentifier,Map[Int,PostDefinition]] ) => curVal + Tuple2( destinationIdentifier, newMap )
+  updateVarFromApiResult[Set[PostDefinition],Map[DestinationIdentifier,Map[Int,PostDefinition]]]( request, backend, destinationsToKnownPostsVar, updater )
+
+def hardUpdateLoginStatus(
+      protopostLocation : Uri,
+      backend : WebSocketBackend[scala.concurrent.Future],
+      loginStatusVar : Var[Option[(LoginStatus,Long)]]
+)(using ec : ExecutionContext) : Unit =
+  //println("hardUpdateLoginStatus()");
+  val request = basicRequest
+    .get(protopostLocation.addPath("protopost", "login-status")) // uri"http://localhost:8025/protopost/login-status"
+    .response(asJson[LoginStatus])
+  val future = request.send(backend).map( _.body ).map( rawBodyToLoginStatusOrThrow )
+
+  future.onComplete:
+    case Success(ls) =>
+      println("hardUpdateLoginStatus -- success!")
+      loginStatusVar.set(Some((ls,epochSecondsNow())))
+    case Failure(t) =>
+      println("hardUpdateLoginStatus -- failure!")
+      t.printStackTrace
+      loginStatusVar.set(None)
+
+def decodeOrThrow[T]( rawBody : Either[ResponseException[String], T] ) : T =
+  rawBody match
+    case Left( oops ) => throw oops //new Exception( oops.toString() )
+    case Right( theThing ) => theThing
+
+private val DefaultErrorHandler : Throwable => Unit =
+  t => t.printStackTrace()
+  org.scalajs.dom.window.alert( t.toString() )
+
+def updateVarFromApiResult[T : JsonValueCodec,U](
+      request : Request[Either[ResponseException[String], T]],
+      backend : WebSocketBackend[scala.concurrent.Future],
+      laminarVar : Var[U],
+      updater : T => U => U,
+      sideEffectPostUpdate : T => Unit = (_ : T) => (),
+      errorHandler : Throwable => Unit = DefaultErrorHandler
+)( using ec : ExecutionContext ) : Unit =
+  try
+    val future = request.send(backend).map( _.body ).map( decodeOrThrow )
+
+    future.onComplete:
+      case Success(result) =>
+        //println( s"Setting result: ${result}" )
+        laminarVar.update(updater(result))
+        sideEffectPostUpdate(result)
+      case Failure(t) => errorHandler(t)
+  catch
+    case NonFatal(t) => errorHandler(t)
+
+
+def setVarFromTransformedApiResult[T : JsonValueCodec,U](
+      request : Request[Either[ResponseException[String], T]],
+      backend : WebSocketBackend[scala.concurrent.Future],
+      laminarVar : Var[U],
+      transformation : T => U,
+      errorHandler : Throwable => Unit = DefaultErrorHandler
+)( using ec : ExecutionContext ) : Unit =
+  try
+    val future = request.send(backend).map( _.body ).map( decodeOrThrow )
+
+    future.onComplete:
+      case Success(result) =>
+        //println( s"Setting result: ${result}" )
+        laminarVar.set(transformation(result))
+      case Failure(t) => errorHandler(t)
+  catch
+    case NonFatal(t) => errorHandler(t)
+
+def setVarFromApiResult[T : JsonValueCodec](
+      request : Request[Either[ResponseException[String], T]],
+      backend : WebSocketBackend[scala.concurrent.Future],
+      laminarVar : Var[T],
+      errorHandler : Throwable => Unit = DefaultErrorHandler
+)( using ec : ExecutionContext ) : Unit =
+  setVarFromTransformedApiResult[T,T]( request, backend, laminarVar, scala.Predef.identity, errorHandler )
+
+def setVarFromTransformedApiGetResult[T : JsonValueCodec,U](
+      endpointUri : Uri, // will be a get request!
+      backend : WebSocketBackend[scala.concurrent.Future],
+      laminarVar : Var[U],
+      transformation : T => U,
+      errorHandler : Throwable => Unit = DefaultErrorHandler
+)( using ec : ExecutionContext ) : Unit =
+  val request = basicRequest
+    .get(endpointUri)
+    .response(asJson[T])
+  setVarFromTransformedApiResult( request, backend, laminarVar, transformation, errorHandler )
+
+/*
+def setVarFromTransformedApiGetResult[T : JsonValueCodec,U](
+      endpointUri : Uri,
+      backend : WebSocketBackend[scala.concurrent.Future],
+      laminarVar : Var[U],
+      transformation : T => U,
+      errorHandler : Throwable => Unit = DefaultErrorHandler
+)( using ec : ExecutionContext ) : Unit =
+  try
+    val request = basicRequest
+      .get(endpointUri)
+      .response(asJson[T])
+    val future = request.send(backend).map( _.body ).map( decodeOrThrow )
+
+    future.onComplete:
+      case Success(result) => laminarVar.set(transformation(result))
+      case Failure(t) => errorHandler(t)
+  catch
+    case NonFatal(t) => errorHandler(t)
+*/
+
+def setVarFromApiGetResult[T : JsonValueCodec](
+      endpointUri : Uri,
+      backend : WebSocketBackend[scala.concurrent.Future],
+      laminarVar : Var[T],
+      errorHandler : Throwable => Unit = DefaultErrorHandler
+)( using ec : ExecutionContext ) : Unit =
+  val request = basicRequest
+    .get(endpointUri)
+    .response(asJson[T])
+  setVarFromTransformedApiResult[T,T]( request, backend, laminarVar, transformation = identity, errorHandler )
+
+def setOptionalVarFromApiGetResult[T : JsonValueCodec](
+      endpointUri : Uri,
+      backend : WebSocketBackend[scala.concurrent.Future],
+      laminarVar : Var[Option[T]],
+      errorHandler : Throwable => Unit = DefaultErrorHandler
+)( using ec : ExecutionContext ) : Unit =
+  try
+    val request = basicRequest
+      .get(endpointUri)
+      .response(asJson[T])
+    val future = request.send(backend).map( _.body ).map( decodeOrThrow )
+
+    future.onComplete:
+      case Success(result) => laminarVar.set(Some(result))
+      case Failure(t) =>
+        errorHandler(t)
+        laminarVar.set(None)
+  catch
+    case NonFatal(t) =>
+      errorHandler(t)
+      laminarVar.set(None)
+

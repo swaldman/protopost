@@ -68,13 +68,13 @@ object DestinationsAndPostsCard:
               case Some(posterNoAuth) =>
                 val di = destination.destinationIdentifier
                 val postDefinition = new PostDefinitionCreate( destination.seismicNode.id, destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
-                util.sttp.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierLocalStorageItem )
+                util.request.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierLocalStorageItem )
                 locationLocalStorageItem.set(Tab.currentPost)
               case None =>
                 println("Cannot create new post, posterNoAuthSignal seems unset? We are not properly logged in?")
 
           def updatePosts() =
-            util.sttp.hardUpdateDestinationsToKnownPosts( protopostLocation, destination.destinationIdentifier, backend, destinationsToKnownPostsVar )
+            util.request.hardUpdateDestinationsToKnownPosts( protopostLocation, destination.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
           private def postDiv( pd : PostDefinition ) : HtmlElement =
             val title = pd.title.fold(Client.UntitledPostLabel)(t => s""""$t"""")

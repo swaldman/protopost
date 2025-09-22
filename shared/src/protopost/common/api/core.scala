@@ -43,6 +43,14 @@ case class PostRevisionIdentifier(
   timestampNanos        : Int,
 )
 
+object RevisionTimestamp:
+  def apply( timestamp : Instant ) : RevisionTimestamp =
+    apply( timestamp.getEpochSecond(), timestamp.getNano() )
+case class RevisionTimestamp(
+  timestampEpochSeconds : Long,
+  timestampNanos        : Int,
+)
+
 case class PostDefinitionCreate(
   destinationSeismicNodeId : Int,
   destinationName          : String,
@@ -149,6 +157,11 @@ given JsonValueCodec[RetrievedPostRevision] = JsonCodecMaker.make
 given given_JsonValueCodec_Option_RetrievedPostRevision : JsonValueCodec[Option[RetrievedPostRevision]] = JsonCodecMaker.make
 
 given JsonValueCodec[PostRevisionIdentifier] = JsonCodecMaker.make
+
+given JsonValueCodec[RevisionTimestamp]                              = JsonCodecMaker.make
+given JsonValueCodec[Tuple2[RevisionTimestamp,NewPostRevision]]      = JsonCodecMaker.make
+given JsonValueCodec[List[Tuple2[RevisionTimestamp,NewPostRevision]]] = JsonCodecMaker.make
+
 
 
 

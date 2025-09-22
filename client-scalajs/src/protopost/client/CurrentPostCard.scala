@@ -54,7 +54,7 @@ object CurrentPostCard:
           if newTextOpt != currentOpt then
             val pdu = PostDefinitionUpdate( pd.postId, title = newTextOpt.fold( UpdateValue.`set-to-none` )( UpdateValue.`update`.apply ) )
             titleDirtyVar.set(true)
-            util.sttp.hardUpdatePostDefinitionUpdate(protopostLocation,pd.destination.destinationIdentifier, pdu, backend, destinationsToKnownPostsVar, _ => titleDirtyVar.set(false))
+            util.request.hardUpdatePostDefinitionUpdate(protopostLocation,pd.destination.destinationIdentifier, pdu, backend, destinationsToKnownPostsVar, _ => titleDirtyVar.set(false))
         case None =>
           println("No post definition to update title of. Try to prevent any capacity to edit title.")
       node.ref.blur()
@@ -68,7 +68,7 @@ object CurrentPostCard:
             pd <- dm.get(pi.postId)
           yield pd
         if pd.isEmpty then  
-          util.sttp.hardUpdateDestinationsToKnownPosts( protopostLocation, pi.destinationIdentifier, backend, destinationsToKnownPostsVar )
+          util.request.hardUpdateDestinationsToKnownPosts( protopostLocation, pi.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
     val composePane = ComposerPane.create( currentPostLocalPostContentLsi, localContentDirtyVar )
 

@@ -17,7 +17,7 @@ import protopost.common.{EmailAddress,Password}
 import org.scalajs.dom.KeyboardEvent
 
 import protopost.client.util.epochSecondsNow
-import protopost.client.util.sttp.rawBodyToLoginStatusOrThrow
+import protopost.client.util.request.rawBodyToLoginStatusOrThrow
 import protopost.client.util.laminar.onEnterPress
 
 object LoginForm:
@@ -45,7 +45,7 @@ object LoginForm:
 
       def refreshLoginStatus() : Unit =
         loginStatusVar.set(None)
-        protopost.client.util.sttp.hardUpdateLoginStatus(protopostLocation, backend, loginStatusVar)
+        protopost.client.util.request.hardUpdateLoginStatus(protopostLocation, backend, loginStatusVar)
 
       def extractErrorBody[T]( response : Response[Either[ResponseException[String],T]] ) : String =
         response.body match
