@@ -12,12 +12,19 @@ import protopost.server.exception.{ApparentBug,BadSeismicNodeId,UnknownPoster}
 
 import com.mchange.rehash.*
 
+import com.mchange.conveniences.string.*
+
 import com.mchange.sc.sqlutil.*
 import com.mchange.sc.zsqlutil.*
 import protopost.server.exception.EmailIsAlreadyRegistered
+import protopost.server.exception.UnacceptableContentType
+import java.time.Instant
+import protopost.common.api.RetrievedPostRevision
 
 class PgDatabase( val SchemaManager : PgSchemaManager ):
   val Schema = SchemaManager.LatestSchema
+
+  val AcceptableContentTypes = Set("text/plain","text/html","text/markdown")
 
   def allDestinations( conn : Connection ) : Set[Destination] =
     Schema.Join.selectAllDestinations( conn )
@@ -57,6 +64,13 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, title, postAnchor, sprout, inReplyToHref, inReplyToMimeType, inReplyToGuid, false, None )( conn )
     if authors.nonEmpty then replaceAuthorsForPost( postId, authors )( conn )
     postId
+  def newPostRevision(postId : Int, contentType : String, body : String)( conn : Connection ) : Instant =
+    if !AcceptableContentTypes(contentType) then
+      throw new UnacceptableContentType(s"'${contentType}' not supported, must be one of ${commaListOr(AcceptableContentTypes.toSeq)}")
+    else
+      val saveTime = Instant.now()
+      Schema.Table.PostRevision.insert(postId, saveTime, contentType, body)( conn )
+      saveTime
   def newSeismicNode( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Int =
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
     Schema.Table.SeismicNode.insert( newId, algcrv, pubkey, protocol, host, port )( conn )
@@ -74,6 +88,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Post.selectByDestination( seismicNodeId, destinationName )( conn ).map( postDefinitionFromRaw(_)(conn) )
   def postDefinitionsForDestinationAndOwner( seismicNodeId : Int, destinationName : String, ownerId : PosterId )( conn : Connection ) : Set[PostDefinition] =
     Schema.Table.Post.selectByDestinationAndOwner( seismicNodeId, destinationName, ownerId )( conn ).map( postDefinitionFromRaw(_)(conn) )
+  def postRevisionLatest( id : Int )( conn : Connection ) : Option[RetrievedPostRevision] =
+    Schema.Table.PostRevision.selectLatest( id )( conn )
   def posterForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
     Schema.Table.Poster.selectPosterWithAuthByEmail( email )( conn )
   def posterById( id : PosterId )( conn : Connection ) : Option[PosterWithAuth] =

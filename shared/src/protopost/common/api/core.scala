@@ -4,6 +4,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
 import protopost.common.{EmailAddress,Password,PosterId,Protocol,Service}
+import java.time.Instant
 
 val LastCharString = "\uDBFF\uDFFD"
 
@@ -18,6 +19,29 @@ object UpdateValue:
   case object `set-to-none` extends UpdateValue[Nothing]
   case object `leave-alone` extends UpdateValue[Nothing]
 sealed trait UpdateValue[+T]
+
+case class NewPostRevision(
+  postId      : Int,
+  contentType : String,
+  body        : String
+)
+
+case class RetrievedPostRevision(
+  postId                : Int,
+  timestampEpochSeconds : Long,
+  timestampNanos        : Int,
+  contentType           : String,
+  body                  : String
+)
+
+object PostRevisionIdentifier:
+  def apply( postId : Int, timestamp : Instant ) : PostRevisionIdentifier =
+    apply( postId, timestamp.getEpochSecond(), timestamp.getNano() )
+case class PostRevisionIdentifier(
+  postId                : Int,
+  timestampEpochSeconds : Long,
+  timestampNanos        : Int,
+)
 
 case class PostDefinitionCreate(
   destinationSeismicNodeId : Int,
@@ -116,7 +140,16 @@ given JsonValueCodec[DestinationIdentifier] = JsonCodecMaker.make
 
 given JsonValueCodec[Set[Destination]] = JsonCodecMaker.make
 
-given JsonValueCodec[Option[PostIdentifier]] = JsonCodecMaker.make
+given given_JsonValueCodec_Option_PostIdentifier : JsonValueCodec[Option[PostIdentifier]] = JsonCodecMaker.make
+
+given JsonValueCodec[NewPostRevision] = JsonCodecMaker.make
+
+given JsonValueCodec[RetrievedPostRevision] = JsonCodecMaker.make
+
+given given_JsonValueCodec_Option_RetrievedPostRevision : JsonValueCodec[Option[RetrievedPostRevision]] = JsonCodecMaker.make
+
+given JsonValueCodec[PostRevisionIdentifier] = JsonCodecMaker.make
+
 
 
 

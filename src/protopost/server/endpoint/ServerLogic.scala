@@ -13,7 +13,7 @@ import protopost.common.api.{*,given}
 import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*
-import protopost.server.exception.{ApparentBug,BadPostDefinition,MissingConfig,UnknownPost}
+import protopost.server.exception.{ApparentBug,BadPostDefinition,MissingConfig,ResourceNotFound,UnknownPost}
 
 import protopost.server.db.PgDatabase
 
@@ -298,5 +298,37 @@ object ServerLogic extends SelfLogging:
         val highSecurityExpiration = extractExpirationOrEpoch(highSecurityToken)
         val lowSecurityExpiration = extractExpirationOrEpoch(lowSecurityToken)
         loginStatusFromExpirations( highSecurityExpiration, lowSecurityExpiration )
+
+  def newDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( npr : NewPostRevision ) : ZOut[PostRevisionIdentifier] =
+    ZOut.fromTask:
+      val db = appResources.database
+      withConnectionTransactional( appResources.dataSource ): conn =>
+        val subject = parseSubject( authenticatedPoster )
+        val mbPostDefinition = db.postDefinitionForId(npr.postId)( conn )
+        mbPostDefinition match
+          case Some( postDefinition ) =>
+            if postDefinition.owner.id != subject.posterId then
+              throw new InsufficientPermissions( s"The logged-in subject '${subject}' does not own post with ID ${npr.postId}" )
+            else
+              val saveTime = db.newPostRevision(npr.postId,npr.contentType,npr.body)( conn )
+              PostRevisionIdentifier(npr.postId, saveTime)
+          case None =>
+            throw new ResourceNotFound(s"No post with ID ${npr.postId} was found!")
+
+  def latestDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[Option[RetrievedPostRevision]] =
+    ZOut.fromTask:
+      val db = appResources.database
+      withConnectionTransactional( appResources.dataSource ): conn =>
+        val subject = parseSubject( authenticatedPoster )
+        val mbPostDefinition = db.postDefinitionForId(postId)( conn )
+        mbPostDefinition match
+          case Some( postDefinition ) =>
+            if postDefinition.owner.id != subject.posterId then
+              throw new InsufficientPermissions( s"The logged-in subject '${subject}' does not own post with ID ${postId}" )
+            else
+              db.postRevisionLatest(postId)( conn )
+          case None =>
+            throw new ResourceNotFound(s"No post with ID ${postId} was found!")
+
 
 end ServerLogic

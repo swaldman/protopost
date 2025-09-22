@@ -70,6 +70,7 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
           PgSchema.V1.Sequence.PosterId.create( stmt )
           PgSchema.V1.Sequence.PostId.create( stmt )
           PgSchema.V1.Index.PostFeedGuidIndex.create( stmt )
+          PgSchema.V1.Index.PostRevisionSaveTimeIndex.create( stmt )
         updateMetadataKeys(
           conn,
           (MetadataKey.SchemaVersion, "1"),

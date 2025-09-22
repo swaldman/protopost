@@ -70,20 +70,25 @@ given Schema[Password]          = Schema.string.map((s : String) => Some(Passwor
 given Schema[Jwt]               = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => Jwt.s(jwt))
 given Schema[PosterId]          = Schema.schemaForInt.map( (i : Int) => Some(PosterId(i)) )(pid => PosterId.i(pid))
 
-given Schema[Jwk]                   = Schema.derived
-given Schema[Jwks]                  = Schema.derived
-//given Schema[Jwts]                  = Schema.derived
-given Schema[LoginStatus]           = Schema.derived
-given Schema[Envelope]              = Schema.derived
-given Schema[EmailPassword]         = Schema.derived
-given Schema[PosterNoAuth]          = Schema.derived
-given Schema[Protocol]              = Schema.derived
-given Schema[SeismicNode]           = Schema.derived
-given Schema[Destination]           = Schema.derived
-given Schema[DestinationIdentifier] = Schema.derived
-given Schema[PostDefinition]        = Schema.derived
-given Schema[PostDefinitionCreate]  = Schema.derived
-given Schema[PostDefinitionUpdate]  = Schema.derived
+given Schema[Jwk]                    = Schema.derived
+given Schema[Jwks]                   = Schema.derived
+//given Schema[Jwts]                   = Schema.derived
+given Schema[LoginStatus]            = Schema.derived
+given Schema[Envelope]               = Schema.derived
+given Schema[EmailPassword]          = Schema.derived
+given Schema[PosterNoAuth]           = Schema.derived
+given Schema[Protocol]               = Schema.derived
+given Schema[SeismicNode]            = Schema.derived
+given Schema[Destination]            = Schema.derived
+given Schema[DestinationIdentifier]  = Schema.derived
+given Schema[PostDefinition]         = Schema.derived
+given Schema[PostDefinitionCreate]   = Schema.derived
+given Schema[PostDefinitionUpdate]   = Schema.derived
+given Schema[NewPostRevision]        = Schema.derived
+given Schema[RetrievedPostRevision]  = Schema.derived
+given Schema[PostRevisionIdentifier] = Schema.derived
+
+given Schema[Option[RetrievedPostRevision]] = Schema.derived
 
 given [T : Schema] : Schema[UpdateValue[T]] = Schema.derived[UpdateValue[T]]
 

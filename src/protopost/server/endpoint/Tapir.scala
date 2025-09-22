@@ -13,7 +13,7 @@ import protopost.common.api.{*,given}
 import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*
-import protopost.server.exception.{ApparentBug,BadPostDefinition,MissingConfig,UnknownPost}
+import protopost.server.exception.{ApparentBug,BadPostDefinition,MissingConfig,ResourceNotFound,UnknownPost}
 
 import protopost.server.db.PgDatabase
 
@@ -30,15 +30,17 @@ import sttp.model.headers.CookieValueWithMeta
 object Tapir extends SelfLogging:
 
   val errorHandler =
-    def errorBodyOutNotFound() = stringBody.map(_ => None)( _ => "Resource not found." )
+    def errorBodyOutNotFoundGeneric() = stringBody.map(_ => None)( _ => "Resource not found." )
     def errorBodyOut[T <: Throwable]( throwableClass : Class[T] ) =
       stringBody.map(fst => ReconstructableThrowable(Some(throwableClass),fst))(_.fullStackTrace)
     def errorBodyOutLostThrowableClass() =
       stringBody.map(fst => ReconstructableThrowable(None,fst))(_.fullStackTrace)
     oneOf[ReconstructableThrowable | None.type](
-      oneOfVariantValueMatcher(statusCode(StatusCode.NotFound).and(errorBodyOutNotFound())){ case _ : None.type => true },
+      oneOfVariantValueMatcher(statusCode(StatusCode.NotFound).and(errorBodyOutNotFoundGeneric())){ case _ : None.type => true },
+      oneOfVariantValueMatcher(statusCode(StatusCode.NotFound).and(errorBodyOut(classOf[ResourceNotFound]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[ResourceNotFound]) => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.Forbidden).and(errorBodyOut(classOf[BadCredentials]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[BadCredentials]) => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.Unauthorized).and(errorBodyOut(classOf[NotLoggedIn]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[NotLoggedIn]) => true },
+      oneOfVariantValueMatcher(statusCode(StatusCode.Unauthorized).and(errorBodyOut(classOf[InsufficientPermissions]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[InsufficientPermissions]) => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.InternalServerError).and(errorBodyOutLostThrowableClass())){ case rt : ReconstructableThrowable if rt.throwableClass == None => true },
   )
 
@@ -92,6 +94,10 @@ object Tapir extends SelfLogging:
 
   val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
 
+  val NewDraft = PosterAuthenticated.post.in("new-draft").in(jsonBody[NewPostRevision]).out(jsonBody[PostRevisionIdentifier])
+
+  val LatestDraft = PosterAuthenticated.get.in("latest-draft").in( path[Int] ).out(jsonBody[Option[RetrievedPostRevision]])
+
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*
 
@@ -112,7 +118,9 @@ object Tapir extends SelfLogging:
       NewPost.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( newPost(appResources) ),
       DestinationPosts.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( destinationPosts(appResources) ),
       UpdatePostDefinition.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( updatePostDefinition(appResources) ),
-      ScalaJsServerEndpoint
+      ScalaJsServerEndpoint,
+      NewDraft.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( newDraft( appResources ) ),
+      LatestDraft.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( latestDraft( appResources ) ),
     ) ++ rootAsClient.toList
 
 end Tapir
