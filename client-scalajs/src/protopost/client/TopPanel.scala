@@ -21,6 +21,7 @@ import scala.util.control.NonFatal
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 
 import LocalStorageItem.given // for JsonValueCodec[String]
+import protopost.common.api.NewPostRevision
 
 object TopPanel:
   private final val LoginStatusUpdateIntervalMsecs         = 6000
@@ -53,6 +54,7 @@ object TopPanel:
     val composerSignal = composerLsi.signal
 
     val currentPostLocalPostContentLsi = LocalStorageItem(LocalStorageItem.Key.currentPostLocalPostContent, PostContent.default)
+    val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
 
     val localContentDirtyVar : Var[Boolean] = Var(false)
 
@@ -75,8 +77,11 @@ object TopPanel:
         case Some(pi) => Set.empty[Tab]
         case None => Set(Tab.currentPost)
 
-    val autosaveRequestEventStream : EventStream[Unit] =
-      EventStream.periodic(300000,false).withCurrentValueOf( localContentDirtyVar ).filter( (_,dirty) => dirty ).map( _ => () )
+    val autosaveEventStream : EventStream[NewPostRevision] =
+      EventStream.periodic(30000,false) // should be 300000, but for testing
+        .withCurrentValueOf( localContentDirtyVar, currentPostIdentifierSignal, currentPostLocalPostContentSignal )
+        .collect { case (_,true,Some(pd),pc) => NewPostRevision(pd.postId,pc.contentType,pc.text) }
+        .distinct
 
     val loginObserver = Observer[LoginLevel]: level =>
       println(s"loginObserver - level: ${level}")
@@ -174,7 +179,7 @@ object TopPanel:
         maintainLoginStatus()
         loginLevelChangeEvents.addObserver(loginObserver)
         currentPostDefinitionChanges.addObserver(currentPostDefinitionChangesObserver)
-        autosaveRequestEventStream.addObserver( Observer[Unit]( u => println("Tick!") ) )
+        autosaveEventStream.addObserver( Observer[NewPostRevision]( npr => util.sttp.saveRevisionToServer(protopostLocation, npr, backend, localContentDirtyVar) ) )
       },
       onUnmountCallback { _ => retireLoginStatus() },
       idAttr("top"),

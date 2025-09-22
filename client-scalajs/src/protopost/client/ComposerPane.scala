@@ -8,7 +8,7 @@ object ComposerPane:
 
   def statusCircle() : HtmlElement =
     div(
-      backgroundColor.red,
+      backgroundColor.yellow,
       borderRadius.percent(50),
       width.rem(0.75),
       height.rem(0.75),
@@ -91,7 +91,7 @@ object ComposerPane:
           div(
             paddingLeft.rem(0.5),
             statusCircle().amend(
-              backgroundColor <-- localContentDirtySignal.map( dirty => if dirty then "red" else "green" )
+              backgroundColor <-- localContentDirtySignal.map( dirty => if dirty then "yellow" else "#22ff22" )
             ),
           )
         ),

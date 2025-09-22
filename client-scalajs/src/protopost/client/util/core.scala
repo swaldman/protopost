@@ -4,7 +4,7 @@ import scala.collection.immutable
 import scala.concurrent.ExecutionContext
 import scala.util.control.NonFatal
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import protopost.common.api.{DestinationIdentifier,PostDefinition,PostDefinitionCreate,PostDefinitionUpdate,PostIdentifier,given}
+import protopost.common.api.{DestinationIdentifier,NewPostRevision,PostDefinition,PostDefinitionCreate,PostDefinitionUpdate,PostIdentifier,PostRevisionIdentifier,given}
 
 def epochSecondsNow() : Long = System.currentTimeMillis()/1000
 
@@ -47,6 +47,20 @@ object sttp:
     rawBody match
       case Left( oops ) => throw oops //new Exception( oops.toString() )
       case Right( loginStatus ) => loginStatus
+
+  def saveRevisionToServer(
+    protopostLocation : Uri,
+    npr : NewPostRevision,
+    backend : WebSocketBackend[scala.concurrent.Future],
+    localContentDirtyVar : com.raquo.laminar.api.L.Var[Boolean]
+  )(using ec : ExecutionContext) =
+    val request =
+      basicRequest
+        .post( protopostLocation.addPath("protopost", "new-draft") )
+        .body( asJson(npr) )
+        .response( asJson[PostRevisionIdentifier] )
+    val updater : PostRevisionIdentifier => Boolean => Boolean = (_ => (_ => false))
+    updateVarFromApiResult[PostRevisionIdentifier,Boolean]( request, backend, localContentDirtyVar, updater )
 
   def hardUpdateNewPostDefinition(
     protopostLocation : Uri,
