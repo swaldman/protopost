@@ -45,19 +45,19 @@ object TopPanel:
     val destinationsVar : Var[immutable.SortedSet[Destination]] = Var( immutable.SortedSet.empty )
     val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
 
-    val currentPostIdentifierLsi = LocalStorageItem(LocalStorageItem.Key.currentPostIdentifier, None )
+    val currentPostIdentifierLsi = LocalStorageItem(LocalStorageItem.Key.currentPostIdentifier)
     val currentPostIdentifierSignal = currentPostIdentifierLsi.signal
 
-    val locationLsi = LocalStorageItem(LocalStorageItem.Key.location, Tab.destinationsAndPosts )
+    val locationLsi = LocalStorageItem(LocalStorageItem.Key.location)
     val locationSignal : Signal[Tab] = locationLsi.signal
 
-    val composerLsi = LocalStorageItem(LocalStorageItem.Key.composer,Client.DefaultComposer)
+    val composerLsi = LocalStorageItem(LocalStorageItem.Key.composer)
     val composerSignal = composerLsi.signal
 
-    val currentPostLocalPostContentLsi = LocalStorageItem(LocalStorageItem.Key.currentPostLocalPostContent, PostContent.default)
+    val currentPostLocalPostContentLsi = LocalStorageItem(LocalStorageItem.Key.currentPostLocalPostContent)
     val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
 
-    val recoveredRevisionsLsi = LocalStorageItem(LocalStorageItem.Key.recoveredRevisions, Nil)
+    val recoveredRevisionsLsi = LocalStorageItem(LocalStorageItem.Key.recoveredRevisions)
 
     val localContentDirtyVar : Var[Boolean] = Var(false)
 

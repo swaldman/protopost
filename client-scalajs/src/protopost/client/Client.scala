@@ -19,6 +19,15 @@ object Client:
 
   @main
   def main() : Unit =
+
+    // if the query string includes resetLocalStorage=true, reset the local storage
+    val queryString = dom.window.location.search
+    val params = new dom.URLSearchParams(queryString)
+    if params.has("resetLocalStorage") then
+      val rls = Option(params.get("resetLocalStorage")).map( java.lang.Boolean.parseBoolean )
+      if rls == Some(true) then
+        LocalStorageItem.resetAll()
+
     lazy val container = dom.document.getElementById("root")
     render( container, TopPanel.create( uri"${Globals.protopostLocation}" ) )
 
