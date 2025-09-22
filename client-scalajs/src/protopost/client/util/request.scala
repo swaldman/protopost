@@ -66,12 +66,6 @@ def saveLoadOnCurrentPostSwap(
         case Some( pr ) => currentPostLocalPostContentLsi.set( PostContent( pr.contentType, pr.body ) )
         case None => currentPostLocalPostContentLsi.set( PostContent.default )
       localContentDirtyVar.set(false)
-/*      
-      case None =>
-        Future:
-          currentPostLocalPostContentLsi.set( PostContent.default )
-          localContentDirtyVar.set(false)
- */          
   (mbPrevPostDefinition,mbNewPostDefinition) match
     case (Some(ppd),Some(npd)) =>
       saveCurrent(ppd).flatMap( _ => loadNew(npd) )
