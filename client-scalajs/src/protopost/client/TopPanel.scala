@@ -52,8 +52,9 @@ object TopPanel:
     val composerLsi = LocalStorageItem(LocalStorageItem.Key.composer,Client.DefaultComposer)
     val composerSignal = composerLsi.signal
 
-    val currentPostLocalContentTypeLsi = LocalStorageItem(LocalStorageItem.Key.currentPostLocalContentType, "text/plain")
-    val currentPostLocalTextLsi        = LocalStorageItem(LocalStorageItem.Key.currentPostLocalText, "")
+    val currentPostLocalPostContentLsi = LocalStorageItem(LocalStorageItem.Key.currentPostLocalPostContent, PostContent.default)
+
+    val localContentDirtyVar : Var[Boolean] = Var(false)
 
     val loggedInLocationSignal = locationSignal.combineWithFn(loginLevelSignal): ( loc, level ) =>
       level match
@@ -73,6 +74,9 @@ object TopPanel:
       mbPi match
         case Some(pi) => Set.empty[Tab]
         case None => Set(Tab.currentPost)
+
+    val autosaveRequestEventStream : EventStream[Unit] =
+      EventStream.periodic(300000,false).withCurrentValueOf( localContentDirtyVar ).filter( (_,dirty) => dirty ).map( _ => () )
 
     val loginObserver = Observer[LoginLevel]: level =>
       println(s"loginObserver - level: ${level}")
@@ -100,7 +104,7 @@ object TopPanel:
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
     val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLsi,destinationsVar,destinationsToKnownPostsVar,locationLsi,posterNoAuthSignal)
-    val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierLsi, currentPostDefinitionSignal, currentPostLocalContentTypeLsi, currentPostLocalTextLsi, posterNoAuthSignal )
+    val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierLsi, currentPostDefinitionSignal, currentPostLocalPostContentLsi, localContentDirtyVar, posterNoAuthSignal )
     val profileCard = ProfileCard.create(composerLsi,composerSignal,posterNoAuthSignal)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>
@@ -170,6 +174,7 @@ object TopPanel:
         maintainLoginStatus()
         loginLevelChangeEvents.addObserver(loginObserver)
         currentPostDefinitionChanges.addObserver(currentPostDefinitionChangesObserver)
+        autosaveRequestEventStream.addObserver( Observer[Unit]( u => println("Tick!") ) )
       },
       onUnmountCallback { _ => retireLoginStatus() },
       idAttr("top"),

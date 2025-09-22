@@ -23,8 +23,8 @@ object CurrentPostCard:
     destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
     currentPostIdentifierLsi : LocalStorageItem[Option[PostIdentifier]],
     currentPostDefinitionSignal : Signal[Option[PostDefinition]],
-    currentPostLocalContentTypeLsi : LocalStorageItem[String],
-    currentPostLocalTextLsi : LocalStorageItem[String],
+    currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
+    localContentDirtyVar : Var[Boolean],
     posterNoAuthSignal : Signal[Option[PosterNoAuth]]
   ) : HtmlElement =
     val currentPostIdentifierSignal = currentPostIdentifierLsi.signal
@@ -70,7 +70,7 @@ object CurrentPostCard:
         if pd.isEmpty then  
           util.sttp.hardUpdateDestinationsToKnownPosts( protopostLocation, pi.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
-    val composePane = ComposerPane.create( currentPostLocalContentTypeLsi, currentPostLocalTextLsi )
+    val composePane = ComposerPane.create( currentPostLocalPostContentLsi, localContentDirtyVar )
 
     div(
       idAttr := "current-post-card",

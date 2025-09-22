@@ -11,14 +11,13 @@ import protopost.common.api.{*,given}
 object LocalStorageItem:
 
   // really?
-  given JsonValueCodec[String] = JsonCodecMaker.make
+  //given JsonValueCodec[String] = JsonCodecMaker.make
 
   enum Key[T : JsonValueCodec]:
     case composer                    extends Key[Composer]
     case location                    extends Key[Tab]
     case currentPostIdentifier       extends Key[Option[PostIdentifier]]
-    case currentPostLocalContentType extends Key[String]
-    case currentPostLocalText        extends Key[String]
+    case currentPostLocalPostContent extends Key[PostContent]
 
 class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T], defaultValue : T):
   require( defaultValue != null, "The value of a LocalStorageItem cannot be null." )
@@ -36,6 +35,8 @@ class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T], default
     else
       dom.window.localStorage.setItem(key.toString(), writeToString[T](value))
     _var.set(Some(value))
+
+  def update( doUpdate : T => T ) = set( doUpdate(this.now()) )
 
   def now(): T = _var.now().getOrElse( defaultValue )
 

@@ -40,10 +40,14 @@ enum Composer( val label : String ):
   case `text-and-preview` extends Composer( "Text and preview (plaintext, markdown, html)" )
   case `WYSIWYG`          extends Composer( "WYSIWYG (html)" )
 
+object PostContent:
+  val default = PostContent("text/plain","")
 case class PostContent( contentType : String, text : String )
 
-case class PostInProgress( id : Int, dirtyToLocalStorage : Boolean, dirtyToServer : Boolean, fetchCurrentText : () => PostContent )
+// case class PostInProgress( id : Int, dirtyToLocalStorage : Boolean, dirtyToServer : Boolean, fetchCurrentText : () => PostContent )
 
-given JsonValueCodec[Tab]      = JsonCodecMaker.make
-given JsonValueCodec[Composer] = JsonCodecMaker.make
+given JsonValueCodec[Tab]         = JsonCodecMaker.make
+given JsonValueCodec[Composer]    = JsonCodecMaker.make
+given JsonValueCodec[PostContent] = JsonCodecMaker.make
+
 

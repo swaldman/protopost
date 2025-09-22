@@ -18,12 +18,20 @@ object ComposerPane:
     )
 
   def create(
-    currentPostLocalContentTypeLsi : LocalStorageItem[String],
-    currentPostLocalTextLsi : LocalStorageItem[String]
+    currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
+    localContentDirtyVar           : Var[Boolean]
   ) : HtmlElement =
-    val currentPostLocalContentTypeSignal = currentPostLocalContentTypeLsi.signal
-    val currentPostLocalTextSignal = currentPostLocalTextLsi.signal
-    
+    val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
+    val localContentDirtySignal = localContentDirtyVar.signal
+
+    val contentTypeChangeObserver = Observer[String]: (value) =>
+      currentPostLocalPostContentLsi.update( _.copy(contentType=value) )
+      localContentDirtyVar.set(true)
+
+    val textAreaChangeObserver = Observer[String]: (value) =>
+      currentPostLocalPostContentLsi.update( _.copy(text=value) )
+      localContentDirtyVar.set(true)
+
     div(
       idAttr := "composer-pane",
       // backgroundColor("lightGray"),
@@ -66,8 +74,8 @@ object ComposerPane:
                 value := "text/markdown",
                 "text/markdown"
               ),
-              onChange.mapToValue --> { (value) => currentPostLocalContentTypeLsi.set(value) },
-              value <-- currentPostLocalContentTypeSignal
+              onChange.mapToValue --> contentTypeChangeObserver,
+              value <-- currentPostLocalPostContentSignal.map( _.contentType )
             )
           ),
           div(
@@ -82,11 +90,9 @@ object ComposerPane:
           ),
           div(
             paddingLeft.rem(0.5),
-            statusCircle(),
-          ),
-          div(
-            paddingLeft.rem(0.5),
-            statusCircle(),
+            statusCircle().amend(
+              backgroundColor <-- localContentDirtySignal.map( dirty => if dirty then "red" else "green" )
+            ),
           )
         ),
         styleTag(
@@ -110,6 +116,8 @@ object ComposerPane:
             width.percent(100),
             height.percent(100),
             resize("none"),
+            onInput.mapToValue.compose( _.debounce(500) ) --> textAreaChangeObserver,
+            value <-- currentPostLocalPostContentSignal.map( _.text )
           )
         )
       )
