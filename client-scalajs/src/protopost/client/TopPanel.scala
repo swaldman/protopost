@@ -28,6 +28,8 @@ object TopPanel:
   private final val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
   private final val LoginStatusUpdateIfNotUpdatedLastSecs  = 15
 
+  private final val AutosaveCheckFrequencyMsecs = 180000 // autosave every three minutes while actively writing
+
   private final val TopPanelMargin = 2 //2px
 
   def create(protopostLocation : Uri) : HtmlElement =
@@ -78,7 +80,7 @@ object TopPanel:
         case None => Set(Tab.currentPost)
 
     val autosaveEventStream : EventStream[NewPostRevision] =
-      EventStream.periodic(30000,false) // should be 300000, but for testing
+      EventStream.periodic(AutosaveCheckFrequencyMsecs,false)
         .withCurrentValueOf( localContentDirtyVar, currentPostIdentifierSignal, currentPostLocalPostContentSignal )
         .collect { case (_,true,Some(pd),pc) => NewPostRevision(pd.postId,pc.contentType,pc.text) }
         .distinct
