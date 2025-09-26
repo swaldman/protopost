@@ -76,7 +76,8 @@ object CurrentPostCard:
       idAttr := "current-post-card",
       paddingLeft.rem(Client.CardPaddingLeftRightRem),
       paddingRight.rem(Client.CardPaddingLeftRightRem),
-      height.percent(100),
+      display.flex,
+      //height.percent(100),
       div(
         idAttr := "current-post-card-no-post",
         display <-- currentPostDefinitionSignal.map( opt => if opt.isEmpty then "block" else "none" ),
@@ -84,7 +85,10 @@ object CurrentPostCard:
       ),
       div(
         idAttr := "current-post-card-with-post",
-        height.percent(100),
+        display.flex,
+        flexDirection.column,
+        flexGrow(1),
+        //height.percent(100),
         display <-- currentPostDefinitionSignal.map( opt => if opt.isEmpty then "none" else "block" ),
         div(
           idAttr := "current-post-title",
@@ -121,7 +125,7 @@ object CurrentPostCard:
         ),
         div(
           idAttr := "current-post-compose",
-          height.percent(100),
+          flexGrow(1),
           composePane
         )
       ),

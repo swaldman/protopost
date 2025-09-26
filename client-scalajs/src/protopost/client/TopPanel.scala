@@ -204,6 +204,7 @@ object TopPanel:
         |  display: flex;
         |  flex-direction: column;
         |  height: 100%;
+        |  max-height: 100%;
         |}
         |#app-top-panel {
         |  /* Fixed height top section */
@@ -276,8 +277,8 @@ object TopPanel:
           div(
             // card panel
             idAttr("app-card-panel"),
-            width.percent(100),
-            height.percent(100),
+            //width.percent(100),
+            //height.percent(100),
             overflowX := "clip",
             //marginTop.auto,
             marginBottom.auto,

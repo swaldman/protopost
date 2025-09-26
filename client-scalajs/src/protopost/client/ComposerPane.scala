@@ -7,6 +7,8 @@ object ComposerPane:
   enum Tab:
     case edit, preview
 
+  val serifFontFamilies = "Georgia, Garamond, serif"
+
   val contentTypeSelect = "composer-content-type-select"
 
   def statusCircle() : HtmlElement =
@@ -65,6 +67,14 @@ object ComposerPane:
     val composeCardEdit =
       div(
         flexGrow(1),
+        styleTag(
+          """
+          |#composer-text-area:focus {
+          |  border-color: black;
+          |  outline: none;
+          |}
+          """.stripMargin
+        ),
         textArea(
           idAttr := "composer-text-area",
           fontFamily("monospace"),
@@ -83,16 +93,21 @@ object ComposerPane:
 
     val previewModifiersCommon =
       Seq(
-        width.percent(100),
-        height("calc(100% - 2rem)"),
+        //width.percent(100),
+        //height.percent("calc(100% - 2rem)"),
+        flexGrow(1),
+        minHeight.px(0),
+        height.px(0),
+        //maxHeight.calc("100% - 5rem"),
+        overflowY.scroll,
         borderStyle.solid,
         borderWidth.px(1),
         borderColor.gray,
         backgroundColor("#EEEEEE"),
         marginTop.rem(0),
-        marginBottom.rem(2),
+        marginBottom.rem(0),
         marginLeft.rem(0),
-        marginRight.rem(1),
+        marginRight.rem(0),
         padding.rem(1),
       )
 
@@ -101,14 +116,13 @@ object ComposerPane:
         previewModifiersCommon,
         whiteSpace.pre,
         fontFamily("monospace"),
-        overflowY.scroll,
         text <-- currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal).map( (_,pc) => pc.text )
       )
 
     val composeCardPreviewTextHtml =
       div(
         previewModifiersCommon,
-        overflowY.scroll,
+        fontFamily(serifFontFamilies),
         inContext { thisNode =>
           currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
             thisNode.ref.innerHTML = DOMPurify.sanitize(pc.text)
@@ -119,7 +133,7 @@ object ComposerPane:
     val composeCardPreviewTextMarkdown =
       div(
         previewModifiersCommon,
-        overflowY.scroll,
+        fontFamily(serifFontFamilies),
         inContext { thisNode =>
           currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
             thisNode.ref.innerHTML = marked.parse( DOMPurify.sanitize(pc.text) )
@@ -140,16 +154,21 @@ object ComposerPane:
     div(
       idAttr := "composer-pane",
       // backgroundColor("lightGray"),
-      height("calc(100% - 3rem)"),
+      height.calc("100% - 3rem"),
+      maxHeight.calc("100% - 3rem"),
+      flexGrow(1),
       overflowY := "clip",
       marginTop.rem(1),
       marginLeft.rem(1),
       marginRight.rem(1),
+      display.flex,
       div(
         idAttr := "compose-text-and-preview-card",
+        flexGrow(1),
         display.flex,
         flexDirection.column,
         height.percent(100),
+        maxHeight.percent(100),
         div(
           marginBottom.rem(0.5),
           idAttr := "compose-text-and-preview-toolbar",
@@ -191,14 +210,13 @@ object ComposerPane:
             ),
           )
         ),
-        styleTag(
-          """
-          |#composer-text-area:focus {
-          |  border-color: black;
-          |  outline: none;
-          |}
-          """.stripMargin
-        ),
-        child <-- composeCardSignal
+        div(
+          idAttr := "compose-review-details-switch-panel",
+          //maxHeight.percent(100),
+          flexGrow(1),
+          display.flex,
+          flexDirection.column,
+          child <-- composeCardSignal
+        )
       )
     )
