@@ -15,7 +15,7 @@ object LocalStorageItem:
 
   enum Key[T : JsonValueCodec]( val defaultValue : T ):
     case composer                    extends Key[Composer]                                        (Client.DefaultComposer)
-    case location                    extends Key[Tab]                                             (Tab.destinationsAndPosts)
+    case topPanelLocation            extends Key[TopPanel.Tab]                                    (TopPanel.Tab.destinationsAndPosts)
     case currentPostIdentifier       extends Key[Option[PostIdentifier]]                          (None)
     case currentPostLocalPostContent extends Key[PostContent]                                     (PostContent.default)
     case recoveredRevisions          extends Key[List[Tuple2[RevisionTimestamp,NewPostRevision]]] (Nil)

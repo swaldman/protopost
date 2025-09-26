@@ -70,6 +70,8 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
       mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core:${JsoniterVersion}",
     )
 
+  def jslib = Task.Source("jslib")
+
   // modified from https://mill-build.org/mill/scalalib/web-examples.html
   override def resources = Task:
     os.makeDir(Task.dest / "scalajs")
@@ -82,6 +84,9 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
     // in the resource folder for the web server code to pick up
     os.copy(jsPath / "main.js", Task.dest / "scalajs/main.js")
     os.copy(jsPath / "main.js.map", Task.dest / "scalajs/main.js.map")
+
+    os.copy.into(jslib().path, Task.dest / "scalajs")
+    
     super.resources() ++ Seq(PathRef(Task.dest))
 
   object `client-scalajs` extends ProtopostScalaJSModule:

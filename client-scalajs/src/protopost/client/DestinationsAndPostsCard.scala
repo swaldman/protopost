@@ -24,7 +24,7 @@ object DestinationsAndPostsCard:
     currentPostIdentifierLocalStorageItem : LocalStorageItem[Option[PostIdentifier]],
     destinationsVar : Var[immutable.SortedSet[Destination]],
     destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
-    locationLocalStorageItem : LocalStorageItem[Tab],
+    locationLocalStorageItem : LocalStorageItem[TopPanel.Tab],
     posterNoAuthSignal : Signal[Option[PosterNoAuth]]
   ) : HtmlElement =
     val currentPostIdentifierSignal = currentPostIdentifierLocalStorageItem.signal
@@ -69,7 +69,7 @@ object DestinationsAndPostsCard:
                 val di = destination.destinationIdentifier
                 val postDefinition = new PostDefinitionCreate( destination.seismicNode.id, destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
                 util.request.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierLocalStorageItem )
-                locationLocalStorageItem.set(Tab.currentPost)
+                locationLocalStorageItem.set(TopPanel.Tab.currentPost)
               case None =>
                 println("Cannot create new post, posterNoAuthSignal seems unset? We are not properly logged in?")
 
@@ -84,7 +84,7 @@ object DestinationsAndPostsCard:
               ClickLink.create(title).amend(
                 onClick --> { _ =>
                   currentPostIdentifierLocalStorageItem.set(Some(PostIdentifier(destination.destinationIdentifier,pd.postId)))
-                  locationLocalStorageItem.set(Tab.currentPost)
+                  locationLocalStorageItem.set(TopPanel.Tab.currentPost)
                 }
               ),
               " ",

@@ -4,6 +4,9 @@ import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
 object ComposerPane:
+  enum Tab:
+    case edit, preview
+
   val contentTypeSelect = "composer-content-type-select"
 
   def statusCircle() : HtmlElement =
@@ -31,6 +34,108 @@ object ComposerPane:
     val textAreaChangeObserver = Observer[String]: (value) =>
       currentPostLocalPostContentLsi.update( _.copy(text=value) )
       localContentDirtyVar.set(true)
+
+    val currentTabVar : Var[ComposerPane.Tab] = Var(ComposerPane.Tab.edit)
+    val currentTabSignal = currentTabVar.signal
+
+    val previewPane = div("This is the preview pane")
+
+    def tabsDiv() =
+      val tabs =
+        Tab.values.map: tab =>
+          div(
+            cls := "tab-pane",
+            flexGrow(1),
+            textAlign.center,
+            cls <-- currentTabSignal.map( currentTab => if tab == currentTab then "current" else "" ),
+            TinyLink.create(tab.toString).amend(
+              onClick --> ( click => currentTabVar.set(tab) ),
+            )
+          )
+      div(
+        idAttr := "composer-pane-tabs-div",
+        display.flex,
+        flexDirection.row,
+        alignItems.center,
+        justifyContent.center,
+        flexGrow(1),
+        tabs
+      )
+
+    val composeCardEdit =
+      div(
+        flexGrow(1),
+        textArea(
+          idAttr := "composer-text-area",
+          fontFamily("monospace"),
+          padding.rem(1),
+          borderStyle.solid,
+          borderColor.black,
+          borderWidth.px(2),
+          borderRadius.px(10),
+          width.percent(100),
+          height.percent(100),
+          resize("none"),
+          onInput.mapToValue.compose( _.debounce(500) ) --> textAreaChangeObserver,
+          value <-- currentPostLocalPostContentSignal.map( _.text )
+        )
+      )
+
+    val previewModifiersCommon =
+      Seq(
+        width.percent(100),
+        height("calc(100% - 2rem)"),
+        borderStyle.solid,
+        borderWidth.px(1),
+        borderColor.gray,
+        backgroundColor("#EEEEEE"),
+        marginTop.rem(0),
+        marginBottom.rem(2),
+        marginLeft.rem(0),
+        marginRight.rem(1),
+        padding.rem(1),
+      )
+
+    val composeCardPreviewTextPlain =
+      div(
+        previewModifiersCommon,
+        whiteSpace.pre,
+        fontFamily("monospace"),
+        overflowY.scroll,
+        text <-- currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal).map( (_,pc) => pc.text )
+      )
+
+    val composeCardPreviewTextHtml =
+      div(
+        previewModifiersCommon,
+        overflowY.scroll,
+        inContext { thisNode =>
+          currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
+            thisNode.ref.innerHTML = DOMPurify.sanitize(pc.text)
+          }
+        }
+      )
+
+    val composeCardPreviewTextMarkdown =
+      div(
+        previewModifiersCommon,
+        overflowY.scroll,
+        inContext { thisNode =>
+          currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
+            thisNode.ref.innerHTML = marked.parse( DOMPurify.sanitize(pc.text) )
+          }
+        }
+      )
+
+    val composeCardSignal =
+      Signal.combine(currentTabSignal,currentPostLocalPostContentSignal).map: ( tab, pc ) =>
+        tab match
+          case ComposerPane.Tab.edit => composeCardEdit
+          case ComposerPane.Tab.preview =>
+            pc.contentType match
+              case "text/plain"     => composeCardPreviewTextPlain
+              case "text/html"      => composeCardPreviewTextHtml
+              case "text/markdown"  => composeCardPreviewTextMarkdown
 
     div(
       idAttr := "composer-pane",
@@ -78,16 +183,7 @@ object ComposerPane:
               value <-- currentPostLocalPostContentSignal.map( _.contentType )
             )
           ),
-          div(
-            flexGrow(1),
-            textAlign.center,
-            TinyLink.create("edit")
-          ),
-          div(
-            flexGrow(1),
-            textAlign.center,
-            TinyLink.create("preview")
-          ),
+          tabsDiv(),
           div(
             paddingLeft.rem(0.5),
             statusCircle().amend(
@@ -103,22 +199,6 @@ object ComposerPane:
           |}
           """.stripMargin
         ),
-        div(
-          flexGrow(1),
-          textArea(
-            idAttr := "composer-text-area",
-            fontFamily("monospace"),
-            padding.rem(1),
-            borderStyle.solid,
-            borderColor.black,
-            borderWidth.px(2),
-            borderRadius.px(10),
-            width.percent(100),
-            height.percent(100),
-            resize("none"),
-            onInput.mapToValue.compose( _.debounce(500) ) --> textAreaChangeObserver,
-            value <-- currentPostLocalPostContentSignal.map( _.text )
-          )
-        )
+        child <-- composeCardSignal
       )
     )

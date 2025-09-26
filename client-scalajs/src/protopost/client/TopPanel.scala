@@ -31,6 +31,16 @@ object TopPanel:
 
   private final val TopPanelMargin = 2 //2px
 
+  object Tab:
+    import com.github.plokhotnyuk.jsoniter_scala.core.* 
+    import com.github.plokhotnyuk.jsoniter_scala.macros.*
+    given JsonValueCodec[Tab]= JsonCodecMaker.make
+  enum Tab( val label : String ):
+    //case newPost  extends Tab("new post")
+    case destinationsAndPosts extends Tab("destinations and posts")
+    case currentPost          extends Tab("current post")
+    case profile              extends Tab("profile")
+
   def create(protopostLocation : Uri) : HtmlElement =
     val backend : WebSocketBackend[scala.concurrent.Future] = FetchBackend()
 
@@ -48,8 +58,8 @@ object TopPanel:
     val currentPostIdentifierLsi = LocalStorageItem(LocalStorageItem.Key.currentPostIdentifier)
     val currentPostIdentifierSignal = currentPostIdentifierLsi.signal
 
-    val locationLsi = LocalStorageItem(LocalStorageItem.Key.location)
-    val locationSignal : Signal[Tab] = locationLsi.signal
+    val topPanelLocationLsi = LocalStorageItem(LocalStorageItem.Key.topPanelLocation)
+    val topPanelLocationSignal : Signal[Tab] = topPanelLocationLsi.signal
 
     val composerLsi = LocalStorageItem(LocalStorageItem.Key.composer)
     val composerSignal = composerLsi.signal
@@ -61,7 +71,7 @@ object TopPanel:
 
     val localContentDirtyVar : Var[Boolean] = Var(false)
 
-    val loggedInLocationSignal = locationSignal.combineWithFn(loginLevelSignal): ( loc, level ) =>
+    val loggedInLocationSignal = topPanelLocationSignal.combineWithFn(loginLevelSignal): ( loc, level ) =>
       level match
         case LoginLevel.high | LoginLevel.low => Some(loc)
         case _ => None
@@ -110,7 +120,7 @@ object TopPanel:
 
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
-    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLsi,destinationsVar,destinationsToKnownPostsVar,locationLsi,posterNoAuthSignal)
+    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLsi,destinationsVar,destinationsToKnownPostsVar,topPanelLocationLsi,posterNoAuthSignal)
     val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierLsi, currentPostDefinitionSignal, currentPostLocalPostContentLsi, localContentDirtyVar, posterNoAuthSignal )
     val profileCard = ProfileCard.create(composerLsi,composerSignal,posterNoAuthSignal)
 
@@ -168,11 +178,11 @@ object TopPanel:
       div(
         cls := "tab-pane",
         idAttr := "tab-pane-${tab}",
-        cls <-- locationSignal.map( t => if t == tab then "current" else "" ),
+        cls <-- topPanelLocationSignal.map( t => if t == tab then "current" else "" ),
         cls <-- disabledTabsSignal.map( tabs => if tabs(tab) then "disabled" else ""),
         textAlign.center,
         TinyLink.create(tab.label).amend(
-          onClick( _.withCurrentValueOf(disabledTabsSignal).filter((_,disabled) => !disabled(tab)).map(_ => tab)) --> ( t => locationLsi.set(t) ),
+          onClick( _.withCurrentValueOf(disabledTabsSignal).filter((_,disabled) => !disabled(tab)).map(_ => tab)) --> ( t => topPanelLocationLsi.set(t) ),
         ),
       )
 

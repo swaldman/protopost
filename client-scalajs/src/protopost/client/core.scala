@@ -14,6 +14,18 @@ object Globals extends js.Object {
   val protopostLocation : String = js.native
 }
 
+@js.native
+@JSGlobal
+object DOMPurify extends js.Object {
+  def sanitize(raw : String) : String = js.native
+}
+
+@js.native
+@JSGlobal
+object marked extends js.Object {
+  def parse(markdownText : String) : String = js.native
+}
+
 val ReverseChronologicalPostDefinitions = Ordering.by[PostDefinition,Int]( pd => -pd.postId ) // reverse chronological of post creation, since id's are allocated chronologically
 
 object LoginLevel:
@@ -30,12 +42,6 @@ enum LoginLevel( val cssColor : String, val isLoggedIn : Boolean ):
   case low     extends LoginLevel("cyan",true)
   case high    extends LoginLevel("green",true)
 
-enum Tab( val label : String ):
-  //case newPost  extends Tab("new post")
-  case destinationsAndPosts extends Tab("destinations and posts")
-  case currentPost          extends Tab("current post")
-  case profile              extends Tab("profile")
-
 enum Composer( val label : String ):
   case `text-and-preview` extends Composer( "Text and preview (plaintext, markdown, html)" )
   case `WYSIWYG`          extends Composer( "WYSIWYG (html)" )
@@ -46,7 +52,6 @@ case class PostContent( contentType : String, text : String )
 
 // case class PostInProgress( id : Int, dirtyToLocalStorage : Boolean, dirtyToServer : Boolean, fetchCurrentText : () => PostContent )
 
-given JsonValueCodec[Tab]         = JsonCodecMaker.make
 given JsonValueCodec[Composer]    = JsonCodecMaker.make
 given JsonValueCodec[PostContent] = JsonCodecMaker.make
 
