@@ -13,6 +13,8 @@ import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 import protopost.common.api.{PostDefinitionCreate,UpdateValue}
 
+import com.mchange.conveniences.string.*
+
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
 object CurrentPostCard:
@@ -38,6 +40,10 @@ object CurrentPostCard:
           pna.id == cpd.owner.id
       //println(s"(mbPna, mbCpd, mbOut) ($mbPna, $mbCpd, $mbOut)")
       mbOut.getOrElse(false)
+
+    val currentAuthorsSignal : Signal[Option[Seq[String]]] = currentPostDefinitionSignal.map: mbpd =>
+      mbpd.map: pd =>
+        pd.authors
 
     val titleDirtyVar = Var(false)
     val titleBackgroundColorSignal = titleDirtyVar.signal.map( if _ then "yellow" else "white" )
@@ -126,8 +132,9 @@ object CurrentPostCard:
         ),
         div(
           idAttr := "current-post-card-author",
-          marginLeft.em(2),
-          "by Alice Aarvark and Bob Barnyard"
+          lineHeight.percent(120),
+          marginLeft.em(1),
+          text <-- currentAuthorsSignal.map( mbAuthors => mbAuthors.fold("")(authors => commaListAnd(authors).fold("")("by " + _) ) )
         ),
         div(
           idAttr := "current-post-card-compose",
