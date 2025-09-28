@@ -90,9 +90,9 @@ object CurrentPostCard:
         flexDirection.column,
         flexGrow(1),
         //height.percent(100),
-        display <-- currentPostDefinitionSignal.map( opt => if opt.isEmpty then "none" else "block" ),
+        display <-- currentPostDefinitionSignal.map( opt => if opt.isEmpty then "none" else "flex" ),
         div(
-          idAttr := "current-post-title",
+          idAttr := "current-post-card-title",
           span(
             fontSize.pt(Client.CardTitleFontSizePt),
             fontWeight.bold,
@@ -125,7 +125,13 @@ object CurrentPostCard:
           )
         ),
         div(
-          idAttr := "current-post-compose",
+          idAttr := "current-post-card-author",
+          marginLeft.em(2),
+          "by Alice Aarvark and Bob Barnyard"
+        ),
+        div(
+          idAttr := "current-post-card-compose",
+          display.flex,
           flexGrow(1),
           composePane
         )

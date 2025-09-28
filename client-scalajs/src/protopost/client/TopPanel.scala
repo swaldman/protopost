@@ -339,17 +339,22 @@ object TopPanel:
             idAttr("app-card-panel"),
             //width.percent(100),
             //height.percent(100),
+            flexGrow(1),
             overflowX := "clip",
             //marginTop.auto,
-            marginBottom.auto,
+            //marginBottom.auto,
+            display.flex,
             destinationsAndPostsCard.amend(
               display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.destinationsAndPosts) then "block" else "none" ),
+              flexGrow(1),
             ),
             currentPostCard.amend(
-              display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.currentPost) then "block" else "none" ),
+              display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.currentPost) then "flex" else "none" ),
+              flexGrow(1),
             ),
             profileCard.amend(
-              display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.profile) then "block" else "none" )
+              display <-- loggedInLocationSignal.map( opt => if opt == Some(Tab.profile) then "block" else "none" ),
+              flexGrow(1),
             ),
           ),
           div(
@@ -359,6 +364,7 @@ object TopPanel:
             flexDirection.row,
             justifyContent.spaceAround,
             Tab.values.map( t => createTab(t) ),
+            marginTop.rem(0.25),
             marginBottom.rem(0.25),
 
             // why don't these seem to have any effect?

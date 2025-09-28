@@ -68,6 +68,7 @@ object ComposerPane:
     val composeCardEdit =
       div(
         flexGrow(1),
+        display.flex,
         styleTag(
           """
           |#composer-text-area:focus {
@@ -84,8 +85,9 @@ object ComposerPane:
           borderColor.black,
           borderWidth.px(2),
           borderRadius.px(10),
-          width.percent(100),
-          height.percent(100),
+          flexGrow(1),
+          //width.percent(100),
+          //height.percent(100),
           resize("none"),
           onInput.mapToValue.compose( _.debounce(500) ) --> textAreaChangeObserver,
           value <-- currentPostLocalPostContentSignal.map( _.text )
@@ -155,8 +157,8 @@ object ComposerPane:
     div(
       idAttr := "composer-pane",
       // backgroundColor("lightGray"),
-      height.calc("100% - 3rem"),
-      maxHeight.calc("100% - 3rem"),
+      //height.calc("100% - 3rem"),
+      //maxHeight.calc("100% - 3rem"),
       flexGrow(1),
       overflowY := "clip",
       marginTop.rem(1),
@@ -168,8 +170,8 @@ object ComposerPane:
         flexGrow(1),
         display.flex,
         flexDirection.column,
-        height.percent(100),
-        maxHeight.percent(100),
+        //height.percent(100),
+        //maxHeight.percent(100),
         div(
           marginBottom.rem(0.5),
           idAttr := "compose-text-and-preview-toolbar",
