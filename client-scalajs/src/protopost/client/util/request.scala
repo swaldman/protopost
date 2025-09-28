@@ -42,7 +42,7 @@ def saveLoadOnCurrentPostSwap(
           basicRequest
             .post( protopostLocation.addPath("protopost", "new-draft") )
             .body( asJson(npr) )
-            .response( asJson[PostRevisionIdentifier] )
+            .response( asJson[Option[PostRevisionIdentifier]] )
         request.send(backend).map( _.body ).map( _ => localContentDirtyVar.set(false) )
     def saveAsRecovered() : Unit =
       val rt = RevisionTimestamp( Instant.now() )
@@ -92,9 +92,9 @@ def saveRevisionToServer(
     basicRequest
       .post( protopostLocation.addPath("protopost", "new-draft") )
       .body( asJson(npr) )
-      .response( asJson[PostRevisionIdentifier] )
-  val updater : PostRevisionIdentifier => Boolean => Boolean = (_ => (_ => false))
-  updateVarFromApiResult[PostRevisionIdentifier,Boolean]( request, backend, localContentDirtyVar, updater )
+      .response( asJson[Option[PostRevisionIdentifier]] )
+  val updater : Option[PostRevisionIdentifier] => Boolean => Boolean = (_ => (_ => false))
+  updateVarFromApiResult[Option[PostRevisionIdentifier],Boolean]( request, backend, localContentDirtyVar, updater )
 
 def hardUpdateNewPostDefinition(
   protopostLocation : Uri,

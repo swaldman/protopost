@@ -25,7 +25,8 @@ object CurrentPostCard:
     currentPostDefinitionSignal : Signal[Option[PostDefinition]],
     currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
     localContentDirtyVar : Var[Boolean],
-    posterNoAuthSignal : Signal[Option[PosterNoAuth]]
+    posterNoAuthSignal : Signal[Option[PosterNoAuth]],
+    manualSaveWriteBus : WriteBus[Unit]
   ) : HtmlElement =
     val currentPostIdentifierSignal = currentPostIdentifierLsi.signal
     val userIsOwnerSignal : Signal[Boolean] = Signal.combine(posterNoAuthSignal,currentPostDefinitionSignal).map: (mbPna, mbCpd) =>
@@ -70,7 +71,7 @@ object CurrentPostCard:
         if pd.isEmpty then  
           util.request.hardUpdateDestinationsToKnownPosts( protopostLocation, pi.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
-    val composePane = ComposerPane.create( currentPostLocalPostContentLsi, localContentDirtyVar )
+    val composePane = ComposerPane.create( currentPostLocalPostContentLsi, localContentDirtyVar, manualSaveWriteBus )
 
     div(
       idAttr := "current-post-card",

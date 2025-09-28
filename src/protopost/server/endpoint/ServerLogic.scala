@@ -299,7 +299,7 @@ object ServerLogic extends SelfLogging:
         val lowSecurityExpiration = extractExpirationOrEpoch(lowSecurityToken)
         loginStatusFromExpirations( highSecurityExpiration, lowSecurityExpiration )
 
-  def newDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( npr : NewPostRevision ) : ZOut[PostRevisionIdentifier] =
+  def newDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( npr : NewPostRevision ) : ZOut[Option[PostRevisionIdentifier]] =
     ZOut.fromTask:
       val db = appResources.database
       withConnectionTransactional( appResources.dataSource ): conn =>
@@ -310,8 +310,8 @@ object ServerLogic extends SelfLogging:
             if postDefinition.owner.id != subject.posterId then
               throw new InsufficientPermissions( s"The logged-in subject '${subject}' does not own post with ID ${npr.postId}" )
             else
-              val saveTime = db.newPostRevision(npr.postId,npr.contentType,npr.body)( conn )
-              PostRevisionIdentifier(npr.postId, saveTime)
+              val mbSaveTime = db.newPostRevision(npr.postId,npr.contentType,npr.body)( conn )
+              mbSaveTime.map( saveTime => PostRevisionIdentifier(npr.postId, saveTime) )
           case None =>
             throw new ResourceNotFound(s"No post with ID ${npr.postId} was found!")
 

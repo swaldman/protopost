@@ -64,13 +64,16 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, title, postAnchor, sprout, inReplyToHref, inReplyToMimeType, inReplyToGuid, false, None )( conn )
     if authors.nonEmpty then replaceAuthorsForPost( postId, authors )( conn )
     postId
-  def newPostRevision(postId : Int, contentType : String, body : String)( conn : Connection ) : Instant =
+  def newPostRevision(postId : Int, contentType : String, body : String)( conn : Connection ) : Option[Instant] =
     if !AcceptableContentTypes(contentType) then
       throw new UnacceptableContentType(s"'${contentType}' not supported, must be one of ${commaListOr(AcceptableContentTypes.toSeq)}")
     else
       val saveTime = Instant.now()
-      Schema.Table.PostRevision.insert(postId, saveTime, contentType, body)( conn )
-      saveTime
+      val rowsInserted = Schema.Table.PostRevision.insertIfPostChanged(postId, saveTime, contentType, body)( conn )
+      rowsInserted match
+        case 0 => None
+        case 1 => Some(saveTime)
+        case n => throw new ApparentBug(s"insertIfPostChanged should insert 0 or 1 row, apparently inserted $n.")
   def newSeismicNode( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Int =
     val newId = Schema.Sequence.SeismicNodeId.selectNext( conn )
     Schema.Table.SeismicNode.insert( newId, algcrv, pubkey, protocol, host, port )( conn )

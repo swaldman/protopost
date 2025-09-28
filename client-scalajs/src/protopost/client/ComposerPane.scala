@@ -24,7 +24,8 @@ object ComposerPane:
 
   def create(
     currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
-    localContentDirtyVar           : Var[Boolean]
+    localContentDirtyVar           : Var[Boolean],
+    manualSaveWriteBus : WriteBus[Unit]
   ) : HtmlElement =
     val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
     val localContentDirtySignal = localContentDirtyVar.signal
@@ -180,8 +181,9 @@ object ComposerPane:
             idAttr := "compose-text-and-preview-content-type-select-pane",
             label(
               forId := contentTypeSelect,
+              fontSize.pt(11),
               fontWeight.bold,
-              "Content Type: "
+              "type: "
             ),
             select(
               idAttr := contentTypeSelect,
@@ -203,6 +205,13 @@ object ComposerPane:
             )
           ),
           tabsDiv(),
+          button(
+            cls:= "button-utilitarian",
+            role("button"),
+            disabled <-- localContentDirtySignal.map(!_),
+            onClick.mapToUnit --> manualSaveWriteBus,
+            "save draft",
+          ),
           div(
             paddingLeft.rem(0.5),
             statusCircle().amend(

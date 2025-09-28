@@ -90,8 +90,13 @@ object TopPanel:
         case Some(pi) => Set.empty[Tab]
         case None => Set(Tab.currentPost)
 
-    val autosaveEventStream : EventStream[NewPostRevision] =
-      EventStream.periodic(AutosaveCheckFrequencyMsecs,false)
+    val manualSaveEventBus : EventBus[Unit] = new EventBus[Unit]
+    val manualSaveWriteBus : WriteBus[Unit] = manualSaveEventBus.writer
+
+    val autosaveRequestStream = EventStream.periodic(AutosaveCheckFrequencyMsecs,false)
+
+    val doSaveEventStream : EventStream[NewPostRevision] =
+      EventStream.merge(autosaveRequestStream,manualSaveEventBus.events)
         .withCurrentValueOf( localContentDirtyVar, currentPostIdentifierSignal, currentPostLocalPostContentSignal )
         .collect { case (_,true,Some(pd),pc) => NewPostRevision(pd.postId,pc.contentType,pc.text) }
         .distinct
@@ -121,7 +126,18 @@ object TopPanel:
     val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
 
     val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLsi,destinationsVar,destinationsToKnownPostsVar,topPanelLocationLsi,posterNoAuthSignal)
-    val currentPostCard = CurrentPostCard.create( protopostLocation, backend, destinationsToKnownPostsVar, currentPostIdentifierLsi, currentPostDefinitionSignal, currentPostLocalPostContentLsi, localContentDirtyVar, posterNoAuthSignal )
+    val currentPostCard =
+      CurrentPostCard.create(
+        protopostLocation,
+        backend,
+        destinationsToKnownPostsVar,
+        currentPostIdentifierLsi,
+        currentPostDefinitionSignal,
+        currentPostLocalPostContentLsi,
+        localContentDirtyVar,
+        posterNoAuthSignal,
+        manualSaveWriteBus
+      )
     val profileCard = ProfileCard.create(composerLsi,composerSignal,posterNoAuthSignal)
 
     val logoutSubmitter = Observer[dom.MouseEvent]: tup =>
@@ -192,7 +208,7 @@ object TopPanel:
         maintainLoginStatus()
         loginLevelChangeEvents.addObserver(loginObserver)
         currentPostDefinitionChanges.addObserver(currentPostDefinitionChangesObserver)
-        autosaveEventStream.addObserver( Observer[NewPostRevision]( npr => util.request.saveRevisionToServer(protopostLocation, npr, backend, localContentDirtyVar) ) )
+        doSaveEventStream.addObserver( Observer[NewPostRevision]( npr => util.request.saveRevisionToServer(protopostLocation, npr, backend, localContentDirtyVar) ) )
       },
       onUnmountCallback { _ => retireLoginStatus() },
       idAttr("top"),
@@ -242,6 +258,50 @@ object TopPanel:
         |}
         |.tab-pane.disabled a.tiny-link {
         |  color: gray;
+        |}
+        |
+        | /* modified from https://getcssscan.com/css-buttons-examples button-23 */
+        |.button-utilitarian {
+        |  background-color: #FFFFFF;
+        |  border: 1px solid #222222;
+        |  border-radius: 8px;
+        |  box-sizing: border-box;
+        |  color: #222222;
+        |  cursor: pointer;
+        |  display: inline-block;
+        |  font-family: sans-serif;
+        |  font-size: 11px;
+        |  font-weight: bold;
+        |  line-height: 13px;
+        |  margin: 0;
+        |  outline: none;
+        |  padding: 0.25em 0.5em;
+        |  position: relative;
+        |  text-align: center;
+        |  text-decoration: none;
+        |  touch-action: manipulation;
+        |  transition: box-shadow .2s,-ms-transform .1s,-webkit-transform .1s,transform .1s;
+        |  user-select: none;
+        |  -webkit-user-select: none;
+        |  width: auto;
+        |}
+        |
+        |.button-utilitarian:focus-visible {
+        |  box-shadow: #222222 0 0 0 2px, rgba(255, 255, 255, 0.8) 0 0 0 4px;
+        |  transition: box-shadow .2s;
+        |}
+        |
+        |.button-utilitarian:enabled:active {
+        |  background-color: #F7F7F7;
+        |  border-color: #000000;
+        |  transform: scale(.96);
+        |}
+        |
+        |.button-utilitarian:disabled {
+        |  border-color: #DDDDDD;
+        |  color: #DDDDDD;
+        |  cursor: not-allowed;
+        |  opacity: 1;
         |}
         """.stripMargin
       ),

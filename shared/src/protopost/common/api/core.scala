@@ -157,6 +157,7 @@ given JsonValueCodec[RetrievedPostRevision] = JsonCodecMaker.make
 given given_JsonValueCodec_Option_RetrievedPostRevision : JsonValueCodec[Option[RetrievedPostRevision]] = JsonCodecMaker.make
 
 given JsonValueCodec[PostRevisionIdentifier] = JsonCodecMaker.make
+given given_JsonValueCodec_Option_PostRevisionIdentifier : JsonValueCodec[Option[PostRevisionIdentifier]] = JsonCodecMaker.make
 
 given JsonValueCodec[RevisionTimestamp]                              = JsonCodecMaker.make
 given JsonValueCodec[Tuple2[RevisionTimestamp,NewPostRevision]]      = JsonCodecMaker.make

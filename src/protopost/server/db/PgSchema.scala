@@ -430,9 +430,19 @@ object PgSchema extends SelfLogging:
              |  PRIMARY KEY ( post_id, save_time ),
              |  FOREIGN KEY(post_id) REFERENCES post(id)
              |)""".stripMargin
-        val Insert = "INSERT INTO post_revision(post_id, save_time, content_type, body) VALUES (?,?,?,?)"
         val Select = "SELECT post_id, save_time, content_type, body FROM post_revision WHERE post_id = ? AND save_time = ?"
-        val SelectLatest = "SELECT post_id, save_time, content_type, body FROM post_revision WHERE post_id = ? ORDER BY save_time DESC LIMIT 1"
+        val SelectLatest = "SELECT post_id, save_time, content_type, body FROM post_revision WHERE post_id = ? ORDER BY save_time DESC LIMIT 1" // InsertIfChanged and selectContentSameAsLatest are tightly coupled
+        val SelectContentSameAsLatest = "SELECT latest.content_type = ? AND latest.body = ? from ( $SelectLatest ) AS latest"
+        val Insert = "INSERT INTO post_revision(post_id, save_time, content_type, body) VALUES (?,?,?,?)"
+        val InsertIfPostChanged = // note that first positional param will be post_id for SelectLatest!
+          s"""|WITH latest_of_post AS (
+              |  ${SelectLatest}
+              |)
+              |INSERT INTO post_revision(post_id, save_time, content_type, body)
+              |SELECT ?, ?, ?, ?
+              |WHERE NOT EXISTS (
+              |  SELECT 1 FROM latest_of_post WHERE content_type = ? AND body = ?
+              |)""".stripMargin
         private def extract( rs : ResultSet ) : RetrievedPostRevision =
           val postId      = rs.getInt(1)
           val ts          = rs.getTimestamp(2).toInstant
@@ -446,6 +456,16 @@ object PgSchema extends SelfLogging:
             ps.setString(3, contentType)
             ps.setString(4, body)
             ps.executeUpdate()
+        def insertIfPostChanged( postId : Int, saveTime : Instant, contentType : String, body : String )( conn : Connection ) =
+          Using.resource( conn.prepareStatement(InsertIfPostChanged) ): ps =>
+            ps.setInt(1, postId) // from SelectLatest!
+            ps.setInt(2, postId)
+            ps.setTimestamp(3, Timestamp.from(saveTime))
+            ps.setString(4, contentType)
+            ps.setString(5, body)
+            ps.setString(6, contentType)
+            ps.setString(7, body)
+            ps.executeUpdate()
         def select( postId : Int, instant : Instant )( conn : Connection ) : Option[RetrievedPostRevision] =
           Using.resource( conn.prepareStatement(Select) ): ps =>
             ps.setInt(1, postId)
@@ -455,6 +475,12 @@ object PgSchema extends SelfLogging:
           Using.resource( conn.prepareStatement(SelectLatest) ): ps =>
             ps.setInt(1, postId)
             Using.resource( ps.executeQuery() )( zeroOrOneResult("select-latest-post-revision")(extract) )
+        def selectContentSameAsLatest( postId : Int, contentType : String, body : String )( conn : Connection ) : Option[RetrievedPostRevision] =
+          Using.resource( conn.prepareStatement(SelectContentSameAsLatest) ): ps =>
+            ps.setString(1, contentType)
+            ps.setString(2, body)
+            ps.setInt(3, postId) // from SelectLatest
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-revision-content-same-as-latest")(extract) )
       end PostRevision
       object PostPublicationHistory extends Creatable:
         override val Create =
@@ -502,6 +528,8 @@ object PgSchema extends SelfLogging:
         protected val Create = "CREATE INDEX post_feed_guid_index ON post_feed_guid(guid)"
       object PostRevisionSaveTimeIndex extends Creatable:
         protected val Create = "CREATE INDEX post_revision_save_time_index ON post_revision(save_time)"
+      object PostRevisionBodyIndex extends Creatable:
+        protected val Create = "CREATE INDEX post_revision_body_index ON post_revision(save_time) USING hash"
     end Index
     object Join:
       val SelectAllDestinations =

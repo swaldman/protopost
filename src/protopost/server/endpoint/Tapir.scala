@@ -94,7 +94,7 @@ object Tapir extends SelfLogging:
 
   val ScalaJsServerEndpoint = staticResourcesGetServerEndpoint[[x] =>> zio.RIO[Any, x]]("protopost"/"client"/"scalajs")(this.getClass().getClassLoader(), "scalajs")
 
-  val NewDraft = PosterAuthenticated.post.in("new-draft").in(jsonBody[NewPostRevision]).out(jsonBody[PostRevisionIdentifier])
+  val NewDraft = PosterAuthenticated.post.in("new-draft").in(jsonBody[NewPostRevision]).out(jsonBody[Option[PostRevisionIdentifier]])
 
   val LatestDraft = PosterAuthenticated.get.in("latest-draft").in( path[Int] ).out(jsonBody[Option[RetrievedPostRevision]])
 
