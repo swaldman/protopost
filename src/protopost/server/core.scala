@@ -22,9 +22,7 @@ case class PostDefinitionRaw(
   title                    : Option[String]  = None,
   postAnchor               : Option[String]  = None,
   sprout                   : Option[Boolean] = None,
-  inReplyToHref            : Option[String]  = None,
-  inReplyToMimeType        : Option[String]  = None,
-  inReplyToGuid            : Option[String]  = None,
+  inReplyToSpecifier       : Option[String]  = None,
   publicationAttempted     : Boolean         = false,
   htmlPermalink            : Option[String]  = None
 )

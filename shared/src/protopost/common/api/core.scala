@@ -58,9 +58,7 @@ case class PostDefinitionCreate(
   title                    : Option[String]  = None,
   postAnchor               : Option[String]  = None,
   sprout                   : Option[Boolean] = None,
-  inReplyToHref            : Option[String]  = None,
-  inReplyToMimeType        : Option[String]  = None,
-  inReplyToGuid            : Option[String]  = None,
+  inReplyToSpecifier       : Option[String]  = None,
   authors                  : Seq[String]     = Seq.empty
 )
 
@@ -69,9 +67,7 @@ case class PostDefinitionUpdate(
   title                    : UpdateValue[String]      = UpdateValue.`leave-alone`,
   postAnchor               : UpdateValue[String]      = UpdateValue.`leave-alone`,
   sprout                   : UpdateValue[Boolean]     = UpdateValue.`leave-alone`,
-  inReplyToHref            : UpdateValue[String]      = UpdateValue.`leave-alone`,
-  inReplyToMimeType        : UpdateValue[String]      = UpdateValue.`leave-alone`,
-  inReplyToGuid            : UpdateValue[String]      = UpdateValue.`leave-alone`,
+  inReplyToSpecifier       : UpdateValue[String]      = UpdateValue.`leave-alone`,
   authors                  : UpdateValue[Seq[String]] = UpdateValue.`leave-alone`
 )
 
@@ -82,9 +78,7 @@ case class PostDefinition(
   title                    : Option[String],
   postAnchor               : Option[String],
   sprout                   : Option[Boolean],
-  inReplyToHref            : Option[String],
-  inReplyToMimeType        : Option[String],
-  inReplyToGuid            : Option[String],
+  inReplyToSpecifier       : Option[String],
   publicationAttempted     : Boolean,
   htmlPermalink            : Option[String],
   authors                  : Seq[String]

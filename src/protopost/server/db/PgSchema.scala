@@ -248,9 +248,7 @@ object PgSchema extends SelfLogging:
              |  title                 VARCHAR(1024),
              |  post_anchor           VARCHAR(256),
              |  sprout                BOOLEAN,
-             |  in_reply_to_href      VARCHAR(1024),
-             |  in_reply_to_mime_type VARCHAR(128),
-             |  in_reply_to_guid      VARCHAR(1024),
+             |  in_reply_to_specifier VARCHAR(1024),
              |  publication_attempted BOOLEAN NOT NULL,
              |  html_permalink        VARCHAR(1024),
              |  UNIQUE ( seismic_node_id, destination_name, post_anchor ), -- anchors should be unique within destinations
@@ -259,29 +257,26 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY(seismic_node_id, destination_name) REFERENCES destination(seismic_node_id,name)
              |)""".stripMargin
         val Select =
-          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink
+          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_specifier, publication_attempted, html_permalink
              |FROM post
              |WHERE id = ?""".stripMargin
         val SelectByDestination =
-          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink
+          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_specifier, publication_attempted, html_permalink
              |FROM post
              |WHERE seismic_node_id = ? AND destination_name = ?""".stripMargin
         val SelectByDestinationAndOwner =
-          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink
+          """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_specifier, publication_attempted, html_permalink
              |FROM post
              |WHERE seismic_node_id = ? AND destination_name = ? AND owner = ?""".stripMargin
         val Insert =
-          """|INSERT INTO
-             |post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink)
-             |VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""".stripMargin
+          """|INSERT INTO post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_specifier, publication_attempted, html_permalink)
+             |VALUES (?,?,?,?,?,?,?,?,?,?)""".stripMargin
         val UpdateMain =
           """|UPDATE post
              |SET title                 = ?,
              |    post_anchor           = ?,
              |    sprout                = ?,
-             |    in_reply_to_href      = ?,
-             |    in_reply_to_mime_type = ?,
-             |    in_reply_to_guid      = ?
+             |    in_reply_to_specifier = ?
              |WHERE id = ?""".stripMargin
         private def extract( rs : ResultSet ) : PostDefinitionRaw =
           PostDefinitionRaw(
@@ -292,11 +287,9 @@ object PgSchema extends SelfLogging:
             title = Option( rs.getString(5) ),
             postAnchor = Option( rs.getString(6) ),
             sprout = getBooleanOptionalAtPosition( rs, 7 ),
-            inReplyToHref = Option( rs.getString(8) ),
-            inReplyToMimeType = Option( rs.getString(9) ),
-            inReplyToGuid = Option( rs.getString(10) ),
-            publicationAttempted = rs.getBoolean(11),
-            htmlPermalink = Option( rs.getString(12) )
+            inReplyToSpecifier = Option( rs.getString(8) ),
+            publicationAttempted = rs.getBoolean(9),
+            htmlPermalink = Option( rs.getString(10) )
           )
         def select( postId : Int )( conn : Connection ) : Option[PostDefinitionRaw] =
           Using.resource( conn.prepareStatement(Select) ): ps =>
@@ -321,9 +314,7 @@ object PgSchema extends SelfLogging:
           title                    : Option[String],
           postAnchor               : Option[String],
           sprout                   : Option[Boolean],
-          inReplyToHref            : Option[String],
-          inReplyToMimeType        : Option[String],
-          inReplyToGuid            : Option[String],
+          inReplyToSpecifier       : Option[String],
           publicationAttempted     : Boolean,
           htmlPermalink            : Option[String]
         )( conn : Connection ) =
@@ -335,29 +326,23 @@ object PgSchema extends SelfLogging:
             setStringOptional( ps, 5, Types.VARCHAR, title )
             setStringOptional( ps, 6, Types.VARCHAR, postAnchor ) 
             setBooleanOptional( ps, 7, sprout )
-            setStringOptional( ps, 8, Types.VARCHAR, inReplyToHref )
-            setStringOptional( ps, 9, Types.VARCHAR, inReplyToMimeType )
-            setStringOptional( ps, 10, Types.VARCHAR, inReplyToGuid )
-            ps.setBoolean( 11, publicationAttempted )
-            setStringOptional( ps, 12, Types.VARCHAR, htmlPermalink )
+            setStringOptional( ps, 8, Types.VARCHAR, inReplyToSpecifier )
+            ps.setBoolean( 9, publicationAttempted )
+            setStringOptional( ps, 10, Types.VARCHAR, htmlPermalink )
             ps.executeUpdate()
         def updateMain(
           postId : Int,
           title : Option[String],
           postAnchor : Option[String],
           sprout : Option[Boolean],
-          inReplyToHref : Option[String],
-          inReplyToMimeType : Option[String],
-          inReplyToGuid : Option[String]
+          inReplyToSpecifier : Option[String]
         )( conn : Connection ) =
           Using.resource(conn.prepareStatement(UpdateMain)): ps =>
             setStringOptional( ps, 1, Types.VARCHAR, title )
             setStringOptional( ps, 2, Types.VARCHAR, postAnchor )
             setBooleanOptional( ps, 3, sprout )
-            setStringOptional( ps, 4, Types.VARCHAR, inReplyToHref )
-            setStringOptional( ps, 5, Types.VARCHAR, inReplyToMimeType )
-            setStringOptional( ps, 6, Types.VARCHAR, inReplyToGuid )
-            ps.setInt( 7, postId )
+            setStringOptional( ps, 4, Types.VARCHAR, inReplyToSpecifier )
+            ps.setInt( 5, postId )
             ps.executeUpdate()
       end Post
       object FeedContainer extends Creatable:
@@ -531,7 +516,7 @@ object PgSchema extends SelfLogging:
       object PostRevisionSaveTimeIndex extends Creatable:
         protected val Create = "CREATE INDEX post_revision_save_time_index ON post_revision(save_time)"
       object PostRevisionBodyIndex extends Creatable:
-        protected val Create = "CREATE INDEX post_revision_body_index ON post_revision(save_time) USING hash"
+        protected val Create = "CREATE INDEX post_revision_body_index ON post_revision USING HASH(save_time)"
     end Index
     object Join:
       val SelectAllDestinations =

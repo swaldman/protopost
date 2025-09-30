@@ -108,9 +108,7 @@ object ServerLogic extends SelfLogging:
             owner                    = postDefinitionCreate.owner,
             postAnchor               = postDefinitionCreate.postAnchor,
             sprout                   = postDefinitionCreate.sprout,
-            inReplyToHref            = postDefinitionCreate.inReplyToHref,
-            inReplyToMimeType        = postDefinitionCreate.inReplyToMimeType,
-            inReplyToGuid            = postDefinitionCreate.inReplyToGuid,
+            inReplyToSpecifier       = postDefinitionCreate.inReplyToSpecifier,
             authors                  = postDefinitionCreate.authors
           )( conn )
           db.postDefinitionForId( postId )( conn ).getOrElse:
@@ -149,22 +147,19 @@ object ServerLogic extends SelfLogging:
         db.postDefinitionForId( pdu.postId )( conn ) match
           case Some( currentPostDefinition ) =>
             if currentPostDefinition.owner.id == subject.posterId then
-              val postId            : Int             = pdu.postId
-              val title             : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.title, pdu.title )
-              val postAnchor        : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.postAnchor, pdu.postAnchor )
-              val sprout            : Option[Boolean] = translateNullableUpdateValueToDb(currentPostDefinition.sprout, pdu.sprout )
-              val inReplyToHref     : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.inReplyToHref, pdu.inReplyToHref )
-              val inReplyToMimeType : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.inReplyToMimeType, pdu.inReplyToMimeType )
-              val inReplyToGuid     : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.inReplyToGuid, pdu.inReplyToGuid )
+              val postId             : Int             = pdu.postId
+              val title              : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.title, pdu.title )
+              val postAnchor         : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.postAnchor, pdu.postAnchor )
+              val sprout             : Option[Boolean] = translateNullableUpdateValueToDb(currentPostDefinition.sprout, pdu.sprout )
+              val inReplyToSpecifier : Option[String]  = translateNullableUpdateValueToDb(currentPostDefinition.inReplyToSpecifier, pdu.inReplyToSpecifier )
+
 
               db.updatePostDefinitionMain(
                 postId = postId,
                 title = title,
                 postAnchor = postAnchor,
                 sprout = sprout,
-                inReplyToHref = inReplyToHref,
-                inReplyToMimeType = inReplyToMimeType,
-                inReplyToGuid = inReplyToGuid
+                inReplyToSpecifier = inReplyToSpecifier
               )( conn )
 
               val updateAuthors = pdu.authors != UpdateValue.`leave-alone`

@@ -55,13 +55,11 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     title                    : Option[String]  = None,
     postAnchor               : Option[String]  = None,
     sprout                   : Option[Boolean] = None,
-    inReplyToHref            : Option[String]  = None,
-    inReplyToMimeType        : Option[String]  = None,
-    inReplyToGuid            : Option[String]  = None,
+    inReplyToSpecifier       : Option[String]  = None,
     authors                  : Seq[String] = Seq.empty
   )( conn : Connection ) : Int =
     val postId = Schema.Sequence.PostId.selectNext( conn )
-    Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, title, postAnchor, sprout, inReplyToHref, inReplyToMimeType, inReplyToGuid, false, None )( conn )
+    Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, title, postAnchor, sprout, inReplyToSpecifier, false, None )( conn )
     if authors.nonEmpty then replaceAuthorsForPost( postId, authors )( conn )
     postId
   def newPostRevision(postId : Int, contentType : String, body : String)( conn : Connection ) : Option[Instant] =
@@ -84,7 +82,7 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     val authors = Schema.Table.PostAuthor.select( pdr.postId )( conn )
     val nickname = Schema.Table.Destination.nicknameForDefined( pdr.destinationSeismicNodeId, pdr.destinationName )( conn ) // this should be an already-defined destination!
     val destination = Destination( seismicNode.toApiSeismicNode, pdr.destinationName, nickname )
-    PostDefinition( pdr.postId, destination, owner.toApiPosterNoAuth, pdr.title, pdr.postAnchor, pdr.sprout, pdr.inReplyToHref, pdr.inReplyToMimeType, pdr.inReplyToGuid, pdr.publicationAttempted, pdr.htmlPermalink, authors)
+    PostDefinition( pdr.postId, destination, owner.toApiPosterNoAuth, pdr.title, pdr.postAnchor, pdr.sprout, pdr.inReplyToSpecifier, pdr.publicationAttempted, pdr.htmlPermalink, authors)
   def postDefinitionForId( id : Int )( conn : Connection ) : Option[PostDefinition] =
     Schema.Table.Post.select( id )( conn ).map( postDefinitionFromRaw(_)(conn) )
   def postDefinitionsForDestination( seismicNodeId : Int, destinationName : String )( conn : Connection ) : Set[PostDefinition] =
@@ -117,18 +115,14 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     title : Option[String],
     postAnchor : Option[String],
     sprout : Option[Boolean],
-    inReplyToHref : Option[String],
-    inReplyToMimeType : Option[String],
-    inReplyToGuid : Option[String]
+    inReplyToSpecifier : Option[String]
   )( conn : Connection ) =
     Schema.Table.Post.updateMain(
       postId = postId,
       title = title,
       postAnchor = postAnchor,
       sprout = sprout,
-      inReplyToHref = inReplyToHref,
-      inReplyToMimeType = inReplyToMimeType,
-      inReplyToGuid = inReplyToGuid
+      inReplyToSpecifier = inReplyToSpecifier
     )( conn )
 
   object txn:
