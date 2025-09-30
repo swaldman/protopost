@@ -50,21 +50,48 @@ object CurrentPostCard:
 
     val titleChangeEventBus = new EventBus[HtmlElement]
     val titleChangeEventStreamWithCurrentPost = titleChangeEventBus.events.withCurrentValueOf(currentPostDefinitionSignal)
-    val titleChangeObserver = Observer[(HtmlElement, Option[PostDefinition])]: ( node, mbPd ) =>
-      //println(s"( node, mbPd ): ( ${node}, $mbPd )   ${java.time.Instant.now()}")
-      mbPd match
-        case Some(pd) =>
-          val newTextOpt =
-             val tmp = node.ref.textContent.trim
-             if tmp.length == 0 then None else Some(tmp)
-          val currentOpt = pd.title
-          if newTextOpt != currentOpt then
-            val pdu = PostDefinitionUpdate( pd.postId, title = newTextOpt.fold( UpdateValue.`set-to-none` )( UpdateValue.`update`.apply ) )
-            titleDirtyVar.set(true)
-            util.request.hardUpdatePostDefinitionUpdate(protopostLocation,pd.destination.destinationIdentifier, pdu, backend, destinationsToKnownPostsVar, _ => titleDirtyVar.set(false))
-        case None =>
-          println("No post definition to update title of. Try to prevent any capacity to edit title.")
-      node.ref.blur()
+
+    val authorDirtyVar = Var(false)
+    val authorBackgroundColorSignal = authorDirtyVar.signal.map( if _ then "yellow" else "white" )
+
+    val authorChangeEventBus = new EventBus[HtmlElement]
+    val authorChangeEventStreamWithCurrentPost = authorChangeEventBus.events.withCurrentValueOf(currentPostDefinitionSignal)
+
+    def detailsChangeObserver[T](
+      itemFromTextContent : String => Option[T],
+      itemFromPostDefinition : PostDefinition => Option[T],
+      rewrite : (PostDefinition, Option[T]) => PostDefinitionUpdate,
+      dirtyVar : Var[Boolean]
+    ) : Observer[(HtmlElement, Option[PostDefinition])] =
+      Observer[(HtmlElement, Option[PostDefinition])]: ( node, mbPd ) =>
+        //println(s"( node, mbPd ): ( ${node}, $mbPd )   ${java.time.Instant.now()}")
+        mbPd match
+          case Some(pd) =>
+            val newTextOpt = itemFromTextContent( node.ref.textContent )
+            val currentOpt = itemFromPostDefinition(pd)
+            if newTextOpt != currentOpt then
+              val pdu = rewrite(pd, newTextOpt)
+              dirtyVar.set(true)
+              util.request.hardUpdatePostDefinitionUpdate(protopostLocation,pd.destination.destinationIdentifier, pdu, backend, destinationsToKnownPostsVar, _ => dirtyVar.set(false))
+          case None =>
+            println("No post definition to update. Try to prevent any capacity to edit in this case.")
+        node.ref.blur()
+
+    val titleChangeObserver = detailsChangeObserver(
+      _.toOptionNotBlank,
+      _.title,
+      (pd,nto) => PostDefinitionUpdate( pd.postId, title = nto.fold( UpdateValue.`set-to-none` )( UpdateValue.`update`.apply ) ),
+      titleDirtyVar
+    )
+
+    val authorChangeObserver =
+      def itemFromTextContent( s : String ) : Option[Seq[String]] =
+        val trimmed = s.trim
+        val unprefixed = if trimmed.startsWith("by") && Character.isWhitespace(trimmed.charAt(2)) then trimmed.substring(3).trim else trimmed
+        Some(parseCommaListAnd(unprefixed))
+      def itemFromPostDefinition( pd : PostDefinition ) : Option[Seq[String]] = Some( pd.authors )
+      def rewrite(pd : PostDefinition, nso : Option[Seq[String]]) : PostDefinitionUpdate = PostDefinitionUpdate( pd.postId, authors = nso.fold( UpdateValue.`set-to-none` )( UpdateValue.`update`.apply ) )
+      detailsChangeObserver( itemFromTextContent, itemFromPostDefinition, rewrite, authorDirtyVar )
 
     val postIdentifierObserver = Observer[(Option[PostIdentifier],Map[DestinationIdentifier,Map[Int,PostDefinition]])]: (mbpi, map) =>
       mbpi.foreach: pi =>
@@ -134,7 +161,25 @@ object CurrentPostCard:
           idAttr := "current-post-card-author",
           lineHeight.percent(120),
           marginLeft.em(1),
-          text <-- currentAuthorsSignal.map( mbAuthors => mbAuthors.fold("")(authors => commaListAnd(authors).fold("")("by " + _) ) )
+          contentEditable <-- userIsOwnerSignal,
+          backgroundColor <-- authorBackgroundColorSignal,
+          text <-- currentAuthorsSignal.map( mbAuthors => mbAuthors.fold("")(authors => commaListAnd(authors).fold("")("by " + _) ) ),
+          inContext { thisNode =>
+            //onEnterPress.preventDefault.mapTo(thisNode) --> titleChangeEventBus
+            onEnterPress.preventDefault --> { whatever =>
+              thisNode.ref.blur()
+            }
+          },
+          inContext { thisNode =>
+            onBlur.mapTo(thisNode) --> authorChangeEventBus
+          },
+          inContext { thisNode =>
+            documentEscapeEvents.compose( _.withCurrentValueOf(currentPostDefinitionSignal) ) --> { (_,mbCpd) =>
+              if thisNode.ref == dom.document.activeElement then
+                thisNode.ref.textContent = mbCpd.fold( "" )( cpd => commaListAnd( cpd.authors ).fold("")( "by " + _ ) )
+                thisNode.ref.blur()
+            }
+          }
         ),
         div(
           idAttr := "current-post-card-compose",
@@ -147,6 +192,7 @@ object CurrentPostCard:
         // println( s"mount: $mountContext" )
         given Owner = mountContext.owner
         titleChangeEventStreamWithCurrentPost.addObserver( titleChangeObserver )
+        authorChangeEventStreamWithCurrentPost.addObserver( authorChangeObserver )
         currentPostIdentifierSignal.withCurrentValueOf(destinationsToKnownPostsVar).addObserver( postIdentifierObserver )
       },
     )

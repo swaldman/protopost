@@ -191,8 +191,14 @@ def decodeOrThrow[T]( rawBody : Either[ResponseException[String], T] ) : T =
     case Right( theThing ) => theThing
 
 private val DefaultErrorHandler : Throwable => Unit =
-  t => t.printStackTrace()
-  org.scalajs.dom.window.alert( t.toString() )
+  t =>
+    def alert() : Unit = org.scalajs.dom.window.alert( t.toString() )
+    t.printStackTrace()
+    t match
+      case usce : sttp.client4.ResponseException.UnexpectedStatusCode[?] =>
+        if usce.response.code.code / 100 != 4 then alert()
+      case _ =>
+        alert()
 
 def updateVarFromApiResult[T : JsonValueCodec,U](
       request : Request[Either[ResponseException[String], T]],
