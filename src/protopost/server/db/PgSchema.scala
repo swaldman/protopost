@@ -269,7 +269,7 @@ object PgSchema extends SelfLogging:
         val SelectByDestinationAndOwner =
           """|SELECT id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink
              |FROM post
-             |WHERE seismic_node_id = ? AND destination_name = ? AND owner = ???""".stripMargin
+             |WHERE seismic_node_id = ? AND destination_name = ? AND owner = ?""".stripMargin
         val Insert =
           """|INSERT INTO
              |post(id, seismic_node_id, destination_name, owner, title, post_anchor, sprout, in_reply_to_href, in_reply_to_mime_type, in_reply_to_guid, publication_attempted, html_permalink)

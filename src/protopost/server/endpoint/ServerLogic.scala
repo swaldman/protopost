@@ -120,9 +120,9 @@ object ServerLogic extends SelfLogging:
     ZOut.fromTask:
       val db = appResources.database
       val ds = appResources.dataSource
-      //val subject = parseSubject( authenticatedPoster )
+      val subject = parseSubject( authenticatedPoster )
       withConnectionTransactional(ds): conn =>
-        db.postDefinitionsForDestination(destinationIdentifier.seismicNodeId, destinationIdentifier.name)(conn)
+        db.postDefinitionsForDestinationAndOwner(destinationIdentifier.seismicNodeId, destinationIdentifier.name, subject.posterId)(conn)
 
   private def translateNullableUpdateValueToDb[T]( existingValue : Option[T], updater : UpdateValue[T] ) : Option[T] =
     import UpdateValue.*
