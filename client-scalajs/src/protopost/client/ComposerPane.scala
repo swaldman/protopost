@@ -3,29 +3,29 @@ package protopost.client
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
+import sttp.client4.*
+import sttp.client4.fetch.*
+import sttp.client4.jsoniter.*
+import sttp.model.*
+
+import protopost.common.api.PostDefinition
+
 object ComposerPane:
   enum Tab:
-    case edit, preview
+    case edit, preview, publish
 
   val serifFontFamilies = "Georgia, Garamond, serif"
 
   val contentTypeSelect = "composer-content-type-select"
 
-  def statusCircle() : HtmlElement =
-    div(
-      backgroundColor.yellow,
-      borderRadius.percent(50),
-      width.rem(0.75),
-      height.rem(0.75),
-      borderColor.black,
-      borderWidth.px(1),
-      borderStyle.solid
-    )
-
   def create(
+    protopostLocation              : Uri,
+    backend                        : WebSocketBackend[scala.concurrent.Future],
     currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
+    currentPostDefinitionSignal    : Signal[Option[PostDefinition]],
     localContentDirtyVar           : Var[Boolean],
-    manualSaveWriteBus : WriteBus[Unit]
+    manualSaveWriteBus             : WriteBus[Unit],
+    loginFormPrerequisites         : LoginForm.Prerequisites
   ) : HtmlElement =
     val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
     val localContentDirtySignal = localContentDirtyVar.signal
@@ -144,10 +144,27 @@ object ComposerPane:
         }
       )
 
+    val composeCardPublishDetailsPane =
+      div(
+        flexGrow(1),
+        PublishDetailsPane.create( currentPostDefinitionSignal )
+      )
+
+    val composeCardReloginPane =
+      div(
+        flexGrow(1),
+        LoginForm.create(protopostLocation, backend, loginFormPrerequisites)
+      )
+      
     val composeCardSignal =
-      Signal.combine(currentTabSignal,currentPostLocalPostContentSignal).map: ( tab, pc ) =>
+      Signal.combine(currentTabSignal,currentPostLocalPostContentSignal,loginFormPrerequisites.loginLevelSignal).map: ( tab, pc, ll ) =>
         tab match
-          case ComposerPane.Tab.edit => composeCardEdit
+          case ComposerPane.Tab.edit    => composeCardEdit
+          case ComposerPane.Tab.publish =>
+            if ll == LoginLevel.high then
+              composeCardPublishDetailsPane
+            else
+              composeCardReloginPane
           case ComposerPane.Tab.preview =>
             pc.contentType match
               case "text/plain"     => composeCardPreviewTextPlain
@@ -216,10 +233,10 @@ object ComposerPane:
           ),
           div(
             paddingLeft.rem(0.5),
-            statusCircle().amend(
+            util.laminar.statusCircle().amend(
               backgroundColor <-- localContentDirtySignal.map( dirty => if dirty then "yellow" else "#22ff22" )
             ),
-          )
+          ),
         ),
         div(
           idAttr := "compose-review-details-switch-panel",

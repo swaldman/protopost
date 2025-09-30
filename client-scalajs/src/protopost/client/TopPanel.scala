@@ -50,6 +50,9 @@ object TopPanel:
 
     val loginLevelSignal : Signal[LoginLevel] = loginStatusVar.signal.map( _.fold(LoginLevel.unknown)( (ls,_) => LoginLevel.fromLoginStatus(ls) ) )
     val loginLevelChangeEvents = loginLevelSignal.changes.distinct
+
+    val loginFormPrerequisites = LoginForm.Prerequisites(loginStatusVar,loginLevelSignal,loginLevelChangeEvents)
+
     val posterNoAuthVar : Var[Option[PosterNoAuth]] = Var(None)
     val posterNoAuthSignal : Signal[Option[PosterNoAuth]] = posterNoAuthVar.signal
     val destinationsVar : Var[immutable.SortedSet[Destination]] = Var( immutable.SortedSet.empty )
@@ -123,7 +126,7 @@ object TopPanel:
     //    Tab.currentPost -> Seq( disabled <-- currentPostIdentifierVar.signal.map( _.isEmpty ) )
     //  )
 
-    val loginForm = LoginForm.create( protopostLocation, backend, loginStatusVar, loginLevelSignal, loginLevelChangeEvents )
+    val loginForm = LoginForm.create( protopostLocation, backend, loginFormPrerequisites )
 
     val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLsi,destinationsVar,destinationsToKnownPostsVar,topPanelLocationLsi,posterNoAuthSignal)
     val currentPostCard =
@@ -136,7 +139,8 @@ object TopPanel:
         currentPostLocalPostContentLsi,
         localContentDirtyVar,
         posterNoAuthSignal,
-        manualSaveWriteBus
+        manualSaveWriteBus,
+        loginFormPrerequisites
       )
     val profileCard = ProfileCard.create(composerLsi,composerSignal,posterNoAuthSignal)
 

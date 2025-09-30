@@ -25,7 +25,12 @@ object LoginForm:
   object Color:
     val GoodField = "#aaddaa"
     val BadField  = "#ffaaaa"
-  
+
+  case class Prerequisites(loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[LoginLevel], loginLevelChangeEvents : EventStream[LoginLevel])
+
+  def create(protopostLocation : Uri, backend : WebSocketBackend[scala.concurrent.Future], prerequisites : LoginForm.Prerequisites) : HtmlElement =
+    create(protopostLocation, backend, prerequisites.loginStatusVar, prerequisites.loginLevelSignal, prerequisites.loginLevelChangeEvents)
+
   def create(protopostLocation : Uri, backend : WebSocketBackend[scala.concurrent.Future], loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[LoginLevel], loginLevelChangeEvents : EventStream[LoginLevel]) : HtmlElement =
     val emailVar = Var[String]("")
     val passwordVar = Var[String]("")

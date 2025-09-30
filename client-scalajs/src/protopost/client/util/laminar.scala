@@ -17,3 +17,14 @@ def blackHr() : HtmlElement =
     borderWidth.px(1)
   )
 
+def statusCircle() : HtmlElement =
+  div(
+    backgroundColor.yellow,
+    borderRadius.percent(50),
+    width.rem(0.75),
+    height.rem(0.75),
+    borderColor.black,
+    borderWidth.px(1),
+    borderStyle.solid
+  )
+
