@@ -69,6 +69,7 @@ class PgSchemaManager( externalConfig : ExternalConfig ) extends ZMigratory.Post
           PgSchema.V1.Sequence.SeismicNodeId.create( stmt )
           PgSchema.V1.Sequence.PosterId.create( stmt )
           PgSchema.V1.Sequence.PostId.create( stmt )
+          PgSchema.V1.Index.PostByDestinationOwnerIndex.create( stmt )
           PgSchema.V1.Index.PostFeedGuidIndex.create( stmt )
           PgSchema.V1.Index.PostRevisionSaveTimeIndex.create( stmt )
           PgSchema.V1.Index.PostRevisionBodyIndex.create( stmt )

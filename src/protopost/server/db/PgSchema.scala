@@ -524,6 +524,8 @@ object PgSchema extends SelfLogging:
       end PostId
     end Sequence
     object Index:
+      object PostByDestinationOwnerIndex extends Creatable:
+        protected val Create = "CREATE INDEX post_by_destination_owner ON post(seismic_node_id,destination_name,owner)"
       object PostFeedGuidIndex extends Creatable:
         protected val Create = "CREATE INDEX post_feed_guid_index ON post_feed_guid(guid)"
       object PostRevisionSaveTimeIndex extends Creatable:
