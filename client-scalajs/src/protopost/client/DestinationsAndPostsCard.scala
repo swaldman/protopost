@@ -25,15 +25,25 @@ object DestinationsAndPostsCard:
     destinationsVar : Var[immutable.SortedSet[Destination]],
     destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
     locationLocalStorageItem : LocalStorageItem[TopPanel.Tab],
-    posterNoAuthSignal : Signal[Option[PosterNoAuth]]
+    posterNoAuthSignal : Signal[Option[PosterNoAuth]],
+    openDestinationsLsi : LocalStorageItem[Set[DestinationIdentifier]]
   ) : HtmlElement =
     val currentPostIdentifierSignal = currentPostIdentifierLocalStorageItem.signal
 
     object DestinationPane:
       def create( destination : Destination, initOpen : Boolean = false ) : HtmlElement =
         // println( s"DestinationPane.create( $destination, $initOpen )" )
-        val openVar : Var[Boolean] = Var(initOpen)
-        val openSignal = openVar.signal
+        
+        val di = destination.destinationIdentifier
+
+        if initOpen then openDestinationsLsi.update( set => set + di )
+
+        val openSignal = openDestinationsLsi.signal.map( set => set(di) )
+
+        def toggleOpen() : Unit =
+          openDestinationsLsi.update: set =>
+            if set(di) then set - di else set + di
+
         val destinationText = destination.nickname.getOrElse( s"${destination.name}@${destination.seismicNode.locationUrl}" )
 
         object PostsPane:
@@ -157,8 +167,8 @@ object DestinationsAndPostsCard:
               fontSize.pt(8),
               verticalAlign.middle,
               cursor.pointer,
-              text <-- openVar.signal.map( open => if open then /*"\u25BE"*/ "\u25BC" else /*"\u25B8"*/ "\u25B6" ),
-              onClick --> { _ => openVar.update(o => !o) }
+              text <-- openSignal.map( open => if open then /*"\u25BE"*/ "\u25BC" else /*"\u25B8"*/ "\u25B6" ),
+              onClick --> { _ => toggleOpen() }
             ),
             destinationText
           ),

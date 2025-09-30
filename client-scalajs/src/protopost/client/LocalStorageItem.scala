@@ -19,6 +19,7 @@ object LocalStorageItem:
     case currentPostIdentifier       extends Key[Option[PostIdentifier]]                          (None)
     case currentPostLocalPostContent extends Key[PostContent]                                     (PostContent.default)
     case recoveredRevisions          extends Key[List[Tuple2[RevisionTimestamp,NewPostRevision]]] (Nil)
+    case openDestinations            extends Key[Set[DestinationIdentifier]]                      (Set.empty)
 
   def resetAll() : Unit =
     Key.values.foreach: key =>

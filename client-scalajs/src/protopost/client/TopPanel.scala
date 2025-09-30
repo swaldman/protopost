@@ -74,6 +74,8 @@ object TopPanel:
 
     val localContentDirtyVar : Var[Boolean] = Var(false)
 
+    val openDestinationsLsi = LocalStorageItem(LocalStorageItem.Key.openDestinations)
+
     val loggedInLocationSignal = topPanelLocationSignal.combineWithFn(loginLevelSignal): ( loc, level ) =>
       level match
         case LoginLevel.high | LoginLevel.low => Some(loc)
@@ -128,7 +130,7 @@ object TopPanel:
 
     val loginForm = LoginForm.create( protopostLocation, backend, loginFormPrerequisites )
 
-    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLsi,destinationsVar,destinationsToKnownPostsVar,topPanelLocationLsi,posterNoAuthSignal)
+    val destinationsAndPostsCard = DestinationsAndPostsCard.create(protopostLocation,backend,currentPostIdentifierLsi,destinationsVar,destinationsToKnownPostsVar,topPanelLocationLsi,posterNoAuthSignal, openDestinationsLsi)
     val currentPostCard =
       CurrentPostCard.create(
         protopostLocation,
