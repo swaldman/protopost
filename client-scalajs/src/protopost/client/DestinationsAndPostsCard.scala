@@ -114,6 +114,8 @@ object DestinationsAndPostsCard:
               marginLeft.rem(1),
               marginTop.rem(0.25),
               fontWeight.normal,
+              fontSize.pt(10),
+              lineHeight.percent(120),
               display <-- openSignal.map( open => if open then "block" else "none" ),
               children <-- {postDefinitionsSignal.map: mbPdset =>
                 mbPdset match
@@ -133,10 +135,10 @@ object DestinationsAndPostsCard:
               div(
                 marginLeft.rem(0.25),
                 verticalAlign.middle,
+                fontSize.pt(12),
                 "\u00BB ",
                 ClickLink.create("create new post").amend(
                   fontSize.pt(10),
-                  cls("posts-pane-end-menu"),
                   //disabled <-- posterNoAuthSignal.map( _.fold(false)(_ => true) ),
                   onClick --> newPostClickBus,
                 ),
@@ -145,18 +147,8 @@ object DestinationsAndPostsCard:
             )
 
         div(
-          // very annoyingly, there's not an easy way to set grid- and hover-related style elements (beyond display.grid itself) in laminar
-          styleTag(
-            """
-            |.posts-pane-end-menu a {
-            |  color: blue;
-            |}
-            |.posts-pane-end-menu a:hover {
-            |  color: green;
-            |}
-            """.stripMargin
-          ),
           cls("destination-pane"),
+          marginTop.rem(0.25),
           div(
             fontSize.pt(11),
             fontWeight.bold,
@@ -188,6 +180,11 @@ object DestinationsAndPostsCard:
       height.percent(100),
       paddingLeft.rem(Client.CardPaddingLeftRightRem),
       paddingRight.rem(Client.CardPaddingLeftRightRem),
+      styleTag(
+        """|#destinations-and-posts-panel a:hover {
+           |  text-decoration: underline;
+           |}""".stripMargin
+      ),
       div(
         fontSize.pt(Client.CardTitleFontSizePt),
         fontWeight.bold,
