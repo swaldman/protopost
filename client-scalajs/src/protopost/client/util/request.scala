@@ -34,6 +34,7 @@ def saveLoadOnCurrentPostSwap(
   recoveredRevisionsLsi          : LocalStorageItem[List[Tuple2[RevisionTimestamp,NewPostRevision]]],
   localContentDirtyVar           : Var[Boolean]
 )(using ec : ExecutionContext) =
+  //println(s"saveLoadOnCurrentPostSwap(...): mbPrevPostDefinition: $mbPrevPostDefinition, mbNewPostDefinition: $mbNewPostDefinition")
   def saveCurrent(ppd : PostDefinition) : Future[Unit] =
     val PostContent(contentType, body) = currentPostLocalPostContentLsi.now()
     val npr = NewPostRevision(ppd.postId, contentType, body)
@@ -69,8 +70,13 @@ def saveLoadOnCurrentPostSwap(
   (mbPrevPostDefinition,mbNewPostDefinition) match
     case (Some(ppd),Some(npd)) =>
       saveCurrent(ppd).flatMap( _ => loadNew(npd) )
-    case (None,Some(npd)) => // this occurs on app initialization, we want to preserve local post content
-      localContentDirtyVar.set(currentPostLocalPostContentLsi.now() != PostContent.default)
+    case (None,Some(npd)) => 
+      if currentPostLocalPostContentLsi.now() != PostContent.default then
+        // this occurs on app initialization, we want to preserve local post content
+        localContentDirtyVar.set(true)
+      else
+        // there is no local content we want to preserve, let's load from the server
+        loadNew(npd)
     case (Some(npd),None) =>
       currentPostLocalPostContentLsi.set( PostContent.default )
     case (None,None) =>
