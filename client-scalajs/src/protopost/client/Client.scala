@@ -30,6 +30,8 @@ object Client:
   val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
   val LoginStatusUpdateIfNotUpdatedLastSecs  = 60
 
+  val UnsuccessfulLoginStatusCheckRetryMs = 60000 // try again in a minute if we failed to login
+
   val AutosaveCheckFrequencyMsecs = 180000 // autosave every three minutes while actively writing
 
   @main
@@ -175,7 +177,7 @@ class Client( val protopostLocation : Uri ):
       onMountCallback { mountContext =>
         given Owner = mountContext.owner
         updateLoginStatusStream.addObserver( updateLoginStatusObserver )
-        loginStatusSignal.addObserver( mustHardUpdateLoginStatusObserver )
+        loginStatusSignal.changes.throttle(UnsuccessfulLoginStatusCheckRetryMs).addObserver( mustHardUpdateLoginStatusObserver ) // important that these changes are NOT distinct, so we retry every minute, even on the "same" failure
         loginLevelChangeEvents.addObserver(loginObserver)
         currentPostDefinitionLastChangeTuple.addObserver(currentPostDefinitionLastChangeTupleObserver)
         doSaveEventStream.addObserver( Observer[NewPostRevision]( npr => util.request.saveRevisionToServer(protopostLocation, npr, backend, localContentDirtyVar) ) )
