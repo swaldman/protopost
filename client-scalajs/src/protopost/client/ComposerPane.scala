@@ -70,14 +70,6 @@ object ComposerPane:
       div(
         flexGrow(1),
         display.flex,
-        styleTag(
-          """
-          |#composer-text-area:focus {
-          |  border-color: black;
-          |  outline: none;
-          |}
-          """.stripMargin
-        ),
         textArea(
           idAttr := "composer-text-area",
           fontFamily("monospace"),

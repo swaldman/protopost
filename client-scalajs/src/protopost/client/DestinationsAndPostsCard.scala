@@ -171,11 +171,6 @@ object DestinationsAndPostsCard:
       height.percent(100),
       paddingLeft.rem(Client.CardPaddingLeftRightRem),
       paddingRight.rem(Client.CardPaddingLeftRightRem),
-      styleTag(
-        """|#destinations-and-posts-panel a:hover {
-           |  text-decoration: underline;
-           |}""".stripMargin
-      ),
       div(
         fontSize.pt(Client.CardTitleFontSizePt),
         fontWeight.bold,

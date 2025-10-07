@@ -274,6 +274,19 @@ class Client( val protopostLocation : Uri ):
         |  cursor: not-allowed;
         |  opacity: 1;
         |}
+        |
+        |/* DestinationsAndPostsCard */
+        |
+        |#destinations-and-posts-panel a:hover {
+        |  text-decoration: underline;
+        |}
+        |
+        |/* ComposerPane */
+        |
+        |#composer-text-area:focus {
+        |  border-color: black;
+        |  outline: none;
+        |}
         """.stripMargin
       ),
       TopPanel.create( this )
