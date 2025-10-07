@@ -4,10 +4,20 @@ import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
 import protopost.common.api.PostDefinition
+import protopost.common.api.PostRevisionHistory
+
+import sttp.model.Uri
+import sttp.client4.WebSocketBackend
 
 object PublishDetailsPane:
   def create(
-    currentPostDefinitionSignal : Signal[Option[PostDefinition]]
+    protopostLocation                 : Uri,
+    backend                           : WebSocketBackend[scala.concurrent.Future],
+    currentPostLocalPostContentLsi    : LocalStorageItem[PostContent],
+    currentPostDefinitionSignal       : Signal[Option[PostDefinition]],
+    currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
+    currentPostAllRevisionsVar        : Var[Option[PostRevisionHistory]],
+    goToEdit                          : () => Unit
   ) : HtmlElement =
 
     val publicationAttemptedSignal     = currentPostDefinitionSignal.map( _.fold(false)( _.publicationAttempted ) )
@@ -106,7 +116,7 @@ object PublishDetailsPane:
           label(
             forId := "post-in-reply-to-input",
             labelCommonModifiers,
-            "In reply to:"
+            "in reply to:"
           )
         ),
         input(
@@ -146,5 +156,17 @@ object PublishDetailsPane:
           checked <-- sproutCheckedSignal
         )
       ),
+      RevisionsCards.create(
+        protopostLocation,
+        backend,
+        labelCommonModifiers,
+        currentPostLocalPostContentLsi,
+        currentPostDefinitionSignal,
+        currentPostDefinitionChangeEvents,
+        currentPostAllRevisionsVar.signal,
+        goToEdit
+      ).amend(
+        marginTop.rem(SectionMarginTopRem),
+      )
     )
 

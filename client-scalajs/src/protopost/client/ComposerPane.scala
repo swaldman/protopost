@@ -8,7 +8,9 @@ import sttp.client4.fetch.*
 import sttp.client4.jsoniter.*
 import sttp.model.*
 
-import protopost.common.api.PostDefinition
+import protopost.common.api.{PostDefinition,PostRevisionHistory}
+import protopost.client.util.safeHtmlFromMarkdown
+import protopost.client.util.safeHtmlFromUserHtml
 
 object ComposerPane:
   enum Tab:
@@ -19,13 +21,15 @@ object ComposerPane:
   val contentTypeSelect = "composer-content-type-select"
 
   def create(
-    protopostLocation              : Uri,
-    backend                        : WebSocketBackend[scala.concurrent.Future],
-    currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
-    currentPostDefinitionSignal    : Signal[Option[PostDefinition]],
-    localContentDirtyVar           : Var[Boolean],
-    manualSaveWriteBus             : WriteBus[Unit],
-    loginFormPrerequisites         : LoginForm.Prerequisites
+    protopostLocation                 : Uri,
+    backend                           : WebSocketBackend[scala.concurrent.Future],
+    currentPostLocalPostContentLsi    : LocalStorageItem[PostContent],
+    currentPostDefinitionSignal       : Signal[Option[PostDefinition]],
+    currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
+    currentPostAllRevisionsVar        : Var[Option[PostRevisionHistory]],
+    localContentDirtyVar              : Var[Boolean],
+    manualSaveWriteBus                : WriteBus[Unit],
+    loginFormPrerequisites            : LoginForm.Prerequisites
   ) : HtmlElement =
     val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
     val localContentDirtySignal = localContentDirtyVar.signal
@@ -40,6 +44,11 @@ object ComposerPane:
 
     val currentTabVar : Var[ComposerPane.Tab] = Var(ComposerPane.Tab.edit)
     val currentTabSignal = currentTabVar.signal
+
+    def goToEdit() : Unit = currentTabVar.set(ComposerPane.Tab.edit)
+
+    val currentPostDefinitionChangeObserver = Observer[Option[PostDefinition]]: mbpd =>
+      currentTabVar.set(ComposerPane.Tab.edit) // go back to default edit tab when the post definition has updates
 
     val previewPane = div("This is the preview pane")
 
@@ -128,7 +137,7 @@ object ComposerPane:
         fontFamily(serifFontFamilies),
         inContext { thisNode =>
           currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
-            thisNode.ref.innerHTML = DOMPurify.sanitize(pc.text)
+            thisNode.ref.innerHTML = safeHtmlFromUserHtml( pc.text )
           }
         }
       )
@@ -139,7 +148,7 @@ object ComposerPane:
         fontFamily(serifFontFamilies),
         inContext { thisNode =>
           currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
-            thisNode.ref.innerHTML = marked.parse( DOMPurify.sanitize(pc.text) )
+            thisNode.ref.innerHTML = safeHtmlFromMarkdown( pc.text )
           }
         }
       )
@@ -147,7 +156,15 @@ object ComposerPane:
     val composeCardPublishDetailsPane =
       div(
         flexGrow(1),
-        PublishDetailsPane.create( currentPostDefinitionSignal )
+        PublishDetailsPane.create(
+          protopostLocation,
+          backend,
+          currentPostLocalPostContentLsi,
+          currentPostDefinitionSignal,
+          currentPostDefinitionChangeEvents,
+          currentPostAllRevisionsVar,
+          goToEdit
+        )
       )
 
     val composeCardReloginPane =
@@ -155,7 +172,7 @@ object ComposerPane:
         flexGrow(1),
         LoginForm.create(protopostLocation, backend, loginFormPrerequisites)
       )
-      
+
     val composeCardSignal =
       Signal.combine(currentTabSignal,currentPostLocalPostContentSignal,loginFormPrerequisites.loginLevelSignal).map: ( tab, pc, ll ) =>
         tab match
@@ -246,5 +263,9 @@ object ComposerPane:
           flexDirection.column,
           child <-- composeCardSignal
         )
-      )
+      ),
+      onMountCallback { mountContext =>
+        given Owner = mountContext.owner
+        currentPostDefinitionChangeEvents.addObserver(currentPostDefinitionChangeObserver)
+      },
     )

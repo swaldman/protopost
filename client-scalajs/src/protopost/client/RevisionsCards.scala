@@ -1,0 +1,193 @@
+package protopost.client
+
+import org.scalajs.dom
+import com.raquo.laminar.api.L.{*, given}
+import sttp.model.Uri
+import protopost.common.api.PostRevisionHistory
+import com.raquo.laminar.modifiers.KeySetter
+import com.raquo.laminar.nodes.ReactiveHtmlElement
+import org.scalajs.dom.HTMLElement
+import protopost.common.api.{PostDefinition,RevisionTimestamp}
+import java.time.format.DateTimeFormatter
+import java.time.ZoneId
+import protopost.common.api.RetrievedPostRevision
+import protopost.client.util.safeHtmlFromUserHtml
+import protopost.client.util.safeHtmlFromMarkdown
+import sttp.client4.WebSocketBackend
+
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
+
+
+object RevisionsCards:
+  enum Card:
+    case noRevisionHistoryLoaded, revisionHistoryList, revisionPreview
+
+  val RevisionTimestampFormatter = DateTimeFormatter.ofPattern("""yyyy'-'MM'-'dd' @ 'hh':'mm' 'a""").withZone( ZoneId.systemDefault() )
+
+  val MainSectionBorderPaddingMargin = Seq(
+    marginTop.rem(0.5),
+    padding.rem(1),
+    borderStyle.solid,
+    borderColor.black,
+    borderWidth.px(2),
+    borderRadius.px(10),
+  )
+
+  def create(
+    protopostLocation                 : Uri,
+    backend                           : WebSocketBackend[scala.concurrent.Future],
+    labelCommonModifiers              : Seq[KeySetter[StyleProp[?],String,ReactiveHtmlElement[HTMLElement]]],
+    currentPostLocalPostContentLsi    : LocalStorageItem[PostContent],
+    currentPostDefinitionSignal       : Signal[Option[PostDefinition]],
+    currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
+    currentPostAllRevisions           : Signal[Option[PostRevisionHistory]],
+    goToEdit                          : () => Unit
+  ) : HtmlElement =
+
+    val selectedRevisionVar : Var[Option[RevisionTimestamp]] = Var(None)
+
+    val previewRevisionVar : Var[Option[RetrievedPostRevision]] = Var(None)
+
+    val loadPreviewRevisionObserver = Observer[(RevisionTimestamp,PostDefinition)]: (rt,pd) =>
+      util.request.loadPostRevision(
+        protopostLocation,
+        pd.postId,
+        rt,
+        backend,
+        previewRevisionVar
+      )
+
+    val innerHtmlRevisionSignal : Signal[Option[String]] =
+      previewRevisionVar.signal.map: mbrpr =>
+        mbrpr.map: rpr =>
+          rpr.contentType match
+            case "text/plain" =>
+              div(
+                whiteSpace.pre,
+                fontFamily("monospace"),
+                rpr.body
+              ).ref.outerHTML
+            case "text/html" =>
+              safeHtmlFromUserHtml( rpr.body )
+            case "text/markdown" => 
+              safeHtmlFromMarkdown( rpr.body )
+            case other =>
+              s"""<b style="color: red">Unexpected revision content-type: $other</b>"""
+
+    val cardSignal =
+      Signal.combine(currentPostAllRevisions,selectedRevisionVar).map: tup =>
+        tup match
+          case ( Some(_), Some(_) ) =>
+            Card.revisionPreview
+          case ( Some(_), None )    =>
+            Card.revisionHistoryList
+          case ( None, Some(_) )   =>
+            println( "RevisionsCard: Inconsistent: No RevisionHistory, but selected revision" )
+            Card.noRevisionHistoryLoaded
+          case ( None, None )   =>  
+            Card.noRevisionHistoryLoaded
+
+    val currentPostAllRevisionsLinks =
+      val direct = currentPostAllRevisions.map( _.fold(Seq.empty[RevisionTimestamp])(_.revisionTimestampReverseChronological) )
+      direct.map: srt =>
+        srt.map : rt =>
+          div(
+            TinyLink.create( RevisionTimestampFormatter.format(rt.asInstant) ).amend(
+              onClick --> { _ => selectedRevisionVar.set(Some(rt)) }
+            )
+          )
+
+    val noRevisionHistoryLoadedCard =
+      div(
+        display <-- cardSignal.map( card => if card == Card.noRevisionHistoryLoaded then "block" else "none" ),
+        em(
+          "No revision history loaded."
+        )
+      )
+
+    val revisionHistoryListCard =
+      div(
+          display <-- cardSignal.map( card => if card == Card.revisionHistoryList then "block" else "none" ),
+          label(
+            forId := "revisons-cards-timestamp-list",
+            labelCommonModifiers,
+            "revisions:"
+          ),
+          div(
+            MainSectionBorderPaddingMargin,
+            idAttr := "revisons-cards-timestamp-list",
+            children <-- currentPostAllRevisionsLinks // this is really inefficient, learn the Laminar Way of selective updates
+          )
+      )
+
+    val revisionPreviewCard =
+      div(
+        display <-- cardSignal.map( card => if card == Card.revisionPreview then "block" else "none" ),
+        label(
+          forId := "revisons-cards-preview",
+          labelCommonModifiers,
+          "revision preview:"
+        ),
+        div(
+          idAttr := "revisons-cards-preview",
+          MainSectionBorderPaddingMargin,
+          display.flex,
+          flexDirection.column,
+          div(
+            //borderStyle.solid,
+            //borderWidth.px(2),
+            //borderColor.aqua,
+            display.flex,
+            button(
+              cls := "button-utilitarian",
+              role("button"),
+              "back",
+              onClick --> { _ => selectedRevisionVar.set(None) }
+            ),
+            div(
+              flexGrow(1),
+            ),
+            button(
+              cls := "button-utilitarian",
+              role("button"),
+              "make current",
+              onClick( _.withCurrentValueOf(previewRevisionVar) ) --> { tup =>
+                tup match
+                case ( _, Some( rpr ) ) =>
+                  val pc = PostContent(rpr.contentType, rpr.body)
+                  currentPostLocalPostContentLsi.set(pc)
+                  selectedRevisionVar.set(None)
+                  previewRevisionVar.set(None)
+                  goToEdit()
+                case _ => /* ignore */  
+              }
+            ),
+          ),
+          div(
+            marginTop.rem(0.5),
+            borderTopWidth.px(2),
+            borderTopColor.black,
+            borderTopStyle.solid,
+            paddingTop.rem(0.5),
+            inContext { thisNode =>
+              innerHtmlRevisionSignal --> { (mbHtml) => thisNode.ref.innerHTML = mbHtml.getOrElse("<b>No revision loaded</b>") }
+            }
+          )
+        )
+      )
+
+    div(
+      noRevisionHistoryLoadedCard,
+      revisionHistoryListCard,
+      revisionPreviewCard,
+      onMountCallback { mountContext =>
+        given Owner = mountContext.owner
+        currentPostDefinitionChangeEvents.filter( _.isEmpty).addObserver( Observer[Option[PostDefinition]]( _ => selectedRevisionVar.set(None) ) )
+        val loadRevisionEventStream =
+          selectedRevisionVar.signal.withCurrentValueOf(currentPostDefinitionSignal).changes
+            .map( (mba,mbb) => mba.flatMap(a => mbb.map(b=>(a,b))) )
+            .filter( _.nonEmpty )
+            .map(_.get)
+        loadRevisionEventStream.addObserver( loadPreviewRevisionObserver )
+      }
+    )

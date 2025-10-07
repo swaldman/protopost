@@ -98,6 +98,10 @@ object Tapir extends SelfLogging:
 
   val LatestDraft = PosterAuthenticated.get.in("latest-draft").in( path[Int] ).out(jsonBody[Option[RetrievedPostRevision]])
 
+  val RevisionHistory = PosterAuthenticated.get.in("revision-history").in( path[Int] ).out(jsonBody[PostRevisionHistory])
+
+  val RetrieveRevision = PosterAuthenticated.get.in("retrieve-revision").in( path[Int] ).in( path[Int] ).in( path[Int] ).out(jsonBody[RetrievedPostRevision])
+
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*
 
@@ -121,6 +125,8 @@ object Tapir extends SelfLogging:
       ScalaJsServerEndpoint,
       NewDraft.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( newDraft( appResources ) ),
       LatestDraft.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( latestDraft( appResources ) ),
+      RevisionHistory.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( revisionHistory( appResources ) ),
+      RetrieveRevision.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( retrieveRevision( appResources ) ),
     ) ++ rootAsClient.toList
 
 end Tapir

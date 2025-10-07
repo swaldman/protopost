@@ -104,6 +104,7 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
         mvn"com.softwaremill.sttp.client4::core::${sttpVersion}",
         mvn"com.softwaremill.sttp.client4::jsoniter::${sttpVersion}",
         mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core::${JsoniterVersion}",
+        mvn"io.github.cquiroz::scala-java-time-tzdb::2.6.0"
       )
 
   // modified from https://mill-build.org/mill/scalalib/web-examples.html

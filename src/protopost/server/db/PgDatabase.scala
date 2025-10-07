@@ -20,6 +20,7 @@ import protopost.server.exception.EmailIsAlreadyRegistered
 import protopost.server.exception.UnacceptableContentType
 import java.time.Instant
 import protopost.common.api.RetrievedPostRevision
+import protopost.common.api.PostRevisionHistory
 
 class PgDatabase( val SchemaManager : PgSchemaManager ):
   val Schema = SchemaManager.LatestSchema
@@ -89,8 +90,13 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Post.selectByDestination( seismicNodeId, destinationName )( conn ).map( postDefinitionFromRaw(_)(conn) )
   def postDefinitionsForDestinationAndOwner( seismicNodeId : Int, destinationName : String, ownerId : PosterId )( conn : Connection ) : Set[PostDefinition] =
     Schema.Table.Post.selectByDestinationAndOwner( seismicNodeId, destinationName, ownerId )( conn ).map( postDefinitionFromRaw(_)(conn) )
+  def postRevisionBySaveTime( id : Int, saveTime : Instant )( conn : Connection ) : Option[RetrievedPostRevision] =
+    Schema.Table.PostRevision.select(id, saveTime)( conn )
   def postRevisionLatest( id : Int )( conn : Connection ) : Option[RetrievedPostRevision] =
     Schema.Table.PostRevision.selectLatest( id )( conn )
+  def postRevisionHistory( id : Int )( conn : Connection ) : PostRevisionHistory =
+    val seq = Schema.Table.PostRevision.selectRevisionHistoryForPost(id)(conn)
+    PostRevisionHistory(id, seq)
   def posterForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
     Schema.Table.Poster.selectPosterWithAuthByEmail( email )( conn )
   def posterById( id : PosterId )( conn : Connection ) : Option[PosterWithAuth] =

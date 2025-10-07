@@ -11,7 +11,7 @@ import sttp.model.*
 
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
-import protopost.common.api.{PostDefinitionCreate,UpdateValue}
+import protopost.common.api.{PostDefinitionCreate,PostRevisionHistory,UpdateValue}
 
 import com.mchange.conveniences.string.*
 
@@ -26,6 +26,7 @@ object CurrentPostCard:
     currentPostIdentifierLsi : LocalStorageItem[Option[PostIdentifier]],
     currentPostDefinitionSignal : Signal[Option[PostDefinition]],
     currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
+    currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
     localContentDirtyVar : Var[Boolean],
     posterNoAuthSignal : Signal[Option[PosterNoAuth]],
     manualSaveWriteBus : WriteBus[Unit],
@@ -57,6 +58,8 @@ object CurrentPostCard:
 
     val authorChangeEventBus = new EventBus[HtmlElement]
     val authorChangeEventStreamWithCurrentPost = authorChangeEventBus.events.withCurrentValueOf(currentPostDefinitionSignal)
+
+    val currentPostAllRevisionsVar : Var[Option[PostRevisionHistory]] = Var(None)
 
     def detailsChangeObserver[T](
       itemFromTextContent : String => Option[T],
@@ -102,10 +105,29 @@ object CurrentPostCard:
             dm <- map.get(di)
             pd <- dm.get(pi.postId)
           yield pd
-        if pd.isEmpty then  
+        if pd.isEmpty then
           util.request.hardUpdateDestinationsToKnownPosts( protopostLocation, pi.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
-    val composePane = ComposerPane.create( protopostLocation, backend, currentPostLocalPostContentLsi, currentPostDefinitionSignal, localContentDirtyVar, manualSaveWriteBus, loginFormPrerequisites )
+    val currentPostDefinitionChangeEventsObserver = Observer[Option[PostDefinition]]: mbpd =>
+      // println(s"currentPostDefinitionChangeEventsObserver: $mbpd")
+      mbpd match
+        case Some( pd ) =>
+          util.request.loadCurrentPostRevisionHistory(protopostLocation,pd.postId,backend,currentPostAllRevisionsVar)
+        case None =>
+          currentPostAllRevisionsVar.set( None )
+
+    val composePane =
+      ComposerPane.create(
+        protopostLocation,
+        backend,
+        currentPostLocalPostContentLsi,
+        currentPostDefinitionSignal,
+        currentPostDefinitionChangeEvents,
+        currentPostAllRevisionsVar,
+        localContentDirtyVar,
+        manualSaveWriteBus,
+        loginFormPrerequisites
+      )
 
     div(
       idAttr := "current-post-card",
@@ -195,6 +217,7 @@ object CurrentPostCard:
         titleChangeEventStreamWithCurrentPost.addObserver( titleChangeObserver )
         authorChangeEventStreamWithCurrentPost.addObserver( authorChangeObserver )
         currentPostIdentifierSignal.withCurrentValueOf(destinationsToKnownPostsVar).addObserver( postIdentifierObserver )
+        currentPostDefinitionChangeEvents.addObserver(currentPostDefinitionChangeEventsObserver)
       },
     )
 

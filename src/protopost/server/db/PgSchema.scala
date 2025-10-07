@@ -418,6 +418,7 @@ object PgSchema extends SelfLogging:
         val Select = "SELECT post_id, save_time, content_type, body FROM post_revision WHERE post_id = ? AND save_time = ?"
         val SelectLatest = "SELECT post_id, save_time, content_type, body FROM post_revision WHERE post_id = ? ORDER BY save_time DESC LIMIT 1" // InsertIfChanged and selectContentSameAsLatest are tightly coupled
         val SelectContentSameAsLatest = "SELECT latest.content_type = ? AND latest.body = ? from ( $SelectLatest ) AS latest"
+        val SelectRevisionHistoryForPost = "SELECT save_time FROM post_revision WHERE post_id = ? ORDER BY save_time DESC"
         val Insert = "INSERT INTO post_revision(post_id, save_time, content_type, body) VALUES (?,?,?,?)"
         val InsertIfPostChanged = // note that first positional param will be post_id for SelectLatest!
           s"""|WITH latest_of_post AS (
@@ -466,6 +467,10 @@ object PgSchema extends SelfLogging:
             ps.setString(2, body)
             ps.setInt(3, postId) // from SelectLatest
             Using.resource( ps.executeQuery() )( zeroOrOneResult("select-revision-content-same-as-latest")(extract) )
+        def selectRevisionHistoryForPost( postId : Int )( conn : Connection ) : Seq[RevisionTimestamp] =
+          Using.resource( conn.prepareStatement(SelectRevisionHistoryForPost) ): ps =>
+            ps.setInt( 1, postId )
+            Using.resource( ps.executeQuery() )( toSeq( rs => RevisionTimestamp( rs.getTimestamp(1).toInstant() ) ) )
       end PostRevision
       object PostPublicationHistory extends Creatable:
         override val Create =

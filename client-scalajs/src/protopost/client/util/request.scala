@@ -13,7 +13,7 @@ import scala.collection.immutable
 import scala.concurrent.{ExecutionContext,Future}
 import scala.util.control.NonFatal
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import protopost.common.api.{DestinationIdentifier,NewPostRevision,PostDefinition,PostDefinitionCreate,PostDefinitionUpdate,PostIdentifier,PostRevisionIdentifier,RetrievedPostRevision,given}
+import protopost.common.api.{DestinationIdentifier,NewPostRevision,PostDefinition,PostDefinitionCreate,PostDefinitionUpdate,PostIdentifier,PostRevisionHistory,PostRevisionIdentifier,RetrievedPostRevision,given}
 import protopost.client.PostContent
 import java.time.Instant
 import protopost.common.api.RevisionTimestamp
@@ -81,7 +81,35 @@ def saveLoadOnCurrentPostSwap(
       currentPostLocalPostContentLsi.set( PostContent.default )
     case (None,None) =>
       /* do nothing, we shouldn't see this */
-end saveLoadOnCurrentPostSwap  
+end saveLoadOnCurrentPostSwap
+
+def loadPostRevision(
+  protopostLocation : Uri,
+  postId : Int,
+  revisionTimestamp : RevisionTimestamp,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  mbRevisionsVar : Var[Option[RetrievedPostRevision]]
+)(using ec : ExecutionContext) =
+  val request =
+    basicRequest
+      .get( protopostLocation.addPath("protopost", "retrieve-revision", postId.toString, revisionTimestamp.timestampEpochSeconds.toString, revisionTimestamp.timestampNanos.toString) )
+      .response( asJson[RetrievedPostRevision] )
+  val updater : RetrievedPostRevision => Option[RetrievedPostRevision] => Option[RetrievedPostRevision] = (rh => (_ => Some(rh)))
+  updateVarFromApiResult[RetrievedPostRevision,Option[RetrievedPostRevision]]( request, backend, mbRevisionsVar, updater )
+
+def loadCurrentPostRevisionHistory(
+  protopostLocation : Uri,
+  postId : Int,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  currentPostAllRevisionsVar : Var[Option[PostRevisionHistory]]
+)(using ec : ExecutionContext) =
+  // println("loadCurrentPostRevisionHistory(...)")
+  val request =
+    basicRequest
+      .get( protopostLocation.addPath("protopost", "revision-history", postId.toString) )
+      .response( asJson[PostRevisionHistory] )
+  val updater : PostRevisionHistory => Option[PostRevisionHistory] => Option[PostRevisionHistory] = (rh => (_ => Some(rh)))
+  updateVarFromApiResult[PostRevisionHistory,Option[PostRevisionHistory]]( request, backend, currentPostAllRevisionsVar, updater )
 
 def rawBodyToLoginStatusOrThrow( rawBody : Either[ResponseException[String], LoginStatus] ) : LoginStatus =
   rawBody match

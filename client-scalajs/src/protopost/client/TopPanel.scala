@@ -86,8 +86,10 @@ object TopPanel:
         val mbDestinationMap = d2kp.get(pi.destinationIdentifier)
         mbDestinationMap.flatMap( dm => dm.get(pi.postId) )
 
-    val currentPostDefinitionChanges =
-      currentPostDefinitionSignal.changes.distinct.scanLeft[Tuple2[Option[PostDefinition],Option[PostDefinition]]](Tuple2(None,None)): (priorTup,newVal) =>
+    val currentPostDefinitionChangeEvents = currentPostDefinitionSignal.changes.distinct
+
+    val currentPostDefinitionLastChangeTuple =
+      currentPostDefinitionChangeEvents.scanLeft[Tuple2[Option[PostDefinition],Option[PostDefinition]]](Tuple2(None,None)): (priorTup,newVal) =>
         (priorTup(1),newVal)
 
     val disabledTabsSignal = currentPostIdentifierSignal.map: mbPi =>
@@ -120,7 +122,7 @@ object TopPanel:
         posterNoAuthVar.set(None)
         destinationsVar.set( immutable.SortedSet.empty )
 
-    val currentPostDefinitionChangesObserver = Observer[Tuple2[Option[PostDefinition],Option[PostDefinition]]]: (prev, latest) =>
+    val currentPostDefinitionLastChangeTupleObserver = Observer[Tuple2[Option[PostDefinition],Option[PostDefinition]]]: (prev, latest) =>
       util.request.saveLoadOnCurrentPostSwap(protopostLocation,prev,latest,backend,currentPostLocalPostContentLsi,recoveredRevisionsLsi,localContentDirtyVar)
 
     //val tabModifiers : Map[Tab,Seq[Modifier[HtmlElement]]] =
@@ -139,6 +141,7 @@ object TopPanel:
         currentPostIdentifierLsi,
         currentPostDefinitionSignal,
         currentPostLocalPostContentLsi,
+        currentPostDefinitionChangeEvents,
         localContentDirtyVar,
         posterNoAuthSignal,
         manualSaveWriteBus,
@@ -213,7 +216,7 @@ object TopPanel:
         given Owner = mountContext.owner
         maintainLoginStatus()
         loginLevelChangeEvents.addObserver(loginObserver)
-        currentPostDefinitionChanges.addObserver(currentPostDefinitionChangesObserver)
+        currentPostDefinitionLastChangeTuple.addObserver(currentPostDefinitionLastChangeTupleObserver)
         doSaveEventStream.addObserver( Observer[NewPostRevision]( npr => util.request.saveRevisionToServer(protopostLocation, npr, backend, localContentDirtyVar) ) )
       },
       onUnmountCallback { _ => retireLoginStatus() },

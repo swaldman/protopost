@@ -49,7 +49,11 @@ object RevisionTimestamp:
 case class RevisionTimestamp(
   timestampEpochSeconds : Long,
   timestampNanos        : Int,
-)
+):
+  lazy val asInstant : Instant =
+    Instant.ofEpochSecond(timestampEpochSeconds, timestampNanos)
+
+case class PostRevisionHistory( postId : Int, revisionTimestampReverseChronological : Seq[RevisionTimestamp] )
 
 case class PostDefinitionCreate(
   destinationSeismicNodeId : Int,
@@ -157,6 +161,9 @@ given given_JsonValueCodec_Option_PostRevisionIdentifier : JsonValueCodec[Option
 given JsonValueCodec[RevisionTimestamp]                              = JsonCodecMaker.make
 given JsonValueCodec[Tuple2[RevisionTimestamp,NewPostRevision]]      = JsonCodecMaker.make
 given JsonValueCodec[List[Tuple2[RevisionTimestamp,NewPostRevision]]] = JsonCodecMaker.make
+
+given JsonValueCodec[PostRevisionHistory] = JsonCodecMaker.make
+
 
 
 

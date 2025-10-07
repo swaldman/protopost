@@ -26,6 +26,7 @@ import com.mchange.sc.zsqlutil.*
 import protopost.server.exception.{BadCookieSettings,BadCredentials,InsufficientPermissions,NotLoggedIn}
 import protopost.server.jwt
 import sttp.model.headers.CookieValueWithMeta
+import java.sql.Connection
 
 object ServerLogic extends SelfLogging:
 
@@ -310,7 +311,7 @@ object ServerLogic extends SelfLogging:
           case None =>
             throw new ResourceNotFound(s"No post with ID ${npr.postId} was found!")
 
-  def latestDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[Option[RetrievedPostRevision]] =
+  private def onlyIfOwner[T]( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int )( op : (PgDatabase,Connection) => T) : ZOut[T] =
     ZOut.fromTask:
       val db = appResources.database
       withConnectionTransactional( appResources.dataSource ): conn =>
@@ -321,9 +322,27 @@ object ServerLogic extends SelfLogging:
             if postDefinition.owner.id != subject.posterId then
               throw new InsufficientPermissions( s"The logged-in subject '${subject}' does not own post with ID ${postId}" )
             else
-              db.postRevisionLatest(postId)( conn )
+              op( db, conn )
           case None =>
             throw new ResourceNotFound(s"No post with ID ${postId} was found!")
 
+  def latestDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[Option[RetrievedPostRevision]] =
+    def op( db : PgDatabase, conn : Connection ) : Option[RetrievedPostRevision] = db.postRevisionLatest(postId)( conn )
+    onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
+
+  def revisionHistory( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[PostRevisionHistory] =
+    def op( db : PgDatabase, conn : Connection ) : PostRevisionHistory = db.postRevisionHistory(postId)( conn )
+    onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
+
+  def retrieveRevision( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( revisionTuple : (Int,Int,Int) ) : ZOut[RetrievedPostRevision] =
+    val (postId,epochSeconds,nanos) = revisionTuple
+    val saveTime = Instant.ofEpochSecond( epochSeconds, nanos )
+
+    def op( db : PgDatabase, conn : Connection ) : RetrievedPostRevision = 
+      db.postRevisionBySaveTime(postId,saveTime)( conn ) match
+        case Some(rpr) => rpr
+        case None      => throw new ResourceNotFound(s"No revision with save time ${saveTime} was found!")
+
+    onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 
 end ServerLogic
