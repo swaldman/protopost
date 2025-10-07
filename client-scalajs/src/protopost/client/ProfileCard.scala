@@ -7,7 +7,8 @@ import com.raquo.laminar.api.L.{*, given}
 import protopost.common.EmailAddress
 
 object ProfileCard:
-  def create(composerLocalStorageItem : LocalStorageItem[Composer], composerSignal : Signal[Composer], posterNoAuthSignal : Signal[Option[PosterNoAuth]]) : HtmlElement =
+  def create( client : Client ) : HtmlElement =
+    import client.*
 
     def makeComposerRadioButton( composer : Composer ) : HtmlElement =
       div(
@@ -16,7 +17,7 @@ object ProfileCard:
           nameAttr := "composer",
           value    := composer.toString(),
           checked <-- composerSignal.map( _ == composer ),
-          onInput.mapTo(composer) --> ( c => composerLocalStorageItem.set(c) ),
+          onInput.mapTo(composer) --> ( c => composerLsi.set(c) ),
         ),
         composer.label
       )

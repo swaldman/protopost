@@ -202,7 +202,7 @@ def hardUpdateDestinationsToKnownPosts(
 def hardUpdateLoginStatus(
       protopostLocation : Uri,
       backend : WebSocketBackend[scala.concurrent.Future],
-      loginStatusVar : Var[Option[(LoginStatus,Long)]]
+      loginStatusVar : Var[Option[(LoginStatus,Long,Boolean)]]
 )(using ec : ExecutionContext) : Unit =
   //println("hardUpdateLoginStatus()");
   val request = basicRequest
@@ -213,7 +213,7 @@ def hardUpdateLoginStatus(
   future.onComplete:
     case Success(ls) =>
       println("hardUpdateLoginStatus -- success!")
-      loginStatusVar.set(Some((ls,epochSecondsNow())))
+      loginStatusVar.set(Some((ls,epochSecondsNow(),false)))
     case Failure(t) =>
       println("hardUpdateLoginStatus -- failure!")
       t.printStackTrace

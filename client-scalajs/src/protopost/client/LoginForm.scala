@@ -26,12 +26,9 @@ object LoginForm:
     val GoodField = "#aaddaa"
     val BadField  = "#ffaaaa"
 
-  case class Prerequisites(loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[LoginLevel], loginLevelChangeEvents : EventStream[LoginLevel])
+  def create( client : Client ) : HtmlElement =
+    import client.*
 
-  def create(protopostLocation : Uri, backend : WebSocketBackend[scala.concurrent.Future], prerequisites : LoginForm.Prerequisites) : HtmlElement =
-    create(protopostLocation, backend, prerequisites.loginStatusVar, prerequisites.loginLevelSignal, prerequisites.loginLevelChangeEvents)
-
-  def create(protopostLocation : Uri, backend : WebSocketBackend[scala.concurrent.Future], loginStatusVar : Var[Option[(LoginStatus, Long)]], loginLevelSignal : Signal[LoginLevel], loginLevelChangeEvents : EventStream[LoginLevel]) : HtmlElement =
     val emailVar = Var[String]("")
     val passwordVar = Var[String]("")
     val emailPasswordSignal = emailVar.signal.combineWith(passwordVar)
@@ -85,7 +82,7 @@ object LoginForm:
               refreshLoginStatus()
             else if response.code.isSuccess then
               val ls = rawBodyToLoginStatusOrThrow(response.body)
-              loginStatusVar.set(Some(Tuple2(ls,epochSecondsNow())))
+              loginStatusVar.set(Some(Tuple3(ls,epochSecondsNow(),false)))
             else
               loginFormMessage.set( "Something went wrong:" + trimErrorBody( extractErrorBody(response) ) )
               refreshLoginStatus()

@@ -41,6 +41,7 @@ object RevisionsCards:
     currentPostDefinitionSignal       : Signal[Option[PostDefinition]],
     currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
     currentPostAllRevisions           : Signal[Option[PostRevisionHistory]],
+    localContentDirtyVar              : Var[Boolean],
     goToEdit                          : () => Unit
   ) : HtmlElement =
 
@@ -158,6 +159,7 @@ object RevisionsCards:
                   currentPostLocalPostContentLsi.set(pc)
                   selectedRevisionVar.set(None)
                   previewRevisionVar.set(None)
+                  localContentDirtyVar.set(true)
                   goToEdit()
                 case _ => /* ignore */  
               }

@@ -18,22 +18,13 @@ import com.mchange.conveniences.string.*
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
 object CurrentPostCard:
+
   private val NoPostChosenLabel = "No post chosen"
-  def create(
-    protopostLocation : Uri,
-    backend : WebSocketBackend[scala.concurrent.Future],
-    destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
-    currentPostIdentifierLsi : LocalStorageItem[Option[PostIdentifier]],
-    currentPostDefinitionSignal : Signal[Option[PostDefinition]],
-    currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
-    currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
-    localContentDirtyVar : Var[Boolean],
-    posterNoAuthSignal : Signal[Option[PosterNoAuth]],
-    manualSaveWriteBus : WriteBus[Unit],
-    loginFormPrerequisites : LoginForm.Prerequisites
-  ) : HtmlElement =
-    val currentPostIdentifierSignal = currentPostIdentifierLsi.signal
-    val userIsOwnerSignal : Signal[Boolean] = Signal.combine(posterNoAuthSignal,currentPostDefinitionSignal).map: (mbPna, mbCpd) =>
+  
+  def create( client : Client ) : HtmlElement =
+    import client.*
+
+    val userIsCurrentPostOwnerSignal : Signal[Boolean] = Signal.combine(posterNoAuthSignal,currentPostDefinitionSignal).map: (mbPna, mbCpd) =>
       val mbOut =
         for
           pna <- mbPna
@@ -47,19 +38,17 @@ object CurrentPostCard:
       mbpd.map: pd =>
         pd.authors
 
-    val titleDirtyVar = Var(false)
-    val titleBackgroundColorSignal = titleDirtyVar.signal.map( if _ then "yellow" else "white" )
+    val currentPostTitleDirtyVar = Var(false)
+    val currentPostTitleBackgroundColorSignal = currentPostTitleDirtyVar.signal.map( if _ then "yellow" else "white" )
 
-    val titleChangeEventBus = new EventBus[HtmlElement]
-    val titleChangeEventStreamWithCurrentPost = titleChangeEventBus.events.withCurrentValueOf(currentPostDefinitionSignal)
+    val currentPostTitleChangeEventBus = new EventBus[HtmlElement]
+    val currentPostTitleChangeEventStreamWithCurrentPost = currentPostTitleChangeEventBus.events.withCurrentValueOf(currentPostDefinitionSignal)
 
-    val authorDirtyVar = Var(false)
-    val authorBackgroundColorSignal = authorDirtyVar.signal.map( if _ then "yellow" else "white" )
+    val currentPostAuthorDirtyVar = Var(false)
+    val currentPostAuthorBackgroundColorSignal = currentPostAuthorDirtyVar.signal.map( if _ then "yellow" else "white" )
 
-    val authorChangeEventBus = new EventBus[HtmlElement]
-    val authorChangeEventStreamWithCurrentPost = authorChangeEventBus.events.withCurrentValueOf(currentPostDefinitionSignal)
-
-    val currentPostAllRevisionsVar : Var[Option[PostRevisionHistory]] = Var(None)
+    val currentPostAuthorChangeEventBus = new EventBus[HtmlElement]
+    val currentPostAuthorChangeEventStreamWithCurrentPost = currentPostAuthorChangeEventBus.events.withCurrentValueOf(currentPostDefinitionSignal)
 
     def detailsChangeObserver[T](
       itemFromTextContent : String => Option[T],
@@ -85,7 +74,7 @@ object CurrentPostCard:
       _.toOptionNotBlank,
       _.title,
       (pd,nto) => PostDefinitionUpdate( pd.postId, title = nto.fold( UpdateValue.`set-to-none` )( UpdateValue.`update`.apply ) ),
-      titleDirtyVar
+      currentPostTitleDirtyVar
     )
 
     val authorChangeObserver =
@@ -95,7 +84,7 @@ object CurrentPostCard:
         Some(parseCommaListAnd(unprefixed))
       def itemFromPostDefinition( pd : PostDefinition ) : Option[Seq[String]] = Some( pd.authors )
       def rewrite(pd : PostDefinition, nso : Option[Seq[String]]) : PostDefinitionUpdate = PostDefinitionUpdate( pd.postId, authors = nso.fold( UpdateValue.`set-to-none` )( UpdateValue.`update`.apply ) )
-      detailsChangeObserver( itemFromTextContent, itemFromPostDefinition, rewrite, authorDirtyVar )
+      detailsChangeObserver( itemFromTextContent, itemFromPostDefinition, rewrite, currentPostAuthorDirtyVar )
 
     val postIdentifierObserver = Observer[(Option[PostIdentifier],Map[DestinationIdentifier,Map[Int,PostDefinition]])]: (mbpi, map) =>
       mbpi.foreach: pi =>
@@ -116,18 +105,7 @@ object CurrentPostCard:
         case None =>
           currentPostAllRevisionsVar.set( None )
 
-    val composePane =
-      ComposerPane.create(
-        protopostLocation,
-        backend,
-        currentPostLocalPostContentLsi,
-        currentPostDefinitionSignal,
-        currentPostDefinitionChangeEvents,
-        currentPostAllRevisionsVar,
-        localContentDirtyVar,
-        manualSaveWriteBus,
-        loginFormPrerequisites
-      )
+    val composePane = ComposerPane.create( client )
 
     div(
       idAttr := "current-post-card",
@@ -152,8 +130,8 @@ object CurrentPostCard:
           span(
             fontSize.pt(Client.CardTitleFontSizePt),
             fontWeight.bold,
-            contentEditable <-- userIsOwnerSignal,
-            backgroundColor <-- titleBackgroundColorSignal,
+            contentEditable <-- userIsCurrentPostOwnerSignal,
+            backgroundColor <-- currentPostTitleBackgroundColorSignal,
             text <-- currentPostDefinitionSignal.map( _.map( _.title.getOrElse(Client.UntitledPostLabel) ).getOrElse("") ),
             inContext { thisNode =>
               //onEnterPress.preventDefault.mapTo(thisNode) --> titleChangeEventBus
@@ -162,7 +140,7 @@ object CurrentPostCard:
               }
             },
             inContext { thisNode =>
-              onBlur.mapTo(thisNode) --> titleChangeEventBus
+              onBlur.mapTo(thisNode) --> currentPostTitleChangeEventBus
             },
             inContext { thisNode =>
               documentEscapeEvents.compose( _.withCurrentValueOf(currentPostDefinitionSignal) ) --> { (_,mbCpd) =>
@@ -176,7 +154,7 @@ object CurrentPostCard:
           span(
             color.gray,
             fontStyle.italic,
-            display <-- userIsOwnerSignal.map( if _ then "inline" else "none" ),
+            display <-- userIsCurrentPostOwnerSignal.map( if _ then "inline" else "none" ),
             "\u2190 edit the title here"
           )
         ),
@@ -184,8 +162,8 @@ object CurrentPostCard:
           idAttr := "current-post-card-author",
           lineHeight.percent(120),
           marginLeft.em(1),
-          contentEditable <-- userIsOwnerSignal,
-          backgroundColor <-- authorBackgroundColorSignal,
+          contentEditable <-- userIsCurrentPostOwnerSignal,
+          backgroundColor <-- currentPostAuthorBackgroundColorSignal,
           text <-- currentAuthorsSignal.map( mbAuthors => mbAuthors.fold("")(authors => commaListAnd(authors).fold("")("by " + _) ) ),
           inContext { thisNode =>
             //onEnterPress.preventDefault.mapTo(thisNode) --> titleChangeEventBus
@@ -194,7 +172,7 @@ object CurrentPostCard:
             }
           },
           inContext { thisNode =>
-            onBlur.mapTo(thisNode) --> authorChangeEventBus
+            onBlur.mapTo(thisNode) --> currentPostAuthorChangeEventBus
           },
           inContext { thisNode =>
             documentEscapeEvents.compose( _.withCurrentValueOf(currentPostDefinitionSignal) ) --> { (_,mbCpd) =>
@@ -214,8 +192,8 @@ object CurrentPostCard:
       onMountCallback { mountContext =>
         // println( s"mount: $mountContext" )
         given Owner = mountContext.owner
-        titleChangeEventStreamWithCurrentPost.addObserver( titleChangeObserver )
-        authorChangeEventStreamWithCurrentPost.addObserver( authorChangeObserver )
+        currentPostTitleChangeEventStreamWithCurrentPost.addObserver( titleChangeObserver )
+        currentPostAuthorChangeEventStreamWithCurrentPost.addObserver( authorChangeObserver )
         currentPostIdentifierSignal.withCurrentValueOf(destinationsToKnownPostsVar).addObserver( postIdentifierObserver )
         currentPostDefinitionChangeEvents.addObserver(currentPostDefinitionChangeEventsObserver)
       },

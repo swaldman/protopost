@@ -17,6 +17,7 @@ object PublishDetailsPane:
     currentPostDefinitionSignal       : Signal[Option[PostDefinition]],
     currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
     currentPostAllRevisionsVar        : Var[Option[PostRevisionHistory]],
+    localContentDirtyVar              : Var[Boolean],
     goToEdit                          : () => Unit
   ) : HtmlElement =
 
@@ -164,6 +165,7 @@ object PublishDetailsPane:
         currentPostDefinitionSignal,
         currentPostDefinitionChangeEvents,
         currentPostAllRevisionsVar.signal,
+        localContentDirtyVar,
         goToEdit
       ).amend(
         marginTop.rem(SectionMarginTopRem),

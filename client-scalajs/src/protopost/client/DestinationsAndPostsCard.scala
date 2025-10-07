@@ -18,17 +18,8 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import protopost.common.api.DestinationIdentifier
 
 object DestinationsAndPostsCard:
-  def create(
-    protopostLocation : Uri,
-    backend : WebSocketBackend[scala.concurrent.Future],
-    currentPostIdentifierLocalStorageItem : LocalStorageItem[Option[PostIdentifier]],
-    destinationsVar : Var[immutable.SortedSet[Destination]],
-    destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]],
-    locationLocalStorageItem : LocalStorageItem[TopPanel.Tab],
-    posterNoAuthSignal : Signal[Option[PosterNoAuth]],
-    openDestinationsLsi : LocalStorageItem[Set[DestinationIdentifier]]
-  ) : HtmlElement =
-    val currentPostIdentifierSignal = currentPostIdentifierLocalStorageItem.signal
+  def create( client : Client ) : HtmlElement =
+    import client.*
 
     object DestinationPane:
       def create( destination : Destination, initOpen : Boolean = false ) : HtmlElement =
@@ -78,8 +69,8 @@ object DestinationsAndPostsCard:
               case Some(posterNoAuth) =>
                 val di = destination.destinationIdentifier
                 val postDefinition = new PostDefinitionCreate( destination.seismicNode.id, destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
-                util.request.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierLocalStorageItem )
-                locationLocalStorageItem.set(TopPanel.Tab.currentPost)
+                util.request.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierLsi )
+                topPanelLocationLsi.set(TopPanel.Tab.currentPost)
               case None =>
                 println("Cannot create new post, posterNoAuthSignal seems unset? We are not properly logged in?")
 
@@ -93,8 +84,8 @@ object DestinationsAndPostsCard:
               fontSize.pt(10),
               ClickLink.create(title).amend(
                 onClick --> { _ =>
-                  currentPostIdentifierLocalStorageItem.set(Some(PostIdentifier(destination.destinationIdentifier,pd.postId)))
-                  locationLocalStorageItem.set(TopPanel.Tab.currentPost)
+                  currentPostIdentifierLsi.set(Some(PostIdentifier(destination.destinationIdentifier,pd.postId)))
+                  topPanelLocationLsi.set(TopPanel.Tab.currentPost)
                 }
               ),
               " ",

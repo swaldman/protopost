@@ -20,17 +20,9 @@ object ComposerPane:
 
   val contentTypeSelect = "composer-content-type-select"
 
-  def create(
-    protopostLocation                 : Uri,
-    backend                           : WebSocketBackend[scala.concurrent.Future],
-    currentPostLocalPostContentLsi    : LocalStorageItem[PostContent],
-    currentPostDefinitionSignal       : Signal[Option[PostDefinition]],
-    currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
-    currentPostAllRevisionsVar        : Var[Option[PostRevisionHistory]],
-    localContentDirtyVar              : Var[Boolean],
-    manualSaveWriteBus                : WriteBus[Unit],
-    loginFormPrerequisites            : LoginForm.Prerequisites
-  ) : HtmlElement =
+  def create( client : Client ) : HtmlElement =
+    import client.*
+
     val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
     val localContentDirtySignal = localContentDirtyVar.signal
 
@@ -163,6 +155,7 @@ object ComposerPane:
           currentPostDefinitionSignal,
           currentPostDefinitionChangeEvents,
           currentPostAllRevisionsVar,
+          localContentDirtyVar,
           goToEdit
         )
       )
@@ -170,11 +163,11 @@ object ComposerPane:
     val composeCardReloginPane =
       div(
         flexGrow(1),
-        LoginForm.create(protopostLocation, backend, loginFormPrerequisites)
+        LoginForm.create( client )
       )
 
     val composeCardSignal =
-      Signal.combine(currentTabSignal,currentPostLocalPostContentSignal,loginFormPrerequisites.loginLevelSignal).map: ( tab, pc, ll ) =>
+      Signal.combine(currentTabSignal,currentPostLocalPostContentSignal,loginLevelSignal).map: ( tab, pc, ll ) =>
         tab match
           case ComposerPane.Tab.edit    => composeCardEdit
           case ComposerPane.Tab.publish =>
