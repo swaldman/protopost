@@ -97,14 +97,6 @@ object CurrentPostCard:
         if pd.isEmpty then
           util.request.hardUpdateDestinationsToKnownPosts( protopostLocation, pi.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
-    val currentPostDefinitionChangeEventsObserver = Observer[Option[PostDefinition]]: mbpd =>
-      // println(s"currentPostDefinitionChangeEventsObserver: $mbpd")
-      mbpd match
-        case Some( pd ) =>
-          util.request.loadCurrentPostRevisionHistory(protopostLocation,pd.postId,backend,currentPostAllRevisionsVar)
-        case None =>
-          currentPostAllRevisionsVar.set( None )
-
     val composePane = ComposerPane.create( client )
 
     div(
@@ -195,7 +187,6 @@ object CurrentPostCard:
         currentPostTitleChangeEventStreamWithCurrentPost.addObserver( titleChangeObserver )
         currentPostAuthorChangeEventStreamWithCurrentPost.addObserver( authorChangeObserver )
         currentPostIdentifierSignal.withCurrentValueOf(destinationsToKnownPostsVar).addObserver( postIdentifierObserver )
-        currentPostDefinitionChangeEvents.addObserver(currentPostDefinitionChangeEventsObserver)
       },
     )
 

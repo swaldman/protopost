@@ -116,11 +116,12 @@ def rawBodyToLoginStatusOrThrow( rawBody : Either[ResponseException[String], Log
     case Left( oops ) => throw oops //new Exception( oops.toString() )
     case Right( loginStatus ) => loginStatus
 
-def saveRevisionToServer(
+def saveRevisionToServerUpdateRevisions(
   protopostLocation : Uri,
   npr : NewPostRevision,
   backend : WebSocketBackend[scala.concurrent.Future],
-  localContentDirtyVar : Var[Boolean]
+  localContentDirtyVar : Var[Boolean],
+  currentPostAllRevisionsVar : Var[Option[PostRevisionHistory]]
 )(using ec : ExecutionContext) =
   val request =
     basicRequest
@@ -128,7 +129,14 @@ def saveRevisionToServer(
       .body( asJson(npr) )
       .response( asJson[Option[PostRevisionIdentifier]] )
   val updater : Option[PostRevisionIdentifier] => Boolean => Boolean = (_ => (_ => false))
-  updateVarFromApiResult[Option[PostRevisionIdentifier],Boolean]( request, backend, localContentDirtyVar, updater )
+  val sideEffectPostUpdate : Option[PostRevisionIdentifier] => Unit =
+    (mbpri : Option[PostRevisionIdentifier]) =>
+      mbpri match
+        case Some( pri ) =>
+          loadCurrentPostRevisionHistory(protopostLocation,npr.postId,backend,currentPostAllRevisionsVar)
+        case None =>
+          /* nothing to do? what does it mean if we got None back? */
+  updateVarFromApiResult[Option[PostRevisionIdentifier],Boolean]( request, backend, localContentDirtyVar, updater, sideEffectPostUpdate )
 
 def hardUpdateNewPostDefinition(
   protopostLocation : Uri,

@@ -33,17 +33,9 @@ object RevisionsCards:
     borderRadius.px(10),
   )
 
-  def create(
-    protopostLocation                 : Uri,
-    backend                           : WebSocketBackend[scala.concurrent.Future],
-    labelCommonModifiers              : Seq[KeySetter[StyleProp[?],String,ReactiveHtmlElement[HTMLElement]]],
-    currentPostLocalPostContentLsi    : LocalStorageItem[PostContent],
-    currentPostDefinitionSignal       : Signal[Option[PostDefinition]],
-    currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
-    currentPostAllRevisions           : Signal[Option[PostRevisionHistory]],
-    localContentDirtyVar              : Var[Boolean],
-    goToEdit                          : () => Unit
-  ) : HtmlElement =
+  def create( client : Client ) : HtmlElement =
+    import Client.PublishDetailsPaneLabelCommonModifiers
+    import client.*
 
     val selectedRevisionVar : Var[Option[RevisionTimestamp]] = Var(None)
 
@@ -76,7 +68,7 @@ object RevisionsCards:
               s"""<b style="color: red">Unexpected revision content-type: $other</b>"""
 
     val cardSignal =
-      Signal.combine(currentPostAllRevisions,selectedRevisionVar).map: tup =>
+      Signal.combine(currentPostAllRevisionsSignal,selectedRevisionVar).map: tup =>
         tup match
           case ( Some(_), Some(_) ) =>
             Card.revisionPreview
@@ -89,7 +81,7 @@ object RevisionsCards:
             Card.noRevisionHistoryLoaded
 
     val currentPostAllRevisionsLinks =
-      val direct = currentPostAllRevisions.map( _.fold(Seq.empty[RevisionTimestamp])(_.revisionTimestampReverseChronological) )
+      val direct = currentPostAllRevisionsSignal.map( _.fold(Seq.empty[RevisionTimestamp])(_.revisionTimestampReverseChronological) )
       direct.map: srt =>
         srt.map : rt =>
           div(
@@ -111,7 +103,7 @@ object RevisionsCards:
           display <-- cardSignal.map( card => if card == Card.revisionHistoryList then "block" else "none" ),
           label(
             forId := "revisons-cards-timestamp-list",
-            labelCommonModifiers,
+            PublishDetailsPaneLabelCommonModifiers,
             "revisions:"
           ),
           div(
@@ -126,7 +118,7 @@ object RevisionsCards:
         display <-- cardSignal.map( card => if card == Card.revisionPreview then "block" else "none" ),
         label(
           forId := "revisons-cards-preview",
-          labelCommonModifiers,
+          PublishDetailsPaneLabelCommonModifiers,
           "revision preview:"
         ),
         div(
@@ -160,8 +152,8 @@ object RevisionsCards:
                   selectedRevisionVar.set(None)
                   previewRevisionVar.set(None)
                   localContentDirtyVar.set(true)
-                  goToEdit()
-                case _ => /* ignore */  
+                  composerPaneCurrentTabVar.set(ComposerPane.Tab.edit)
+                case _ => /* ignore */
               }
             ),
           ),

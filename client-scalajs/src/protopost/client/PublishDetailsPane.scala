@@ -10,16 +10,9 @@ import sttp.model.Uri
 import sttp.client4.WebSocketBackend
 
 object PublishDetailsPane:
-  def create(
-    protopostLocation                 : Uri,
-    backend                           : WebSocketBackend[scala.concurrent.Future],
-    currentPostLocalPostContentLsi    : LocalStorageItem[PostContent],
-    currentPostDefinitionSignal       : Signal[Option[PostDefinition]],
-    currentPostDefinitionChangeEvents : EventStream[Option[PostDefinition]],
-    currentPostAllRevisionsVar        : Var[Option[PostRevisionHistory]],
-    localContentDirtyVar              : Var[Boolean],
-    goToEdit                          : () => Unit
-  ) : HtmlElement =
+  def create( client : Client ) : HtmlElement =
+    import Client.PublishDetailsPaneLabelCommonModifiers
+    import client.*
 
     val publicationAttemptedSignal     = currentPostDefinitionSignal.map( _.fold(false)( _.publicationAttempted ) )
     val publishUpdateButtonLabelSignal = publicationAttemptedSignal.map( pa => if pa then "update post" else "publish post" )
@@ -58,8 +51,6 @@ object PublishDetailsPane:
           case Some(pd) => pd.sprout.getOrElse(false)
           case None     => false
 
-    val labelCommonModifiers = Seq( fontSize.pt(11), fontWeight.bold )
-
     val SectionMarginTopRem = 1
 
     div(
@@ -76,7 +67,7 @@ object PublishDetailsPane:
         flexDirection.row,
         label(
           forId := "publication-status-display",
-          labelCommonModifiers,
+          PublishDetailsPaneLabelCommonModifiers,
           flexGrow(1),
           "status:"
         ),
@@ -98,7 +89,7 @@ object PublishDetailsPane:
         flexDirection.column,
         label(
           forId := "post-unique-id-input",
-          labelCommonModifiers,
+          PublishDetailsPaneLabelCommonModifiers,
           "post unique ID:"
         ),
         input(
@@ -116,7 +107,7 @@ object PublishDetailsPane:
         div(
           label(
             forId := "post-in-reply-to-input",
-            labelCommonModifiers,
+            PublishDetailsPaneLabelCommonModifiers,
             "in reply to:"
           )
         ),
@@ -133,7 +124,7 @@ object PublishDetailsPane:
         div(
           label(
             forId := "post-major-update-description-input",
-            labelCommonModifiers,
+            PublishDetailsPaneLabelCommonModifiers,
             "major update description:"
           )
         ),
@@ -148,7 +139,7 @@ object PublishDetailsPane:
         marginTop.rem(SectionMarginTopRem),
         label(
           forId := "sprout-checkbox",
-          labelCommonModifiers,
+          PublishDetailsPaneLabelCommonModifiers,
           "sprout? "
         ),
         input(
@@ -157,17 +148,7 @@ object PublishDetailsPane:
           checked <-- sproutCheckedSignal
         )
       ),
-      RevisionsCards.create(
-        protopostLocation,
-        backend,
-        labelCommonModifiers,
-        currentPostLocalPostContentLsi,
-        currentPostDefinitionSignal,
-        currentPostDefinitionChangeEvents,
-        currentPostAllRevisionsVar.signal,
-        localContentDirtyVar,
-        goToEdit
-      ).amend(
+      RevisionsCards.create( client ).amend(
         marginTop.rem(SectionMarginTopRem),
       )
     )

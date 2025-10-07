@@ -34,6 +34,8 @@ object Client:
 
   val AutosaveCheckFrequencyMsecs = 180000 // autosave every three minutes while actively writing
 
+  val PublishDetailsPaneLabelCommonModifiers = Seq( fontSize.pt(11), fontWeight.bold )
+
   @main
   def main() : Unit =
 
@@ -101,7 +103,11 @@ class Client( val protopostLocation : Uri ):
     currentPostDefinitionChangeEvents.scanLeft[Tuple2[Option[PostDefinition],Option[PostDefinition]]](Tuple2(None,None)): (priorTup,newVal) =>
       (priorTup(1),newVal)
 
+  val composerPaneCurrentTabVar : Var[ComposerPane.Tab] = Var(ComposerPane.Tab.edit)
+  val composerPaneCurrentTabSignal = composerPaneCurrentTabVar.signal
+
   val currentPostAllRevisionsVar : Var[Option[PostRevisionHistory]] = Var(None)
+  val currentPostAllRevisionsSignal = currentPostAllRevisionsVar.signal
 
   private val manualSaveEventBus : EventBus[Unit] = new EventBus[Unit]
 
@@ -131,6 +137,8 @@ class Client( val protopostLocation : Uri ):
       posterNoAuthVar.set(None)
       destinationsVar.set( immutable.SortedSet.empty )
 
+  private val doSaveEventObserver = Observer[NewPostRevision]: npr =>
+    util.request.saveRevisionToServerUpdateRevisions(protopostLocation, npr, backend, localContentDirtyVar,currentPostAllRevisionsVar)
 
   private val updateLoginStatusObserver = Observer[Int]: count =>
     // on initial mount, the update seems sometimes to skip,
@@ -149,7 +157,7 @@ class Client( val protopostLocation : Uri ):
           val hardUpdate = lastHardUpdate || elapsedSeconds > LoginStatusUpdateIfNotUpdatedLastSecs || r < LoginStatusUpdateHardUpdateProbability
           //println(s"hardUpdate: $hardUpdate")
           if hardUpdate then
-            println(s"hardUpdate: $elapsedSeconds > ${LoginStatusUpdateIfNotUpdatedLastSecs} || $r < ${LoginStatusUpdateHardUpdateProbability}")
+            println(s"hardUpdate: lastHardUpdate || $elapsedSeconds > ${LoginStatusUpdateIfNotUpdatedLastSecs} || $r < ${LoginStatusUpdateHardUpdateProbability}")
           Some(Tuple3(newStatus, now, hardUpdate))
         case None =>
           None
@@ -171,6 +179,14 @@ class Client( val protopostLocation : Uri ):
 
   private val currentPostDefinitionLastChangeTupleObserver = Observer[Tuple2[Option[PostDefinition],Option[PostDefinition]]]: (prev, latest) =>
     util.request.saveLoadOnCurrentPostSwap(protopostLocation,prev,latest,backend,currentPostLocalPostContentLsi,recoveredRevisionsLsi,localContentDirtyVar)
+    latest match
+      case Some( pd ) =>
+        util.request.loadCurrentPostRevisionHistory(protopostLocation,pd.postId,backend,currentPostAllRevisionsVar)
+      case None =>
+        currentPostAllRevisionsVar.set( None )
+
+  def updateCurrentPostRevisions( postId : Int ) =
+    util.request.loadCurrentPostRevisionHistory(protopostLocation,postId,backend,currentPostAllRevisionsVar)
 
   def element() : HtmlElement =
     div(
@@ -180,7 +196,7 @@ class Client( val protopostLocation : Uri ):
         loginStatusSignal.changes.throttle(UnsuccessfulLoginStatusCheckRetryMs).addObserver( mustHardUpdateLoginStatusObserver ) // important that these changes are NOT distinct, so we retry every minute, even on the "same" failure
         loginLevelChangeEvents.addObserver(loginObserver)
         currentPostDefinitionLastChangeTuple.addObserver(currentPostDefinitionLastChangeTupleObserver)
-        doSaveEventStream.addObserver( Observer[NewPostRevision]( npr => util.request.saveRevisionToServer(protopostLocation, npr, backend, localContentDirtyVar) ) )
+        doSaveEventStream.addObserver( doSaveEventObserver )
       },
       idAttr("protopost-client-default"),
       // very annoyingly, there's not an easy way to set grid- and hover-related style elements (beyond display.grid itself) in laminar

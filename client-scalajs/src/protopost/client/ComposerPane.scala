@@ -34,13 +34,8 @@ object ComposerPane:
       currentPostLocalPostContentLsi.update( _.copy(text=value) )
       localContentDirtyVar.set(true)
 
-    val currentTabVar : Var[ComposerPane.Tab] = Var(ComposerPane.Tab.edit)
-    val currentTabSignal = currentTabVar.signal
-
-    def goToEdit() : Unit = currentTabVar.set(ComposerPane.Tab.edit)
-
     val currentPostDefinitionChangeObserver = Observer[Option[PostDefinition]]: mbpd =>
-      currentTabVar.set(ComposerPane.Tab.edit) // go back to default edit tab when the post definition has updates
+      composerPaneCurrentTabVar.set(ComposerPane.Tab.edit) // go back to default edit tab when the post definition has updates
 
     val previewPane = div("This is the preview pane")
 
@@ -51,9 +46,9 @@ object ComposerPane:
             cls := "tab-pane",
             flexGrow(1),
             textAlign.center,
-            cls <-- currentTabSignal.map( currentTab => if tab == currentTab then "current" else "" ),
+            cls <-- composerPaneCurrentTabSignal.map( currentTab => if tab == currentTab then "current" else "" ),
             TinyLink.create(tab.toString).amend(
-              onClick --> ( click => currentTabVar.set(tab) ),
+              onClick --> ( click => composerPaneCurrentTabVar.set(tab) ),
             )
           )
       div(
@@ -112,7 +107,7 @@ object ComposerPane:
         previewModifiersCommon,
         whiteSpace.pre,
         fontFamily("monospace"),
-        text <-- currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal).map( (_,pc) => pc.text )
+        text <-- composerPaneCurrentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal).map( (_,pc) => pc.text )
       )
 
     val composeCardPreviewTextHtml =
@@ -120,7 +115,7 @@ object ComposerPane:
         previewModifiersCommon,
         fontFamily(serifFontFamilies),
         inContext { thisNode =>
-          currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
+          composerPaneCurrentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
             thisNode.ref.innerHTML = safeHtmlFromUserHtml( pc.text )
           }
         }
@@ -131,7 +126,7 @@ object ComposerPane:
         previewModifiersCommon,
         fontFamily(serifFontFamilies),
         inContext { thisNode =>
-          currentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
+          composerPaneCurrentTabSignal.withCurrentValueOf(currentPostLocalPostContentSignal) --> { (tab,pc) => 
             thisNode.ref.innerHTML = safeHtmlFromMarkdown( pc.text )
           }
         }
@@ -140,16 +135,7 @@ object ComposerPane:
     val composeCardPublishDetailsPane =
       div(
         flexGrow(1),
-        PublishDetailsPane.create(
-          protopostLocation,
-          backend,
-          currentPostLocalPostContentLsi,
-          currentPostDefinitionSignal,
-          currentPostDefinitionChangeEvents,
-          currentPostAllRevisionsVar,
-          localContentDirtyVar,
-          goToEdit
-        )
+        PublishDetailsPane.create( client )
       )
 
     val composeCardReloginPane =
@@ -159,7 +145,7 @@ object ComposerPane:
       )
 
     val composeCardSignal =
-      Signal.combine(currentTabSignal,currentPostLocalPostContentSignal,loginLevelSignal).map: ( tab, pc, ll ) =>
+      Signal.combine(composerPaneCurrentTabSignal,currentPostLocalPostContentSignal,loginLevelSignal).map: ( tab, pc, ll ) =>
         tab match
           case ComposerPane.Tab.edit    => composeCardEdit
           case ComposerPane.Tab.publish =>
