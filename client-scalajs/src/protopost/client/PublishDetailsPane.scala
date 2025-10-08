@@ -43,7 +43,9 @@ object PublishDetailsPane:
           case Some( pd ) => pd.publicationAttempted && pd.postAnchor.nonEmpty
           case None => true
 
-    val postNotDefinedSignal = currentPostDefinitionSignal.map( _.isEmpty )
+    val notPublishableSignal =
+      Signal.combine(currentPostDefinitionSignal,localContentDirtyVar).map: ( mbcpd, dirtyLocal ) =>
+        mbcpd.isEmpty || dirtyLocal
 
     val sproutCheckedSignal =
       currentPostDefinitionSignal.map: mbpd =>
@@ -75,7 +77,7 @@ object PublishDetailsPane:
           cls := "button-utilitarian",
           role("button"),
           float.right,
-          disabled <-- postNotDefinedSignal,
+          disabled <-- notPublishableSignal,
           text <-- publishUpdateButtonLabelSignal
         ),
       ),
@@ -96,7 +98,7 @@ object PublishDetailsPane:
           idAttr := "post-unique-id-input",
           `type` := "text",
           disabled <-- postNotAnchorableSignal,
-          placeholder := "a unique identifier for this post.",
+          placeholder := "(optional, can only be set once if published) a unique identifier for this post.",
           value <-- postAnchorSignal
         )
       ),
@@ -114,7 +116,7 @@ object PublishDetailsPane:
         input(
           `type` := "text",
           idAttr := "post-in-reply-to-input",
-          placeholder := "URL identifying the post to which this is a reply"
+          placeholder := "(optional) URL identifying the post to which this is a reply"
         )
       ),
       div(

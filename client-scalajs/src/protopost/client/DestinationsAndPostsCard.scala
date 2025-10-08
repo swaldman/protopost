@@ -82,6 +82,7 @@ object DestinationsAndPostsCard:
             val authors = commaListAnd( pd.authors ).fold("")( authors => s"by ${authors}" )
             div(
               fontSize.pt(10),
+              backgroundColor <-- currentPostDefinitionSignal.map( _.fold("transparent")(cpd => if pd == cpd then "#ccffaa" else "transparent") ),
               ClickLink.create(title).amend(
                 onClick --> { _ =>
                   currentPostIdentifierLsi.set(Some(PostIdentifier(destination.destinationIdentifier,pd.postId)))
