@@ -9,22 +9,25 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
 @js.native
+@JSGlobal
+class CkEditor extends js.Any:
+  def getData() : String = js.native
+
+@js.native
 @JSGlobalScope
-object Globals extends js.Object {
+object Globals extends js.Object:
   val protopostLocation : String = js.native
-}
+  def bindCkEditor( containerId : String ) : js.Promise[CkEditor] = js.native
 
 @js.native
 @JSGlobal
-object DOMPurify extends js.Object {
+object DOMPurify extends js.Object:
   def sanitize(raw : String) : String = js.native
-}
 
 @js.native
 @JSGlobal
-object marked extends js.Object {
+object marked extends js.Object:
   def parse(markdownText : String) : String = js.native
-}
 
 val ReverseChronologicalPostDefinitions = Ordering.by[PostDefinition,Int]( pd => -pd.postId ) // reverse chronological of post creation, since id's are allocated chronologically
 

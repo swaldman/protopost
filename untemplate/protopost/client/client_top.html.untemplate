@@ -7,8 +7,13 @@ import com.mchange.conveniences.string.*
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script type="text/javascript" src="<( pathJoin(protopostLocation, "/protopost/client/scalajs/jslib/DOMPurify-3.2.7/purify.min.js") )>"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/lib/marked.umd.js"></script>
-    <script>
-      const protopostLocation = "<( protopostLocation )>"
+    <script type="importmap">
+                {
+                        "imports": {
+                                "ckeditor5": "<( pathJoin(protopostLocation, "/protopost/client/scalajs/jslib/ckeditor5/ckeditor5.js") )>",
+                                "ckeditor5/": "<( pathJoin(protopostLocation, "/protopost/client/scalajs/jslib/ckeditor5/") )>"
+                        }
+                }
     </script>
     <style>
       * {
@@ -39,6 +44,13 @@ import com.mchange.conveniences.string.*
   <body>
     <div id="root"></div>
   </body>
-  <script src="<( pathJoin(protopostLocation, "/protopost/client/scalajs/main.js") )>"></script>
+
+  <script type="module">
+    globalThis.protopostLocation = "<( protopostLocation )>";
+    await import('<( pathJoin(protopostLocation, "/protopost/client/scalajs/jslib/ckeditor5-main.js") )>');
+    await import('<( pathJoin(protopostLocation, "/protopost/client/scalajs/main.js") )>');
+  </script>
+
+  <!-- <script src="<( pathJoin(protopostLocation, "/protopost/client/scalajs/main.js") )>"></script> --> 
 </html>
 

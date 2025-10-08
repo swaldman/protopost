@@ -12,7 +12,7 @@ import scala.collection.immutable
 import scala.util.{Success,Failure}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
-import scala.scalajs.js.timers.*
+//import scala.scalajs.js.timers.*
 
 import protopost.common.api.{*,given}
 import protopost.client.util.epochSecondsNow

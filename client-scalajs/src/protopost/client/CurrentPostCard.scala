@@ -97,7 +97,13 @@ object CurrentPostCard:
         if pd.isEmpty then
           util.request.hardUpdateDestinationsToKnownPosts( protopostLocation, pi.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
-    val composePane = ComposerPane.create( client )
+    lazy val composerPanePreview = ComposerPane.create( client )
+    lazy val composerPaneWysiwyg = CkEditorComposerPane.create( client )
+
+    val composerPaneSignal = composerSignal.map: composer =>
+      composer match
+        case Composer.`text-and-preview` => composerPanePreview
+        case Composer.WYSIWYG            => composerPaneWysiwyg
 
     div(
       idAttr := "current-post-card",
@@ -178,7 +184,7 @@ object CurrentPostCard:
           idAttr := "current-post-card-compose",
           display.flex,
           flexGrow(1),
-          composePane
+          child <-- composerPaneSignal
         )
       ),
       onMountCallback { mountContext =>
