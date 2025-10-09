@@ -3,12 +3,38 @@ package protopost.client
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
+import scala.scalajs.js
+import scala.scalajs.js.annotation.*
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
 import scala.util.{Success,Failure}
 import protopost.common.api.PostDefinition
 
 object CkEditorComposerPane:
+  @js.native
+  @JSGlobalScope
+  object CkGlobals extends js.Object:
+    def bindCkEditor( mainContainerId : String, toolbarContainerId : String ) : js.Promise[CkEditor] = js.native
+  
+  @js.native
+  trait CkEditorDocument extends js.Object:
+    def on( eventType : String, callback : js.Function1[js.Object,Unit]) : Unit = js.native
+
+  @js.native
+  trait CkEditorModel extends js.Object:
+    val document : CkEditorDocument = js.native
+
+  @js.native
+  @JSGlobal
+  class CkEditor extends js.Any:
+    def getData()                              : String = js.native
+    def setData( htmlText : String )           : Unit   = js.native
+    def enableReadOnlyMode( lockId : String )  : Unit   = js.native
+    def disableReadOnlyMode( lockId : String ) : Unit   = js.native
+    val model : CkEditorModel = js.native
+
+    def on( eventType : String, callback : js.Function1[Object,Unit]) : Unit   = js.native
+
   enum Tab:
     case edit, publish
 
@@ -101,7 +127,7 @@ object CkEditorComposerPane:
         // println( s"mount: $mountContext" )
         given Owner = mountContext.owner
         if ckEditorSignal.now().isEmpty then
-          Globals.bindCkEditor( "ckeditor-container", "ckeditor-toolbar-container" )
+          CkGlobals.bindCkEditor( "ckeditor-container", "ckeditor-toolbar-container" )
             .toFuture
             .onComplete: attempt =>
               attempt match
