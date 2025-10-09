@@ -107,7 +107,9 @@ object CkEditorComposerPane:
         ckEditorContainer
       )
 
-    val publishCard = PublishDetailsPane.create( client )
+    val publishCard = PublishDetailsPane.create( client ).amend( flexGrow(1) )
+
+    val reloginCard = LoginForm.create( client ).amend( flexGrow(1) )
 
     div(
       marginTop.rem(1),
@@ -118,10 +120,11 @@ object CkEditorComposerPane:
       flexDirection.column,
       tabsButtonsStatusDiv(),
       //ckEditorCard,
-      child <-- ckEditorComposerPaneCurrentTabSignal.map { tab =>
+      child <-- Signal.combine(ckEditorComposerPaneCurrentTabSignal,loginLevelSignal).map { (tab,ll) =>
                    tab match
-                     case Tab.edit    => ckEditorCard
-                     case Tab.publish => publishCard
+                     case Tab.edit                             => ckEditorCard
+                     case Tab.publish if ll == LoginLevel.high => publishCard
+                     case Tab.publish                          => reloginCard
       },
       onMountCallback { mountContext =>
         // println( s"mount: $mountContext" )
