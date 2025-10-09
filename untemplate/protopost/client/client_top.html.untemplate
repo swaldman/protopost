@@ -15,6 +15,7 @@ import com.mchange.conveniences.string.*
                         }
                 }
     </script>
+    <link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/47.0.0/ckeditor5.css" />
     <style>
       * {
           box-sizing: border-box;

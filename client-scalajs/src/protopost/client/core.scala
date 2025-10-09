@@ -9,9 +9,23 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
 @js.native
+trait CkEditorDocument extends js.Object:
+  def on( eventType : String, callback : js.Function1[js.Object,Unit]) : Unit = js.native
+
+@js.native
+trait CkEditorModel extends js.Object:
+  val document : CkEditorDocument = js.native
+
+@js.native
 @JSGlobal
 class CkEditor extends js.Any:
-  def getData() : String = js.native
+  def getData()                              : String = js.native
+  def setData( htmlText : String )           : Unit   = js.native
+  def enableReadOnlyMode( lockId : String )  : Unit   = js.native
+  def disableReadOnlyMode( lockId : String ) : Unit   = js.native
+  val model : CkEditorModel = js.native
+
+  def on( eventType : String, callback : js.Function1[Object,Unit]) : Unit   = js.native
 
 @js.native
 @JSGlobalScope
