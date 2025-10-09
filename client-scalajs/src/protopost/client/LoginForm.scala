@@ -109,7 +109,7 @@ object LoginForm:
       alignItems.center,
       justifyContent.center,
       flexDirection.column,
-      div(
+      form(
         // username password form
         div(
           // username
@@ -123,6 +123,9 @@ object LoginForm:
             //onChange.mapToValue.map( _.trim ) --> emailVar, // can't seem to handle autofill properly
             //onBlur.mapToValue.map( _.trim ) --> emailVar, // can't seem to handle autofill properly
 
+            `type`("email"),
+            autoComplete("username"), // see https://www.chromium.org/developers/design-documents/form-styles-that-chromium-understands/
+
             onInput.mapTo("") --> loginFormMessage,
             backgroundColor <-- emailBackgroundStream,
             value <-- inputResetStringsStream,
@@ -135,6 +138,7 @@ object LoginForm:
           // password
           input(
             `type` := "password",
+            autoComplete("current-password"), // see https://www.chromium.org/developers/design-documents/form-styles-that-chromium-understands/
             placeholder("password"),
             onInput.mapToValue --> passwordVar,
             disabled <-- disabledSignal,
