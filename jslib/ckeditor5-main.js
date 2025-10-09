@@ -47,8 +47,8 @@ import {
 	Autoformat,
 	TextTransformation,
 	PlainTableOutput,
-	BalloonToolbar,
-	BlockToolbar
+	BalloonToolbar//,
+	//BlockToolbar
 } from 'ckeditor5';
 
 /**
@@ -98,7 +98,7 @@ const editorConfig = {
 		Autosave,
 		BalloonToolbar,
 		BlockQuote,
-		BlockToolbar,
+		//BlockToolbar,
 		Bold,
 		CloudServices,
 		Code,
@@ -136,7 +136,7 @@ const editorConfig = {
 		Underline
 	],
 	balloonToolbar: ['bold', 'italic', '|', 'link', '|', 'bulletedList', 'numberedList'],
-	blockToolbar: ['bold', 'italic', '|', 'link', 'insertTable', '|', 'bulletedList', 'numberedList', 'outdent', 'indent'],
+	//blockToolbar: ['bold', 'italic', '|', 'link', 'insertTable', '|', 'bulletedList', 'numberedList', 'outdent', 'indent'],
 	heading: {
 		options: [
 			{
