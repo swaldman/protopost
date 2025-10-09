@@ -317,6 +317,11 @@ class Client( val protopostLocation : Uri ):
         |  border-color: black;
         |  outline: none;
         |}
+        |
+        |#revisons-cards-timestamp-list a.tiny-link:hover {
+        |  color: black;
+        |  background-color: yellow;
+        |}
         """.stripMargin
       ),
       TopPanel.create( this )

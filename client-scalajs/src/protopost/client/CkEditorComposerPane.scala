@@ -52,7 +52,7 @@ object CkEditorComposerPane:
     def tabsButtonsStatusDiv() =
       div(
         marginBottom.rem(0.5),
-        idAttr := "ckcompose-text-and-preview-tabs-button-status",
+        idAttr := "ckcompose-tabs-button-status",
         display.flex,
         flexDirection.row,
         alignItems.center,

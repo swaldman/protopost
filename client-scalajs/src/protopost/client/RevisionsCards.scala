@@ -109,7 +109,7 @@ object RevisionsCards:
           div(
             MainSectionBorderPaddingMargin,
             idAttr := "revisons-cards-timestamp-list",
-            children <-- currentPostAllRevisionsLinks // this is really inefficient, learn the Laminar Way of selective updates
+            children <-- currentPostAllRevisionsLinks // XXX: this is really inefficient, learn the Laminar Way of selective updates
           )
       )
 
