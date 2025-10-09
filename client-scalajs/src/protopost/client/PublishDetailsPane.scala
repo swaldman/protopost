@@ -58,7 +58,7 @@ object PublishDetailsPane:
     div(
       display.flex,
       flexDirection.column,
-      marginTop.rem(0.5),
+      marginTop.rem(0.25),
       borderTopColor.black,
       borderTopStyle.solid,
       borderTopWidth.px(2),

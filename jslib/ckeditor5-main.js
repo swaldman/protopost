@@ -4,7 +4,8 @@
  */
 
 import {
-	InlineEditor,
+        InlineEditor,
+        DecoupledEditor,
 	Autosave,
 	Essentials,
 	Paragraph,
@@ -64,7 +65,7 @@ const editorConfig = {
 			'showBlocks',
 			'|',
 			'heading',
-			'style',
+			//'style',
 			'|',
 			'bold',
 			'italic',
@@ -125,7 +126,7 @@ const editorConfig = {
 		PlainTableOutput,
 		ShowBlocks,
 		Strikethrough,
-		Style,
+		//Style,
 		Subscript,
 		Superscript,
 		Table,
@@ -270,6 +271,45 @@ const editorConfig = {
 
 console.log("executing ckeditor5-main.js")
 
-globalThis.bindCkEditor = ( containerId ) => {
-  return InlineEditor.create(document.querySelector('#'+containerId), editorConfig);
+// globalThis.bindCkEditor = ( containerId ) => {
+//  //return InlineEditor.create(document.querySelector('#'+containerId), editorConfig);
+//  return DecoupledEditor.create(document.querySelector('#'+containerId), editorConfig);
+// }
+globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
+    const out = DecoupledEditor.create(document.querySelector('#'+mainContainerId), editorConfig);
+    out.then( editor => {
+        const toolbarContainer = document.querySelector('#'+toolbarContainerId);
+        editor.ui.view.toolbar.element.style.width=0
+
+        const recomputeToolbarWidth = function (event) {
+          //console.log("recomputeToolbarWidth: " + event);
+          editor.ui.view.toolbar.element.style.width=0
+
+          if (toolbarContainer.clientWidth == 0) {
+            setTimeout(recomputeToolbarWidth,50)
+          }
+          else {
+            editor.ui.view.toolbar.element.style.width=toolbarContainer.clientWidth+"px";
+            // This internal call triggers grouping logic immediately
+            if (typeof editor.ui.view.toolbar._checkIfShouldGroup === 'function') {
+              editor.ui.view.toolbar._checkIfShouldGroup();
+            }
+            console.log("toolbar width set to " + editor.ui.view.toolbar.element.style.width)
+          }
+        }
+        window.addEventListener("resize", recomputeToolbarWidth);
+
+        console.log("document.readyState: " + document.readyState)
+        if (document.readyState === "loading") {
+          // The DOM is still loading, attach the event listener
+          document.addEventListener("DOMContentLoaded", recomputeToolbarWidth);
+        } else {
+          // The DOM is already loaded, execute the function immediately
+          recomputeToolbarWidth();
+        }
+        toolbarContainer.appendChild( editor.ui.view.toolbar.element );
+    } ).catch( error => {
+        console.error( error );
+    } );
+    return out
 }

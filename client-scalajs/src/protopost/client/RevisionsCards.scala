@@ -152,7 +152,8 @@ object RevisionsCards:
                   selectedRevisionVar.set(None)
                   previewRevisionVar.set(None)
                   localContentDirtyVar.set(true)
-                  composerPaneCurrentTabVar.set(ComposerPane.Tab.edit)
+                  //composerPaneCurrentTabVar.set(ComposerPane.Tab.edit)
+                  resetComposersToEdit()
                 case _ => /* ignore */
               }
             ),

@@ -28,3 +28,25 @@ def statusCircle() : HtmlElement =
     borderStyle.solid
   )
 
+def tabsDiv[T](id : String, values : Array[T], currentTabVar : Var[T], currentTabSignal : Signal[T]) =
+  val tabs =
+    values.map: tab =>
+      div(
+        cls := "tab-pane",
+        flexGrow(1),
+        textAlign.center,
+        cls <-- currentTabSignal.map( currentTab => if tab == currentTab then "current" else "" ),
+        protopost.client.TinyLink.create(tab.toString).amend(
+          onClick --> ( click => currentTabVar.set(tab) ),
+        )
+      )
+  div(
+    idAttr := id,
+    display.flex,
+    flexDirection.row,
+    alignItems.center,
+    justifyContent.center,
+    tabs
+  )
+
+

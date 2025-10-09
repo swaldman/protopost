@@ -89,6 +89,7 @@ class Client( val protopostLocation : Uri ):
   val recoveredRevisionsLsi = LocalStorageItem(LocalStorageItem.Key.recoveredRevisions)
 
   val localContentDirtyVar : Var[Boolean] = Var(false)
+  val localContentDirtySignal = localContentDirtyVar.signal
 
   val openDestinationsLsi = LocalStorageItem(LocalStorageItem.Key.openDestinations)
 
@@ -105,6 +106,17 @@ class Client( val protopostLocation : Uri ):
 
   val composerPaneCurrentTabVar : Var[ComposerPane.Tab] = Var(ComposerPane.Tab.edit)
   val composerPaneCurrentTabSignal = composerPaneCurrentTabVar.signal
+  val ckEditorComposerPaneCurrentTabVar : Var[CkEditorComposerPane.Tab] = Var(CkEditorComposerPane.Tab.edit)
+  val ckEditorComposerPaneCurrentTabSignal = ckEditorComposerPaneCurrentTabVar.signal
+
+  def resetComposersToEdit() : Unit =
+    composerPaneCurrentTabVar.set(ComposerPane.Tab.edit)
+    ckEditorComposerPaneCurrentTabVar.set(CkEditorComposerPane.Tab.edit)
+
+  def localContentStatusCircle() : HtmlElement =
+    util.laminar.statusCircle().amend(
+      backgroundColor <-- localContentDirtySignal.map( dirty => if dirty then "yellow" else "#22ff22" )
+    )
 
   val currentPostAllRevisionsVar : Var[Option[PostRevisionHistory]] = Var(None)
   val currentPostAllRevisionsSignal = currentPostAllRevisionsVar.signal
@@ -112,6 +124,8 @@ class Client( val protopostLocation : Uri ):
   private val manualSaveEventBus : EventBus[Unit] = new EventBus[Unit]
 
   val manualSaveWriteBus : WriteBus[Unit] = manualSaveEventBus.writer
+
+  val serifFontFamilies = "Georgia, Garamond, serif"
 
   private val updateLoginStatusStream = EventStream.periodic(LoginStatusUpdateIntervalMsecs,false)
 

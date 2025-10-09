@@ -31,7 +31,7 @@ class CkEditor extends js.Any:
 @JSGlobalScope
 object Globals extends js.Object:
   val protopostLocation : String = js.native
-  def bindCkEditor( containerId : String ) : js.Promise[CkEditor] = js.native
+  def bindCkEditor( mainContainerId : String, toolbarContainerId : String ) : js.Promise[CkEditor] = js.native
 
 @js.native
 @JSGlobal

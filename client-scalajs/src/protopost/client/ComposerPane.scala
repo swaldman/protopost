@@ -16,15 +16,12 @@ object ComposerPane:
   enum Tab:
     case edit, preview, publish
 
-  val serifFontFamilies = "Georgia, Garamond, serif"
-
   val contentTypeSelect = "composer-content-type-select"
 
   def create( client : Client ) : HtmlElement =
     import client.*
 
     val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
-    val localContentDirtySignal = localContentDirtyVar.signal
 
     val contentTypeChangeObserver = Observer[String]: (value) =>
       currentPostLocalPostContentLsi.update( _.copy(contentType=value) )
@@ -221,9 +218,7 @@ object ComposerPane:
           ),
           div(
             paddingLeft.rem(0.5),
-            util.laminar.statusCircle().amend(
-              backgroundColor <-- localContentDirtySignal.map( dirty => if dirty then "yellow" else "#22ff22" )
-            ),
+            localContentStatusCircle(),
           ),
         ),
         div(
