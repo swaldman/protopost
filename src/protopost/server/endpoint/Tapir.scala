@@ -113,7 +113,7 @@ object Tapir extends SelfLogging:
       .in( paths )
       .in( header[Option[String]]("Content-Type") )
       .in( streamBinaryBody(ZioStreams)(CodecFormat.OctetStream()) )
-      .out( jsonBody[PostMediaUploaded] )
+      .out( jsonBody[PostMediaInfo] )
 
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*

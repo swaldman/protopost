@@ -89,7 +89,7 @@ given Schema[RetrievedPostRevision]  = Schema.derived
 given Schema[PostRevisionIdentifier] = Schema.derived
 given Schema[RevisionTimestamp]      = Schema.derived
 given Schema[PostRevisionHistory]    = Schema.derived
-given Schema[PostMediaUploaded]      = Schema.derived
+given Schema[PostMediaInfo]          = Schema.derived
 
 given Schema[Option[RetrievedPostRevision]] = Schema.derived
 

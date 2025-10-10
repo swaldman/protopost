@@ -362,7 +362,7 @@ object ServerLogic extends SelfLogging:
   private val GoodPathElementRegex = """^[A-Za-z0-9\.\-\_]+$""".r
   private val K32 = 32 * 1024
 
-  def uploadPostMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( uploadTuple : (Int,List[String],Option[String],ZStream[Any, Throwable, Byte]) ) : ZOut[PostMediaUploaded] =
+  def uploadPostMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( uploadTuple : (Int,List[String],Option[String],ZStream[Any, Throwable, Byte]) ) : ZOut[PostMediaInfo] =
     val (postId, pathElements, contentType, stream ) = uploadTuple
 
     if pathElements.isEmpty then
@@ -379,7 +379,7 @@ object ServerLogic extends SelfLogging:
 
     // for now, we'll go through a temp file... it's be cool maybe to stream
     // straight into postgres, though
-    def op( db : PgDatabase, conn : Connection ) : Task[PostMediaUploaded] =
+    def op( db : PgDatabase, conn : Connection ) : Task[PostMediaInfo] =
       val tempFile = os.temp()
       try
         def streamToFile() : Task[Long] =
@@ -402,7 +402,7 @@ object ServerLogic extends SelfLogging:
           len <- streamToFile()
           _   <- streamIntoDb()
         yield
-          PostMediaUploaded(postId,fullPath,len,contentType)
+          PostMediaInfo(postId,fullPath,len,contentType)
       finally
         try
           os.remove(tempFile)

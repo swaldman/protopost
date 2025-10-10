@@ -43,7 +43,7 @@ case class PostRevisionIdentifier(
   timestampNanos        : Int,
 )
 
-case class PostMediaUploaded(
+case class PostMediaInfo(
   postId : Int,
   path   : String,
   length : Long,
@@ -171,7 +171,7 @@ given JsonValueCodec[List[Tuple2[RevisionTimestamp,NewPostRevision]]] = JsonCode
 
 given JsonValueCodec[PostRevisionHistory] = JsonCodecMaker.make
 
-given JsonValueCodec[PostMediaUploaded] = JsonCodecMaker.make
+given JsonValueCodec[PostMediaInfo] = JsonCodecMaker.make
 
 
 
