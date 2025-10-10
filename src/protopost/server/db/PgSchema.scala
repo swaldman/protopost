@@ -499,6 +499,9 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY(post_id) references post(id)
              |)""".stripMargin
         val Insert = "INSERT INTO post_media(post_id, media_path, content_type, content_length, media) VALUES (?,?,?,?,?)"
+        val SelectInfoByPost = "SELECT post_id, media_path, content_type, content_length FROM post_media WHERE post_id = ? ORDER BY media_path ASC"
+        private def extractPostMediaInfo( rs : ResultSet ) : PostMediaInfo =
+          PostMediaInfo(rs.getInt(1),rs.getString(2),rs.getLong(4),Option(rs.getString(3)))
         def insert( postId : Int, mediaPath : String, contentType : Option[String], contentLength : Long, media : InputStream )( conn : Connection ) =
           Using.resource( conn.prepareStatement(Insert) ): ps =>
             ps.setInt(1, postId)
@@ -507,6 +510,10 @@ object PgSchema extends SelfLogging:
             ps.setLong(4,contentLength)
             ps.setBinaryStream(5,media)
             ps.executeUpdate()
+        def selectInfoByPost( postId : Int )( conn : Connection ) : Seq[PostMediaInfo] =
+          Using.resource( conn.prepareStatement(SelectInfoByPost) ): ps =>
+            ps.setInt(1,postId)
+            Using.resource(ps.executeQuery())( toSeq(extractPostMediaInfo) )
       end PostMedia
     end Table
     object Sequence:

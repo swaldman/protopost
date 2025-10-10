@@ -172,6 +172,7 @@ given JsonValueCodec[List[Tuple2[RevisionTimestamp,NewPostRevision]]] = JsonCode
 given JsonValueCodec[PostRevisionHistory] = JsonCodecMaker.make
 
 given JsonValueCodec[PostMediaInfo] = JsonCodecMaker.make
+given given_JsonValueCodec_Seq_PostMediaInfo : JsonValueCodec[Seq[PostMediaInfo]] = JsonCodecMaker.make
 
 
 

@@ -115,6 +115,8 @@ object Tapir extends SelfLogging:
       .in( streamBinaryBody(ZioStreams)(CodecFormat.OctetStream()) )
       .out( jsonBody[PostMediaInfo] )
 
+  val PostMediaByPostId = PosterAuthenticated.get.in("post-media-by-post-id").in( path[Int] ).out( jsonBody[Seq[PostMediaInfo]] )
+
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*
 
@@ -141,6 +143,7 @@ object Tapir extends SelfLogging:
       RevisionHistory.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( revisionHistory( appResources ) ),
       RetrieveRevision.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( retrieveRevision( appResources ) ),
       UploadPostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( uploadPostMedia(appResources) ).asInstanceOf[sttp.tapir.ztapir.ZServerEndpoint[Any, Any]], // why is this necessary here???
+      PostMediaByPostId.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMediaByPostId(appResources) )
     ) ++ rootAsClient.toList
 
 end Tapir

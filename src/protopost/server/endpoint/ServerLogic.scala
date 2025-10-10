@@ -411,5 +411,11 @@ object ServerLogic extends SelfLogging:
 
     onlyIfOwnerZIO(appResources)(authenticatedPoster)(postId)(op)
 
+  def postMediaByPostId( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int) : ZOut[Seq[PostMediaInfo]] =
+
+    def op( db : PgDatabase, conn : Connection ) : Seq[PostMediaInfo] = db.postMediaInfoByPostId( postId )( conn )
+
+    onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
+
 
 end ServerLogic
