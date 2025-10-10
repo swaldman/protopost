@@ -2,8 +2,10 @@ package protopost.server.db
 
 import zio.*
 
+import java.io.InputStream
 import java.sql.Connection
 import javax.sql.DataSource
+import java.time.Instant
 
 import protopost.common.api.{Destination,PostDefinition,PostDefinitionUpdate,PosterNoAuth}
 import protopost.common.{EmailAddress,PosterId,Protocol}
@@ -18,7 +20,6 @@ import com.mchange.sc.sqlutil.*
 import com.mchange.sc.zsqlutil.*
 import protopost.server.exception.EmailIsAlreadyRegistered
 import protopost.server.exception.UnacceptableContentType
-import java.time.Instant
 import protopost.common.api.RetrievedPostRevision
 import protopost.common.api.PostRevisionHistory
 
@@ -63,6 +64,14 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Post.insert( postId, destinationSeismicNodeId, destinationName, owner, title, postAnchor, sprout, inReplyToSpecifier, false, None )( conn )
     if authors.nonEmpty then replaceAuthorsForPost( postId, authors )( conn )
     postId
+  def newPostMedia(
+    postId        : Int,
+    mediaPath     : String,
+    contentType   : Option[String],
+    contentLength : Long,
+    media         : InputStream
+  )( conn : Connection ) =
+    Schema.Table.PostMedia.insert(postId,mediaPath,contentType,contentLength,media)
   def newPostRevision(postId : Int, contentType : String, body : String)( conn : Connection ) : Option[Instant] =
     if !AcceptableContentTypes(contentType) then
       throw new UnacceptableContentType(s"'${contentType}' not supported, must be one of ${commaListOr(AcceptableContentTypes.toSeq)}")

@@ -8,25 +8,30 @@ import Cookie.SameSite
 import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
+import sttp.model.headers.CookieValueWithMeta
 
 import protopost.common.api.{*,given}
 import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*
-import protopost.server.exception.{ApparentBug,BadPostDefinition,MissingConfig,ResourceNotFound,UnknownPost}
-
+import protopost.server.exception.{ApparentBug,BadCookieSettings,BadCredentials,BadMedia,BadMediaPath,BadPostDefinition,InsufficientPermissions,MissingConfig,NotLoggedIn,ResourceNotFound,UnknownPost}
+import protopost.server.jwt
 import protopost.server.db.PgDatabase
 
 import com.mchange.rehash.*
 
+import java.io.{BufferedInputStream,InputStream}
+import java.sql.Connection
+import javax.sql.DataSource
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
+import scala.util.control.NonFatal
+
 import com.mchange.sc.zsqlutil.*
-import protopost.server.exception.{BadCookieSettings,BadCredentials,InsufficientPermissions,NotLoggedIn}
-import protopost.server.jwt
-import sttp.model.headers.CookieValueWithMeta
-import java.sql.Connection
+
+import zio.stream.*
+import scala.util.Using
 
 object ServerLogic extends SelfLogging:
 
@@ -311,20 +316,29 @@ object ServerLogic extends SelfLogging:
           case None =>
             throw new ResourceNotFound(s"No post with ID ${npr.postId} was found!")
 
+  private def opIfOwner[T]( db : PgDatabase, authenticatedPoster : jwt.AuthenticatedPoster, conn : Connection, postId : Int )( op : (PgDatabase,Connection) => T) : T =
+    val subject = parseSubject( authenticatedPoster )
+    val mbPostDefinition = db.postDefinitionForId(postId)( conn )
+    mbPostDefinition match
+      case Some( postDefinition ) =>
+        if postDefinition.owner.id != subject.posterId then
+          throw new InsufficientPermissions( s"The logged-in subject '${subject}' does not own post with ID ${postId}" )
+        else
+          op( db, conn )
+      case None =>
+        throw new ResourceNotFound(s"No post with ID ${postId} was found!")
+
   private def onlyIfOwner[T]( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int )( op : (PgDatabase,Connection) => T) : ZOut[T] =
     ZOut.fromTask:
       val db = appResources.database
       withConnectionTransactional( appResources.dataSource ): conn =>
-        val subject = parseSubject( authenticatedPoster )
-        val mbPostDefinition = db.postDefinitionForId(postId)( conn )
-        mbPostDefinition match
-          case Some( postDefinition ) =>
-            if postDefinition.owner.id != subject.posterId then
-              throw new InsufficientPermissions( s"The logged-in subject '${subject}' does not own post with ID ${postId}" )
-            else
-              op( db, conn )
-          case None =>
-            throw new ResourceNotFound(s"No post with ID ${postId} was found!")
+        opIfOwner(db,authenticatedPoster,conn,postId)( op )
+
+  private def onlyIfOwnerZIO[T]( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int )( op : (PgDatabase,Connection) => Task[T]) : ZOut[T] =
+    ZOut.fromTask:
+      val db = appResources.database
+      withConnectionTransactionalZIO( appResources.dataSource ): conn =>
+        opIfOwner(db,authenticatedPoster,conn,postId)( op )
 
   def latestDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[Option[RetrievedPostRevision]] =
     def op( db : PgDatabase, conn : Connection ) : Option[RetrievedPostRevision] = db.postRevisionLatest(postId)( conn )
@@ -344,5 +358,58 @@ object ServerLogic extends SelfLogging:
         case None      => throw new ResourceNotFound(s"No revision with save time ${saveTime} was found!")
 
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
+
+  private val GoodPathElementRegex = """^[A-Za-z0-9\.\-\_]+$""".r
+  private val K32 = 32 * 1024
+
+  def uploadPostMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( uploadTuple : (Int,List[String],Option[String],ZStream[Any, Throwable, Byte]) ) : ZOut[PostMediaUploaded] =
+    val (postId, pathElements, contentType, stream ) = uploadTuple
+
+    if pathElements.isEmpty then
+      throw new BadMediaPath("No media path was provided for the uploaded media.")
+
+    val fullPath = pathElements.mkString("/")
+
+    pathElements.foreach: elem =>
+      if !GoodPathElementRegex.matches(elem) then
+        throw new BadMediaPath(s"Path element '$elem' contains a character not ASCII alphanumeric, dash, period, or underscore in ${fullPath}.")
+
+    // eventually we can hit the database for user-specific limits
+    val maxSize = appResources.externalConfig(ExternalConfig.Key.`protopost.media.max-length.default`).toLong
+
+    // for now, we'll go through a temp file... it's be cool maybe to stream
+    // straight into postgres, though
+    def op( db : PgDatabase, conn : Connection ) : Task[PostMediaUploaded] =
+      val tempFile = os.temp()
+      try
+        def streamToFile() : Task[Long] =
+          stream
+            .rechunk(K32)
+            .mapChunksZIO { chunk =>
+              val sz = os.size(tempFile)
+              println(s"bytes uploaded: $sz")
+              if sz > maxSize then
+                ZIO.fail(new BadMedia(s"Exceeded maximum file size ($maxSize bytes) while uploading ''"))
+              else
+                ZIO.succeed(chunk)
+            }
+            .run(ZSink.fromFile(tempFile.toIO))
+        def streamIntoDb() : Task[Unit] =
+          ZIO.attemptBlocking:
+            Using.resource( new BufferedInputStream( os.read.inputStream(tempFile) ) ): is =>
+              db.newPostMedia(postId,fullPath,contentType,os.size(tempFile),is)( conn )
+        for
+          len <- streamToFile()
+          _   <- streamIntoDb()
+        yield
+          PostMediaUploaded(postId,fullPath,len,contentType)
+      finally
+        try
+          os.remove(tempFile)
+        catch
+          case NonFatal(t) => t.printStackTrace()
+
+    onlyIfOwnerZIO(appResources)(authenticatedPoster)(postId)(op)
+
 
 end ServerLogic

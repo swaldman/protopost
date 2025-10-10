@@ -23,6 +23,8 @@ import protopost.server.LoggingApi.*
 
 import EmailAddress.{s => es}
 import protopost.server.db.PgSchema.V1.Table.Poster.posterExistsForEmail
+
+import java.io.InputStream
 import java.time.Instant
 
 object PgSchema extends SelfLogging:
@@ -488,12 +490,23 @@ object PgSchema extends SelfLogging:
       object PostMedia extends Creatable:
         override val Create =
           """|CREATE TABLE post_media (
-             |  post_id        INTEGER,
-             |  media_name     VARCHAR(1024),
-             |  media          OID,
-             |  PRIMARY KEY ( post_id, media_name ),
+             |  post_id        INTEGER       NOT NULL,
+             |  media_path     VARCHAR(1024) NOT NULL,
+             |  content_type   VARCHAR(256), -- may be NULL
+             |  content_length BIGINT        NOT NULL,
+             |  media          OID           NOT NULL,
+             |  PRIMARY KEY ( post_id, media_path ),
              |  FOREIGN KEY(post_id) references post(id)
              |)""".stripMargin
+        val Insert = "INSERT INTO post_media(post_id, media_path, content_type, content_length, media) VALUES (?,?,?,?,?)"
+        def insert( postId : Int, mediaPath : String, contentType : Option[String], contentLength : Long, media : InputStream )( conn : Connection ) =
+          Using.resource( conn.prepareStatement(Insert) ): ps =>
+            ps.setInt(1, postId)
+            ps.setString(2, mediaPath)
+            setStringOptional(ps, 3, Types.VARCHAR, contentType)
+            ps.setLong(4,contentLength)
+            ps.setBinaryStream(5,media)
+            ps.executeUpdate()
       end PostMedia
     end Table
     object Sequence:

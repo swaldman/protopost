@@ -5,9 +5,12 @@ import zio.*
 import sttp.model.StatusCode
 import sttp.model.headers.{CookieValueWithMeta,Cookie}
 import Cookie.SameSite
+import sttp.tapir.CodecFormat
 import sttp.tapir.files.*
 import sttp.tapir.ztapir.*
 import sttp.tapir.json.jsoniter.*
+
+import sttp.capabilities.zio.ZioStreams
 
 import protopost.common.api.{*,given}
 import protopost.common.{EmailAddress,Password,PosterId}
@@ -26,6 +29,7 @@ import com.mchange.sc.zsqlutil.*
 import protopost.server.exception.{BadCookieSettings,BadCredentials,InsufficientPermissions,NotLoggedIn}
 import protopost.server.jwt
 import sttp.model.headers.CookieValueWithMeta
+import protopost.server.jwt.AuthenticatedPoster
 
 object Tapir extends SelfLogging:
 
@@ -102,6 +106,15 @@ object Tapir extends SelfLogging:
 
   val RetrieveRevision = PosterAuthenticated.get.in("retrieve-revision").in( path[Int] ).in( path[Int] ).in( path[Int] ).out(jsonBody[RetrievedPostRevision])
 
+  val UploadPostMedia =
+    PosterAuthenticated.post
+      .in( "upload-post-media" )
+      .in( path[Int] )
+      .in( paths )
+      .in( header[Option[String]]("Content-Type") )
+      .in( streamBinaryBody(ZioStreams)(CodecFormat.OctetStream()) )
+      .out( jsonBody[PostMediaUploaded] )
+
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*
 
@@ -127,6 +140,7 @@ object Tapir extends SelfLogging:
       LatestDraft.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( latestDraft( appResources ) ),
       RevisionHistory.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( revisionHistory( appResources ) ),
       RetrieveRevision.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( retrieveRevision( appResources ) ),
+      UploadPostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( uploadPostMedia(appResources) ).asInstanceOf[sttp.tapir.ztapir.ZServerEndpoint[Any, Any]], // why is this necessary here???
     ) ++ rootAsClient.toList
 
 end Tapir

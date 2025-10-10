@@ -43,6 +43,13 @@ case class PostRevisionIdentifier(
   timestampNanos        : Int,
 )
 
+case class PostMediaUploaded(
+  postId : Int,
+  path   : String,
+  length : Long,
+  `type` : Option[String]
+)
+
 object RevisionTimestamp:
   def apply( timestamp : Instant ) : RevisionTimestamp =
     apply( timestamp.getEpochSecond(), timestamp.getNano() )
@@ -163,6 +170,8 @@ given JsonValueCodec[Tuple2[RevisionTimestamp,NewPostRevision]]      = JsonCodec
 given JsonValueCodec[List[Tuple2[RevisionTimestamp,NewPostRevision]]] = JsonCodecMaker.make
 
 given JsonValueCodec[PostRevisionHistory] = JsonCodecMaker.make
+
+given JsonValueCodec[PostMediaUploaded] = JsonCodecMaker.make
 
 
 

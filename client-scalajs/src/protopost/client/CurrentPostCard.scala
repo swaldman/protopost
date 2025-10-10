@@ -20,7 +20,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 object CurrentPostCard:
 
   private val NoPostChosenLabel = "No post chosen"
-  
+
   def create( client : Client ) : HtmlElement =
     import client.*
 
