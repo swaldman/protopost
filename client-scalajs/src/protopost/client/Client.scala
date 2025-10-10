@@ -322,6 +322,14 @@ class Client( val protopostLocation : Uri ):
         |  color: black;
         |  background-color: yellow;
         |}
+        |
+        |.scrollbars-hidden {
+        |   scrollbar-width: none;
+        |   -ms-overflow-style: none;
+        |}
+        |.scrollbars-hidden::-webkit-scrollbar {
+        |   display: none;
+        |}
         """.stripMargin
       ),
       TopPanel.create( this )

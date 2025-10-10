@@ -115,7 +115,8 @@ object RevisionsCards:
 
     val revisionPreviewCard =
       div(
-        display <-- cardSignal.map( card => if card == Card.revisionPreview then "block" else "none" ),
+        display <-- cardSignal.map( card => if card == Card.revisionPreview then "flex" else "none" ),
+        flexDirection.column,
         label(
           forId := "revisons-cards-preview",
           PublishDetailsPaneLabelCommonModifiers,
@@ -164,6 +165,9 @@ object RevisionsCards:
             borderTopColor.black,
             borderTopStyle.solid,
             paddingTop.rem(0.5),
+            overflowX.scroll,
+            minWidth.px(0),
+            maxWidth.percent(100),
             inContext { thisNode =>
               innerHtmlRevisionSignal --> { (mbHtml) => thisNode.ref.innerHTML = mbHtml.getOrElse("<b>No revision loaded</b>") }
             }

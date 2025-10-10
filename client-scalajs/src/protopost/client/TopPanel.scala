@@ -94,6 +94,7 @@ object TopPanel:
           //backgroundColor.black,
           paddingTop.px(4),
           paddingRight.px(4),
+          paddingBottom.px(4),
           TinyLink.create("logout").amend(
             idAttr("logout-link"),
             onClick --> logoutSubmitter, //{ event => dom.window.alert("logout") },
@@ -102,10 +103,13 @@ object TopPanel:
         div(
           // card panel
           idAttr("app-card-panel"),
+          cls("scrollbars-hidden"),
           //width.percent(100),
           //height.percent(100),
           flexGrow(1),
-          overflowX := "clip",
+          overflowX := "scroll",
+          overflowY := "scroll",
+          //styleProp("scrollbar-color") := "white",
           //marginTop.auto,
           //marginBottom.auto,
           display.flex,
