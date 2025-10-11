@@ -125,7 +125,7 @@ object Tapir extends SelfLogging:
         .get( ExternalConfig.Key.`protopost.api.root-as-client` )
         .map( java.lang.Boolean.parseBoolean )
         .flatMap( use => if use then Some( RootAsClient.zServerLogic( client( appResources ) ) : ZServerEndpoint[Any,Any] ) else None )
-    List[sttp.tapir.ztapir.ZServerEndpoint[Any, Any]] (
+    List[ZServerEndpoint[Any, Any]] (
       //RootJwks.zServerLogic( jwks( appResources ) ),
       WellKnownJwks.zServerLogic( jwks( appResources ) ),
       Login.zServerLogic( login( appResources ) ),
@@ -142,7 +142,7 @@ object Tapir extends SelfLogging:
       LatestDraft.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( latestDraft( appResources ) ),
       RevisionHistory.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( revisionHistory( appResources ) ),
       RetrieveRevision.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( retrieveRevision( appResources ) ),
-      UploadPostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( uploadPostMedia(appResources) ).asInstanceOf[sttp.tapir.ztapir.ZServerEndpoint[Any, Any]], // why is this necessary here???
+      UploadPostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( uploadPostMedia(appResources) ).asInstanceOf[ZServerEndpoint[Any,Any]], // cast away the ZioStreaming capability requirement, we know it's supported
       PostMediaByPostId.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMediaByPostId(appResources) )
     ) ++ rootAsClient.toList
 

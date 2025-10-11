@@ -9,10 +9,15 @@ import protopost.common.api.PostRevisionHistory
 import sttp.model.Uri
 import sttp.client4.WebSocketBackend
 
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
+
 object PublishDetailsPane:
   def create( client : Client ) : HtmlElement =
     import Client.PublishDetailsPaneLabelCommonModifiers
     import client.*
+
+    val fileUploadComponentsVal : Var[(Option[String],Option[dom.File])] = Var(Tuple2(None,None))
+    val fileUploadComponentsSignal = fileUploadComponentsVal.signal
 
     val publicationAttemptedSignal     = currentPostDefinitionSignal.map( _.fold(false)( _.publicationAttempted ) )
     val publishUpdateButtonLabelSignal = publicationAttemptedSignal.map( pa => if pa then "update post" else "publish post" )
@@ -199,8 +204,57 @@ object PublishDetailsPane:
             postMediaTableCard
           ),
           div(
+            display.flex,
+            flexDirection.column,
+            div(
+              display.flex,
+              flexDirection.row,
+              label(
+                forId := "post-media-file-path-input",
+                "file path:"
+              ),
+              input(
+                flexGrow(1),
+                `type` := "text",
+                value <-- fileUploadComponentsSignal.changes.distinct.collect { case (Some(fp), _ ) => fp },
+                onChange.mapToValue --> { filePath =>
+                  val trimmed = filePath.trim
+                  if trimmed.nonEmpty then
+                    fileUploadComponentsVal.update( _.copy( _1 = Some(trimmed) ) )
+                  else
+                    fileUploadComponentsVal.update( _.copy( _1 = None ) )
+                }
+              )
+            ),
             input(
-              `type` := "file"
+              `type` := "file",
+              onChange.mapToFiles --> { files =>
+                if files.length > 0 then
+                  if files.length > 1 then dom.console.warn(s"Expected one selected file, found ${files.length}, using first: ${files}")
+                  fileUploadComponentsVal.update: fuc =>
+                    if fuc._1.isEmpty then
+                      fuc.copy( _1 = Some( files.head.name ), _2 = Some(files.head) )
+                    else
+                      fuc.copy( _2 = Some(files.head) )
+                else
+                  fileUploadComponentsVal.update( _.copy( _2 = None ) )
+              }
+            ),
+            button(
+              disabled <-- fileUploadComponentsSignal.map( (mbfp, mbf) => mbfp.isEmpty || mbf.isEmpty ),
+              "upload",
+              alignSelf.flexStart,
+              onClick( _.withCurrentValueOf(fileUploadComponentsSignal,currentPostDefinitionSignal) ) --> { (_,tup,mbpd) =>
+                tup match
+                  case (Some(filePath),Some(file)) =>
+                    mbpd match
+                      case Some(pd) =>
+                        util.request.writeMediaItemForPost(protopostLocation,pd.postId,filePath,file,backend,currentPostMediaVar)
+                        fileUploadComponentsVal.set(Tuple2(None,None))
+                      case None     => dom.console.error(s"Tried to upload ${file.name} to $filePath, but no current definition has been set?")
+                  case _ =>
+                    dom.console.error(s"Tried to upload a media item, but no at least one of filePath and file are not set: ${tup}")
+              }
             )
           )
         )

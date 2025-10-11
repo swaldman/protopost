@@ -72,7 +72,7 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     contentLength : Long,
     media         : InputStream
   )( conn : Connection ) =
-    Schema.Table.PostMedia.insert(postId,mediaPath,contentType,contentLength,media)
+    Schema.Table.PostMedia.insert(postId,mediaPath,contentType,contentLength,media)( conn )
   def newPostRevision(postId : Int, contentType : String, body : String)( conn : Connection ) : Option[Instant] =
     if !AcceptableContentTypes(contentType) then
       throw new UnacceptableContentType(s"'${contentType}' not supported, must be one of ${commaListOr(AcceptableContentTypes.toSeq)}")

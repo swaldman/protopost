@@ -494,7 +494,7 @@ object PgSchema extends SelfLogging:
              |  media_path     VARCHAR(1024) NOT NULL,
              |  content_type   VARCHAR(256), -- may be NULL
              |  content_length BIGINT        NOT NULL,
-             |  media          OID           NOT NULL,
+             |  media          BYTEA         NOT NULL,
              |  PRIMARY KEY ( post_id, media_path ),
              |  FOREIGN KEY(post_id) references post(id)
              |)""".stripMargin
@@ -503,6 +503,7 @@ object PgSchema extends SelfLogging:
         private def extractPostMediaInfo( rs : ResultSet ) : PostMediaInfo =
           PostMediaInfo(rs.getInt(1),rs.getString(2),rs.getLong(4),Option(rs.getString(3)))
         def insert( postId : Int, mediaPath : String, contentType : Option[String], contentLength : Long, media : InputStream )( conn : Connection ) =
+          //TRACE.log( s"Table.PostMedia.insert( $postId, $mediaPath, $contentType, $contentLength, media-as-input-stream )" )
           Using.resource( conn.prepareStatement(Insert) ): ps =>
             ps.setInt(1, postId)
             ps.setString(2, mediaPath)

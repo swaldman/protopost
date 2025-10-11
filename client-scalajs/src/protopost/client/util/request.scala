@@ -45,7 +45,8 @@ def writeMediaItemForPost(
   def runRequest( bytes : Array[Byte] ) =
     val request =
       basicRequest
-        .post( protopostLocation.addPath( ("upload-post-media"::postId.toString()::pathElements) ) )
+        .post( protopostLocation.addPath( ("protopost"::"upload-post-media"::postId.toString()::pathElements) ) )
+        .contentType( file.`type` )
         .body( bytes )
         .response( asJson[PostMediaInfo] )
     request.send(backend).map( _.body ).map( decodeOrThrow )

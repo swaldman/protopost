@@ -375,7 +375,7 @@ object ServerLogic extends SelfLogging:
         throw new BadMediaPath(s"Path element '$elem' contains a character not ASCII alphanumeric, dash, period, or underscore in ${fullPath}.")
 
     // eventually we can hit the database for user-specific limits
-    val maxSize = appResources.externalConfig(ExternalConfig.Key.`protopost.media.max-length.default`).toLong
+    val maxSize = appResources.externalConfig(ExternalConfig.Key.`protopost.media.max-length.default.mb`).toInt * 1024 * 1024
 
     // for now, we'll go through a temp file... it's be cool maybe to stream
     // straight into postgres, though
@@ -387,20 +387,20 @@ object ServerLogic extends SelfLogging:
             .rechunk(K32)
             .mapChunksZIO { chunk =>
               val sz = os.size(tempFile)
-              println(s"bytes uploaded: $sz")
+              //println(s"bytes uploaded: $sz")
               if sz > maxSize then
                 ZIO.fail(new BadMedia(s"Exceeded maximum file size ($maxSize bytes) while uploading ''"))
               else
                 ZIO.succeed(chunk)
             }
             .run(ZSink.fromFile(tempFile.toIO))
-        def streamIntoDb() : Task[Unit] =
+        def writeToDb() : Task[Unit] =
           ZIO.attemptBlocking:
             Using.resource( new BufferedInputStream( os.read.inputStream(tempFile) ) ): is =>
               db.newPostMedia(postId,fullPath,contentType,os.size(tempFile),is)( conn )
         for
           len <- streamToFile()
-          _   <- streamIntoDb()
+          _   <- writeToDb()
         yield
           PostMediaInfo(postId,fullPath,len,contentType)
       finally

@@ -15,14 +15,15 @@ object ExternalConfig:
     case `protopost.api.local.port`
     case `protopost.api.root-as-client`
     case `protopost.mode.production`
-    case `protopost.media.max-length.default`
+    case `protopost.media.max-length.default.mb`
+    case `protopost.server.max-upload-size.mb`
 
   val Defaults = Map (
     Key.`protopost.token.security.high.validity.minutes` -> 120.toString,
     Key.`protopost.token.security.low.validity.minutes`  -> (2 * 24 * 60).toString,
     Key.`protopost.api.local.port`                       -> Location.DefaultApiLocalPort.toString,
     Key.`protopost.api.root-as-client`                   -> true.toString,
-    Key.`protopost.media.max-length.default`             -> (8 * 1024 * 1024).toString, //8MB
+    Key.`protopost.media.max-length.default.mb`          -> 8.toString,
   )
 
   def fromProperties( props : Properties ) : ExternalConfig = new ExternalConfig:
