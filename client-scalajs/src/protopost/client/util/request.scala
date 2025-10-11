@@ -4,6 +4,7 @@ import sttp.client4.*
 import sttp.model.*
 import sttp.client4.fetch.*
 import sttp.client4.jsoniter.*
+import org.scalajs.dom
 import com.raquo.laminar.api.L.*
 import protopost.client.util.epochSecondsNow
 import protopost.client.{LocalStorageItem,LoginLevel,ReverseChronologicalPostDefinitions}
@@ -17,6 +18,10 @@ import protopost.common.api.{DestinationIdentifier,NewPostRevision,PostDefinitio
 import protopost.client.PostContent
 import java.time.Instant
 import protopost.common.api.RevisionTimestamp
+import protopost.common.api.PostMediaInfo
+import protopost.client.util.urlEncode
+import scala.scalajs.js.typedarray.ArrayBuffer
+import scala.scalajs.js.typedarray.Int8Array
 
 /*
 def rawBodyToLoginLevelOrThrow( rawBody : Either[ResponseException[String], LoginStatus] ) : LoginLevel =
@@ -25,10 +30,35 @@ def rawBodyToLoginLevelOrThrow( rawBody : Either[ResponseException[String], Logi
     case Right( loginStatus ) => LoginLevel.fromLoginStatus( loginStatus )
 */
 
+def writeMediaItemForPost(
+  protopostLocation : Uri,
+  postId : Int,
+  fullPath : String,
+  file : dom.File,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  currentPostMediaVar : Var[Option[Seq[PostMediaInfo]]]
+)(using ec : ExecutionContext) : Unit =
+  val pathElements =
+    fullPath.split("/").map( urlEncode ).toList
+  def findData() : Future[Array[Byte]] =
+    file.arrayBuffer().toFuture.map( ab => new Int8Array(ab,0,math.round(file.size).toInt).toArray )
+  def runRequest( bytes : Array[Byte] ) =
+    val request =
+      basicRequest
+        .post( protopostLocation.addPath( ("upload-post-media"::postId.toString()::pathElements) ) )
+        .body( bytes )
+        .response( asJson[PostMediaInfo] )
+    request.send(backend).map( _.body ).map( decodeOrThrow )
+  val future = findData().flatMap( runRequest )  
+  future.onComplete: attempt =>
+    attempt match
+      case Success( pmi ) => loadCurrentPostMedia( protopostLocation, postId, backend, currentPostMediaVar )
+      case Failure( t )   => t.printStackTrace()
+  
 def saveLoadOnCurrentPostSwap(
   protopostLocation              : Uri,
-  mbPrevPostDefinition             : Option[PostDefinition],
-  mbNewPostDefinition              : Option[PostDefinition],
+  mbPrevPostDefinition           : Option[PostDefinition],
+  mbNewPostDefinition            : Option[PostDefinition],
   backend                        : WebSocketBackend[scala.concurrent.Future],
   currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
   recoveredRevisionsLsi          : LocalStorageItem[List[Tuple2[RevisionTimestamp,NewPostRevision]]],
@@ -110,6 +140,20 @@ def loadCurrentPostRevisionHistory(
       .response( asJson[PostRevisionHistory] )
   val updater : PostRevisionHistory => Option[PostRevisionHistory] => Option[PostRevisionHistory] = (rh => (_ => Some(rh)))
   updateVarFromApiResult[PostRevisionHistory,Option[PostRevisionHistory]]( request, backend, currentPostAllRevisionsVar, updater )
+
+def loadCurrentPostMedia(
+  protopostLocation : Uri,
+  postId : Int,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  currentPostMediaVar : Var[Option[Seq[PostMediaInfo]]]
+)(using ec : ExecutionContext) =
+  // println("loadCurrentPostRevisionHistory(...)")
+  val request =
+    basicRequest
+      .get( protopostLocation.addPath("protopost", "post-media-by-post-id", postId.toString) )
+      .response( asJson[Seq[PostMediaInfo]] )
+  val updater : Seq[PostMediaInfo] => Option[Seq[PostMediaInfo]] => Option[Seq[PostMediaInfo]] = (spmi => (_ => Some(spmi)))
+  updateVarFromApiResult[Seq[PostMediaInfo],Option[Seq[PostMediaInfo]]]( request, backend, currentPostMediaVar, updater )
 
 def rawBodyToLoginStatusOrThrow( rawBody : Either[ResponseException[String], LoginStatus] ) : LoginStatus =
   rawBody match

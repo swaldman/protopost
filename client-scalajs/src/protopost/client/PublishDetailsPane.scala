@@ -53,6 +53,36 @@ object PublishDetailsPane:
           case Some(pd) => pd.sprout.getOrElse(false)
           case None     => false
 
+    val postMediaTableRowsSignal : Signal[Seq[HtmlElement]] =
+      currentPostMediaSignal.map: mbpmis =>
+        mbpmis match
+          case Some(pmis) =>
+            pmis.map: pmi =>
+              tr(
+                td(pmi.path),
+                td(pmi.length),
+              )
+          case None =>
+            Seq.empty
+
+    val postMediaTableCard = div(
+      table(
+        thead(
+          tr(
+            th(
+              "path"
+            ),
+            th(
+              "size"
+            )
+          )
+        ),
+        tbody(
+          children <-- postMediaTableRowsSignal
+        )
+      )
+    )
+
     val SectionMarginTopRem = 1
 
     div(
@@ -152,6 +182,28 @@ object PublishDetailsPane:
       ),
       RevisionsCards.create( client ).amend(
         marginTop.rem(SectionMarginTopRem),
+      ),
+      div(
+        display.flex,
+        flexDirection.column,
+        marginTop.rem(SectionMarginTopRem),
+        label(
+          forId := "post-media-manager",
+          PublishDetailsPaneLabelCommonModifiers,
+          "post media:"
+        ),
+        div(
+          idAttr := "post-media-manager",
+          div(
+            display <-- currentPostMediaSignal.map( _.fold("none")(pmis => if pmis.isEmpty then "none" else "block") ),
+            postMediaTableCard
+          ),
+          div(
+            input(
+              `type` := "file"
+            )
+          )
+        )
       )
     )
 

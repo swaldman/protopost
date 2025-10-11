@@ -121,6 +121,9 @@ class Client( val protopostLocation : Uri ):
   val currentPostAllRevisionsVar : Var[Option[PostRevisionHistory]] = Var(None)
   val currentPostAllRevisionsSignal = currentPostAllRevisionsVar.signal
 
+  val currentPostMediaVar : Var[Option[Seq[PostMediaInfo]]] = Var(None)
+  val currentPostMediaSignal = currentPostMediaVar.signal
+
   private val manualSaveEventBus : EventBus[Unit] = new EventBus[Unit]
 
   val manualSaveWriteBus : WriteBus[Unit] = manualSaveEventBus.writer
@@ -196,8 +199,10 @@ class Client( val protopostLocation : Uri ):
     latest match
       case Some( pd ) =>
         util.request.loadCurrentPostRevisionHistory(protopostLocation,pd.postId,backend,currentPostAllRevisionsVar)
+        util.request.loadCurrentPostMedia(protopostLocation,pd.postId,backend,currentPostMediaVar)
       case None =>
         currentPostAllRevisionsVar.set( None )
+        currentPostMediaVar.set( None )
 
   def updateCurrentPostRevisions( postId : Int ) =
     util.request.loadCurrentPostRevisionHistory(protopostLocation,postId,backend,currentPostAllRevisionsVar)
