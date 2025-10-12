@@ -131,6 +131,15 @@ class Client( val protopostLocation : Uri ):
 
   val serifFontFamilies = "Georgia, Garamond, serif"
 
+  val sectionBorderPaddingMargin = Seq(
+    marginTop.rem(0.5),
+    padding.rem(1),
+    borderStyle.solid,
+    borderColor.black,
+    borderWidth.px(2),
+    borderRadius.px(10),
+  )
+
   private val updateLoginStatusStream = EventStream.periodic(LoginStatusUpdateIntervalMsecs,false)
 
   private val autosaveRequestStream = EventStream.periodic(AutosaveCheckFrequencyMsecs,false)
@@ -337,6 +346,12 @@ class Client( val protopostLocation : Uri ):
         |}
         |.scrollbars-hidden::-webkit-scrollbar {
         |   display: none;
+        |}
+        |
+        |#post-media-table-card {
+        |  display: grid;
+        |  grid-template-columns: 1fr max-content;
+        |  row-gap: 3px;
         |}
         """.stripMargin
       ),

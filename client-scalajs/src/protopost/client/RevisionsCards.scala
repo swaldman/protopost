@@ -24,15 +24,6 @@ object RevisionsCards:
 
   val RevisionTimestampFormatter = DateTimeFormatter.ofPattern("""yyyy'-'MM'-'dd' @ 'hh':'mm' 'a""").withZone( ZoneId.systemDefault() )
 
-  val MainSectionBorderPaddingMargin = Seq(
-    marginTop.rem(0.5),
-    padding.rem(1),
-    borderStyle.solid,
-    borderColor.black,
-    borderWidth.px(2),
-    borderRadius.px(10),
-  )
-
   def create( client : Client ) : HtmlElement =
     import Client.PublishDetailsPaneLabelCommonModifiers
     import client.*
@@ -107,7 +98,7 @@ object RevisionsCards:
             "revisions:"
           ),
           div(
-            MainSectionBorderPaddingMargin,
+            sectionBorderPaddingMargin,
             idAttr := "revisons-cards-timestamp-list",
             children <-- currentPostAllRevisionsLinks // XXX: this is really inefficient, learn the Laminar Way of selective updates
           )
@@ -124,7 +115,7 @@ object RevisionsCards:
         ),
         div(
           idAttr := "revisons-cards-preview",
-          MainSectionBorderPaddingMargin,
+          sectionBorderPaddingMargin,
           display.flex,
           flexDirection.column,
           div(

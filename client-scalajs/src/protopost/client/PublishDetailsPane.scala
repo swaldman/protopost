@@ -62,29 +62,27 @@ object PublishDetailsPane:
       currentPostMediaSignal.map: mbpmis =>
         mbpmis match
           case Some(pmis) =>
-            pmis.map: pmi =>
-              tr(
-                td(pmi.path),
-                td(pmi.length),
+            pmis.flatMap: pmi =>
+              Seq(
+                div(a(href:=pmi.path,textDecoration.none,pmi.path)),
+                div(pmi.length),
               )
           case None =>
             Seq.empty
 
     val postMediaTableCard = div(
-      table(
-        thead(
-          tr(
-            th(
-              "path"
-            ),
-            th(
-              "size"
-            )
-          )
+      div(
+        idAttr := "post-media-table-card",
+        fontSize.pt(10),
+        div(
+          fontWeight.bold,
+          "filename or path"
         ),
-        tbody(
-          children <-- postMediaTableRowsSignal
-        )
+        div(
+          fontWeight.bold,
+          "size"
+        ),
+        children <-- postMediaTableRowsSignal
       )
     )
 
@@ -130,6 +128,7 @@ object PublishDetailsPane:
           "post unique ID:"
         ),
         input(
+          marginTop.rem(0.25),
           idAttr := "post-unique-id-input",
           `type` := "text",
           disabled <-- postNotAnchorableSignal,
@@ -149,6 +148,7 @@ object PublishDetailsPane:
           )
         ),
         input(
+          marginTop.rem(0.25),
           `type` := "text",
           idAttr := "post-in-reply-to-input",
           placeholder := "(optional) URL identifying the post to which this is a reply"
@@ -166,6 +166,7 @@ object PublishDetailsPane:
           )
         ),
         input(
+          marginTop.rem(0.25),
           `type` := "text",
           idAttr := "post-major-update-description-input",
           disabled <-- fullyPublishedSignal.map( !_ ),
@@ -199,34 +200,20 @@ object PublishDetailsPane:
         ),
         div(
           idAttr := "post-media-manager",
+          sectionBorderPaddingMargin,
           div(
             display <-- currentPostMediaSignal.map( _.fold("none")(pmis => if pmis.isEmpty then "none" else "block") ),
             postMediaTableCard
           ),
+          util.laminar.blackHr(),
           div(
+            marginTop.rem(0.5),
+            fontSize.pt(10),
+            fontWeight.bold,
             display.flex,
             flexDirection.column,
-            div(
-              display.flex,
-              flexDirection.row,
-              label(
-                forId := "post-media-file-path-input",
-                "file path:"
-              ),
-              input(
-                flexGrow(1),
-                `type` := "text",
-                value <-- fileUploadComponentsSignal.changes.distinct.collect { case (Some(fp), _ ) => fp },
-                onChange.mapToValue --> { filePath =>
-                  val trimmed = filePath.trim
-                  if trimmed.nonEmpty then
-                    fileUploadComponentsVal.update( _.copy( _1 = Some(trimmed) ) )
-                  else
-                    fileUploadComponentsVal.update( _.copy( _1 = None ) )
-                }
-              )
-            ),
             input(
+              fontFamily("sans-serif"),
               `type` := "file",
               onChange.mapToFiles --> { files =>
                 if files.length > 0 then
@@ -240,7 +227,31 @@ object PublishDetailsPane:
                   fileUploadComponentsVal.update( _.copy( _2 = None ) )
               }
             ),
+            div(
+              marginTop.rem(0.5),
+              display.flex,
+              flexDirection.row,
+              label(
+                forId := "post-media-file-path-input",
+                "customize filename or path: "
+              ),
+              input(
+                marginLeft.rem(0.5),
+                flexGrow(1),
+                `type` := "text",
+                value <-- fileUploadComponentsSignal.changes.distinct.collect { case (Some(fp), _ ) => fp },
+                onChange.mapToValue --> { filePath =>
+                  val trimmed = filePath.trim
+                  if trimmed.nonEmpty then
+                    fileUploadComponentsVal.update( _.copy( _1 = Some(trimmed) ) )
+                  else
+                    fileUploadComponentsVal.update( _.copy( _1 = None ) )
+                }
+              )
+            ),
             button(
+              cls("button-utilitarian"),
+              marginTop.rem(0.5),
               disabled <-- fileUploadComponentsSignal.map( (mbfp, mbf) => mbfp.isEmpty || mbf.isEmpty ),
               "upload",
               alignSelf.flexStart,
