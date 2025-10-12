@@ -500,8 +500,11 @@ object PgSchema extends SelfLogging:
              |)""".stripMargin
         val Insert = "INSERT INTO post_media(post_id, media_path, content_type, content_length, media) VALUES (?,?,?,?,?)"
         val SelectInfoByPost = "SELECT post_id, media_path, content_type, content_length FROM post_media WHERE post_id = ? ORDER BY media_path ASC"
+        val SelectInfoByPostIdMediaPath = "SELECT post_id, media_path, content_type, content_length, media FROM post_media WHERE post_id = ? AND media_path = ?"
         private def extractPostMediaInfo( rs : ResultSet ) : PostMediaInfo =
           PostMediaInfo(rs.getInt(1),rs.getString(2),rs.getLong(4),Option(rs.getString(3)))
+        private def extractPostMediaTuple( rs : ResultSet ) : (PostMediaInfo,Array[Byte]) =
+          ( extractPostMediaInfo(rs), rs.getBytes(5) )
         def insert( postId : Int, mediaPath : String, contentType : Option[String], contentLength : Long, media : InputStream )( conn : Connection ) =
           //TRACE.log( s"Table.PostMedia.insert( $postId, $mediaPath, $contentType, $contentLength, media-as-input-stream )" )
           Using.resource( conn.prepareStatement(Insert) ): ps =>
@@ -515,6 +518,11 @@ object PgSchema extends SelfLogging:
           Using.resource( conn.prepareStatement(SelectInfoByPost) ): ps =>
             ps.setInt(1,postId)
             Using.resource(ps.executeQuery())( toSeq(extractPostMediaInfo) )
+        def selectByPostIdMediaPath( postId : Int, mediaPath : String )( conn : Connection ) : Option[Tuple2[PostMediaInfo,Array[Byte]]] =
+          Using.resource( conn.prepareStatement(SelectInfoByPostIdMediaPath) ): ps =>
+            ps.setInt(1, postId)
+            ps.setString(2, mediaPath)
+            Using.resource(ps.executeQuery())( zeroOrOneResult("post-media-by-post-id-media-path")( extractPostMediaTuple ) )
       end PostMedia
     end Table
     object Sequence:

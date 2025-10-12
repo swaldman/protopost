@@ -30,6 +30,7 @@ import protopost.server.exception.{BadCookieSettings,BadCredentials,Insufficient
 import protopost.server.jwt
 import sttp.model.headers.CookieValueWithMeta
 import protopost.server.jwt.AuthenticatedPoster
+import sttp.model.Header
 
 object Tapir extends SelfLogging:
 
@@ -117,6 +118,14 @@ object Tapir extends SelfLogging:
 
   val PostMediaByPostId = PosterAuthenticated.get.in("post-media-by-post-id").in( path[Int] ).out( jsonBody[Seq[PostMediaInfo]] )
 
+  val PostLocalEnv =
+    PosterAuthenticated.get
+      .in( "post-local-env" )
+      .in( path[Int] )
+      .in( paths )
+      .out( header[String]("Content-Type") )
+      .out( byteArrayBody )
+
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*
 
@@ -143,7 +152,8 @@ object Tapir extends SelfLogging:
       RevisionHistory.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( revisionHistory( appResources ) ),
       RetrieveRevision.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( retrieveRevision( appResources ) ),
       UploadPostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( uploadPostMedia(appResources) ).asInstanceOf[ZServerEndpoint[Any,Any]], // cast away the ZioStreaming capability requirement, we know it's supported
-      PostMediaByPostId.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMediaByPostId(appResources) )
+      PostMediaByPostId.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMediaByPostId(appResources) ),
+      PostLocalEnv.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postLocalEnv(appResources) )
     ) ++ rootAsClient.toList
 
 end Tapir

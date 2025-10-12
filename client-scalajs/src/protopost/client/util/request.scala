@@ -19,7 +19,6 @@ import protopost.client.PostContent
 import java.time.Instant
 import protopost.common.api.RevisionTimestamp
 import protopost.common.api.PostMediaInfo
-import protopost.client.util.urlEncode
 import scala.scalajs.js.typedarray.ArrayBuffer
 import scala.scalajs.js.typedarray.Int8Array
 
@@ -39,7 +38,7 @@ def writeMediaItemForPost(
   currentPostMediaVar : Var[Option[Seq[PostMediaInfo]]]
 )(using ec : ExecutionContext) : Unit =
   val pathElements =
-    fullPath.split("/").map( urlEncode ).toList
+    fullPath.split("/").toList
   def findData() : Future[Array[Byte]] =
     file.arrayBuffer().toFuture.map( ab => new Int8Array(ab,0,math.round(file.size).toInt).toArray )
   def runRequest( bytes : Array[Byte] ) =

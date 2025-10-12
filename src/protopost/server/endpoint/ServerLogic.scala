@@ -32,6 +32,7 @@ import com.mchange.sc.zsqlutil.*
 
 import zio.stream.*
 import scala.util.Using
+import java.net.URLConnection
 
 object ServerLogic extends SelfLogging:
 
@@ -417,5 +418,21 @@ object ServerLogic extends SelfLogging:
 
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 
+  private def guessMimeType( fname : String ) : Option[String] = Option(URLConnection.getFileNameMap().getContentTypeFor(fname))
+
+  def postLocalEnv( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[(String,Array[Byte])] =
+
+    val ( postId, pathElements ) = tuple 
+
+    def op( db : PgDatabase, conn : Connection ) : (String,Array[Byte]) =
+      val mediaPath = pathElements.mkString("/")
+      val mbOut =
+        db.postMediaByPostIdMediaPath(postId,mediaPath)( conn ).map: (pmi,bytes) =>
+          val ct = (pmi.`type` orElse guessMimeType(pathElements.last)).getOrElse("application/octet-stream")
+          (ct, bytes)
+      mbOut.getOrElse:
+        throw new ResourceNotFound(s"No item found for post id $postId at media path '$mediaPath'.")
+
+    onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 
 end ServerLogic

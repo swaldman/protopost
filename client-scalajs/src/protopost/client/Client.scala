@@ -15,6 +15,7 @@ import scala.util.control.NonFatal
 import protopost.common.api.{*,given}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
+import protopost.client.util.rebasePage
 
 object Client:
   val CardPaddingLeftRightRem = 0.5d
@@ -200,9 +201,11 @@ class Client( val protopostLocation : Uri ):
       case Some( pd ) =>
         util.request.loadCurrentPostRevisionHistory(protopostLocation,pd.postId,backend,currentPostAllRevisionsVar)
         util.request.loadCurrentPostMedia(protopostLocation,pd.postId,backend,currentPostMediaVar)
+        rebasePage(Some(protopostLocation.addPath("protopost","post-local-env",pd.postId.toString,"").toString))
       case None =>
         currentPostAllRevisionsVar.set( None )
         currentPostMediaVar.set( None )
+        rebasePage(None)
 
   def updateCurrentPostRevisions( postId : Int ) =
     util.request.loadCurrentPostRevisionHistory(protopostLocation,postId,backend,currentPostAllRevisionsVar)

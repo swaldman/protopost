@@ -102,6 +102,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.Post.selectByDestinationAndOwner( seismicNodeId, destinationName, ownerId )( conn ).map( postDefinitionFromRaw(_)(conn) )
   def postMediaInfoByPostId( postId : Int )( conn : Connection ) : Seq[PostMediaInfo] =
     Schema.Table.PostMedia.selectInfoByPost( postId )( conn )
+  def postMediaByPostIdMediaPath( postId : Int, mediaPath : String )( conn : Connection ) : Option[(PostMediaInfo,Array[Byte])] =
+    Schema.Table.PostMedia.selectByPostIdMediaPath(postId,mediaPath)( conn )
   def postRevisionBySaveTime( id : Int, saveTime : Instant )( conn : Connection ) : Option[RetrievedPostRevision] =
     Schema.Table.PostRevision.select(id, saveTime)( conn )
   def postRevisionLatest( id : Int )( conn : Connection ) : Option[RetrievedPostRevision] =
