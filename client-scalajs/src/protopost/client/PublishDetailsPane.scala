@@ -11,6 +11,8 @@ import sttp.client4.WebSocketBackend
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
+import com.mchange.conveniences.string.*
+
 object PublishDetailsPane:
   def create( client : Client ) : HtmlElement =
     import Client.PublishDetailsPaneLabelCommonModifiers
@@ -65,7 +67,7 @@ object PublishDetailsPane:
             pmis.flatMap: pmi =>
               Seq(
                 div(a(href:=pmi.path,textDecoration.none,pmi.path)),
-                div(pmi.length),
+                div(humanReadableByteLength(pmi.length)),
               )
           case None =>
             Seq.empty
