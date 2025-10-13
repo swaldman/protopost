@@ -29,6 +29,26 @@ def rawBodyToLoginLevelOrThrow( rawBody : Either[ResponseException[String], Logi
     case Right( loginStatus ) => LoginLevel.fromLoginStatus( loginStatus )
 */
 
+
+
+
+def deleteMediaItemForPost(
+  protopostLocation : Uri,
+  postId : Int,
+  fullPath : String,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  currentPostMediaVar : Var[Option[Seq[PostMediaInfo]]]
+)(using ec : ExecutionContext) : Unit =
+  val pathElements =
+    fullPath.split("/").toList
+  val future =  
+    val request = basicRequest.delete( protopostLocation.addPath( ("protopost"::"post-media"::postId.toString()::pathElements) ) )
+    request.send(backend)
+  future.onComplete: attempt =>
+    attempt match
+      case Success( pmi ) => loadCurrentPostMedia( protopostLocation, postId, backend, currentPostMediaVar )
+      case Failure( t )   => t.printStackTrace()
+
 def writeMediaItemForPost(
   protopostLocation : Uri,
   postId : Int,

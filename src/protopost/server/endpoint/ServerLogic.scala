@@ -420,7 +420,7 @@ object ServerLogic extends SelfLogging:
 
   private def guessMimeType( fname : String ) : Option[String] = Option(URLConnection.getFileNameMap().getContentTypeFor(fname))
 
-  def postLocalEnv( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[(String,Array[Byte])] =
+  def postMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[(String,Array[Byte])] =
 
     val ( postId, pathElements ) = tuple 
 
@@ -432,6 +432,17 @@ object ServerLogic extends SelfLogging:
           (ct, bytes)
       mbOut.getOrElse:
         throw new ResourceNotFound(s"No item found for post id $postId at media path '$mediaPath'.")
+
+    onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
+
+  def deletePostMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[Unit] =
+
+    val ( postId, pathElements ) = tuple 
+
+    def op( db : PgDatabase, conn : Connection ) : Unit =
+      val mediaPath = pathElements.mkString("/")
+      if !db.deletePostMedia(postId,mediaPath)(conn) then
+        throw new ResourceNotFound("Failed to find media for post $postId with path '${mediaPath}' in order to delete it.")
 
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 

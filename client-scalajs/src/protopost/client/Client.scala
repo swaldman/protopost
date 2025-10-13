@@ -210,7 +210,7 @@ class Client( val protopostLocation : Uri ):
       case Some( pd ) =>
         util.request.loadCurrentPostRevisionHistory(protopostLocation,pd.postId,backend,currentPostAllRevisionsVar)
         util.request.loadCurrentPostMedia(protopostLocation,pd.postId,backend,currentPostMediaVar)
-        rebasePage(Some(protopostLocation.addPath("protopost","post-local-env",pd.postId.toString,"").toString))
+        rebasePage(Some(protopostLocation.addPath("protopost","post-media",pd.postId.toString,"").toString)) // we add the empty string to get the directory trailing slash
       case None =>
         currentPostAllRevisionsVar.set( None )
         currentPostMediaVar.set( None )
@@ -346,12 +346,6 @@ class Client( val protopostLocation : Uri ):
         |}
         |.scrollbars-hidden::-webkit-scrollbar {
         |   display: none;
-        |}
-        |
-        |#post-media-table-card {
-        |  display: grid;
-        |  grid-template-columns: 1fr max-content;
-        |  row-gap: 3px;
         |}
         """.stripMargin
       ),

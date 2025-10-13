@@ -33,6 +33,12 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Join.selectAllDestinations( conn )
   def allPosters( conn : Connection ) : Set[PosterWithAuth] =
     Schema.Table.Poster.selectAll( conn )
+  def deletePostMedia( postId : Int, mediaPath : String )( conn : Connection ) : Boolean =
+    val rowsDeleted = Schema.Table.PostMedia.deleteByPostIdMediaPath(postId,mediaPath)(conn)
+    rowsDeleted match
+      case 0 => false
+      case 1 => true
+      case n => throw new ApparentBug(s"deletePostMedia(...) should at most delete a single row, apparently $n rows deleted.")
   def destinationsByPosterId( posterId : PosterId)( conn : Connection ) : Set[Destination] =
     Schema.Join.selectDestinationsForPosterId( posterId )( conn )
   def destinationDefined( seismicNodeId : Int, name : String )( conn : Connection ) : Boolean =

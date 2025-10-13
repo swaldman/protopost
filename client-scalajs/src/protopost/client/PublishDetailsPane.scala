@@ -68,6 +68,16 @@ object PublishDetailsPane:
               Seq(
                 div(a(href:=pmi.path,textDecoration.none,pmi.path)),
                 div(humanReadableByteLength(pmi.length)),
+                div(
+                  cursor.pointer,
+                  alignSelf.center,
+                  color.red,
+                  marginLeft.rem(0.25),
+                  "\u00d7",
+                  onClick --> { _ =>
+                    util.request.deleteMediaItemForPost(protopostLocation,pmi.postId,pmi.path,backend,currentPostMediaVar)
+                  }
+                )
               )
           case None =>
             Seq.empty
@@ -75,6 +85,9 @@ object PublishDetailsPane:
     val postMediaTableCard = div(
       div(
         idAttr := "post-media-table-card",
+        display.grid,
+        styleProp("grid-template-columns") := "1fr max-content max-content",
+        styleProp("row-gap") := "1fr max-content max-content",
         fontSize.pt(10),
         div(
           fontWeight.bold,
@@ -83,6 +96,9 @@ object PublishDetailsPane:
         div(
           fontWeight.bold,
           "size"
+        ),
+        div(
+          "\u00a0"
         ),
         children <-- postMediaTableRowsSignal
       )

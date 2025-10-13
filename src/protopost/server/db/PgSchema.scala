@@ -501,6 +501,7 @@ object PgSchema extends SelfLogging:
         val Insert = "INSERT INTO post_media(post_id, media_path, content_type, content_length, media) VALUES (?,?,?,?,?)"
         val SelectInfoByPost = "SELECT post_id, media_path, content_type, content_length FROM post_media WHERE post_id = ? ORDER BY media_path ASC"
         val SelectInfoByPostIdMediaPath = "SELECT post_id, media_path, content_type, content_length, media FROM post_media WHERE post_id = ? AND media_path = ?"
+        val DeleteByPostIdMediaPath = "DELETE FROM post_media WHERE post_id = ? AND media_path = ?"
         private def extractPostMediaInfo( rs : ResultSet ) : PostMediaInfo =
           PostMediaInfo(rs.getInt(1),rs.getString(2),rs.getLong(4),Option(rs.getString(3)))
         private def extractPostMediaTuple( rs : ResultSet ) : (PostMediaInfo,Array[Byte]) =
@@ -523,6 +524,11 @@ object PgSchema extends SelfLogging:
             ps.setInt(1, postId)
             ps.setString(2, mediaPath)
             Using.resource(ps.executeQuery())( zeroOrOneResult("post-media-by-post-id-media-path")( extractPostMediaTuple ) )
+        def deleteByPostIdMediaPath( postId : Int, mediaPath : String )( conn : Connection ) : Int =
+          Using.resource( conn.prepareStatement(DeleteByPostIdMediaPath) ): ps =>
+            ps.setInt(1, postId)
+            ps.setString(2, mediaPath)
+            ps.executeUpdate()
       end PostMedia
     end Table
     object Sequence:

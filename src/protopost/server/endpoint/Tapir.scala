@@ -118,13 +118,21 @@ object Tapir extends SelfLogging:
 
   val PostMediaByPostId = PosterAuthenticated.get.in("post-media-by-post-id").in( path[Int] ).out( jsonBody[Seq[PostMediaInfo]] )
 
-  val PostLocalEnv =
+  val PostMedia =
     PosterAuthenticated.get
-      .in( "post-local-env" )
+      .in( "post-media" )
       .in( path[Int] )
       .in( paths )
       .out( header[String]("Content-Type") )
       .out( byteArrayBody )
+
+  val DeletePostMedia =
+    PosterAuthenticated.delete
+      .in( "post-media" )
+      .in( path[Int] )
+      .in( paths )
+      .out(statusCode(StatusCode.NoContent))
+      .out(emptyOutput)
 
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*
@@ -153,7 +161,8 @@ object Tapir extends SelfLogging:
       RetrieveRevision.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( retrieveRevision( appResources ) ),
       UploadPostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( uploadPostMedia(appResources) ).asInstanceOf[ZServerEndpoint[Any,Any]], // cast away the ZioStreaming capability requirement, we know it's supported
       PostMediaByPostId.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMediaByPostId(appResources) ),
-      PostLocalEnv.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postLocalEnv(appResources) )
+      PostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMedia(appResources) ),
+      DeletePostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( deletePostMedia(appResources) ),
     ) ++ rootAsClient.toList
 
 end Tapir
