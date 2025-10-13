@@ -12,6 +12,7 @@ import scala.collection.immutable
 import scala.util.{Success,Failure}
 import scala.util.control.NonFatal
 
+import protopost.common.PosterId
 import protopost.common.api.{*,given}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
@@ -94,6 +95,9 @@ class Client( val protopostLocation : Uri ):
 
   val openDestinationsLsi = LocalStorageItem(LocalStorageItem.Key.openDestinations)
 
+  val lastLoggedInPosterLsi = LocalStorageItem(LocalStorageItem.Key.lastLoggedInPoster)
+  val lastLoggedInPosterSignal = lastLoggedInPosterLsi.signal
+
   val currentPostDefinitionSignal = Signal.combine(currentPostIdentifierSignal,destinationsToKnownPostsVar).map: (mbpi,d2kp) =>
     mbpi.flatMap: pi =>
       val mbDestinationMap = d2kp.get(pi.destinationIdentifier)
@@ -164,6 +168,20 @@ class Client( val protopostLocation : Uri ):
       posterNoAuthVar.set(None)
       destinationsVar.set( immutable.SortedSet.empty )
 
+  private val localStorageUserFreshnessObserver = Observer[(Option[PosterNoAuth],Option[PosterId])]: ( mbPna, mbPid ) =>
+    ( mbPna, mbPid ) match
+      case ( Some(pna), Some(posterId) ) => // we're logging in, we have local storage set for current user, ensure consistency
+        if pna.id != posterId then // inconsistent user, clear local storage
+          LocalStorageItem.resetAll()
+      case ( Some(pna), None ) =>  // we're logging in, we have no local storage set for current user, set it fresh
+        LocalStorageItem.resetAll()
+        lastLoggedInPosterLsi.set(Some(pna.id))
+      case ( None, Some(posterId) ) =>  // we're logging out, we have local storage set, don't clear it, we may re-login consistently
+        /* ignore */
+      case (None,None) =>
+        /* apparently the app has no storage for any user, but to be sure we can clear local storage */
+        LocalStorageItem.resetAll()
+
   private val doSaveEventObserver = Observer[NewPostRevision]: npr =>
     util.request.saveRevisionToServerUpdateRevisions(protopostLocation, npr, backend, localContentDirtyVar,currentPostAllRevisionsVar)
 
@@ -228,6 +246,7 @@ class Client( val protopostLocation : Uri ):
         loginLevelChangeEvents.addObserver(loginObserver)
         currentPostDefinitionLastChangeTuple.addObserver(currentPostDefinitionLastChangeTupleObserver)
         doSaveEventStream.addObserver( doSaveEventObserver )
+        posterNoAuthSignal.withCurrentValueOf(lastLoggedInPosterSignal).addObserver( localStorageUserFreshnessObserver ) // monitor for changes in user logged in to this browser, clear local storage if there is a change
       },
       idAttr("protopost-client-default"),
       // very annoyingly, there's not an easy way to set grid- and hover-related style elements (beyond display.grid itself) in laminar

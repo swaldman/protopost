@@ -132,6 +132,8 @@ given JsonValueCodec[PosterId] = new JsonValueCodec[PosterId]:
   def encodeValue(x : PosterId, out: JsonWriter): Unit = out.writeVal(i(x))
   def nullValue : PosterId = (-1).asInstanceOf[PosterId]
 
+given given_JsonValueCodec_Option_PosterId : JsonValueCodec[Option[PosterId]] = JsonCodecMaker.make
+
 given [T : JsonValueCodec] : JsonValueCodec[UpdateValue[T]] = JsonCodecMaker.make
 
 given JsonValueCodec[LoginStatus] = JsonCodecMaker.make

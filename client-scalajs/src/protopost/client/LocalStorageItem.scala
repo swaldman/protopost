@@ -6,6 +6,7 @@ import com.raquo.laminar.api.L.{*, given}
 import com.github.plokhotnyuk.jsoniter_scala.core.{*,given}
 import com.github.plokhotnyuk.jsoniter_scala.macros.{*,given}
 
+import protopost.common.PosterId
 import protopost.common.api.{*,given}
 
 object LocalStorageItem:
@@ -20,13 +21,22 @@ object LocalStorageItem:
     case currentPostLocalPostContent extends Key[PostContent]                                     (PostContent.default)
     case recoveredRevisions          extends Key[List[Tuple2[RevisionTimestamp,NewPostRevision]]] (Nil)
     case openDestinations            extends Key[Set[DestinationIdentifier]]                      (Set.empty)
+    case lastLoggedInPoster          extends Key[Option[PosterId]]                                (None)
+
+  /* ick */
+  var instances : List[LocalStorageItem[?]] = Nil 
 
   def resetAll() : Unit =
+    // we do want any listeners notified of the change in local storage values
+    instances.foreach( _.reset() )
+    // we want to make sure that any local storage vars the current user has not constructed are also cleared
     Key.values.foreach: key =>
       dom.window.localStorage.removeItem(key.toString())
 
 class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T]):
   require( key.defaultValue != null, "The value of a LocalStorageItem cannot be null." )
+
+  LocalStorageItem.instances = this :: LocalStorageItem.instances
 
   private val _var = Var[Option[T]](
     Option(dom.window.localStorage.getItem(key.toString())).map( s => readFromString[T](s) )
@@ -41,6 +51,8 @@ class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T]):
     else
       dom.window.localStorage.setItem(key.toString(), writeToString[T](value))
     _var.set(Some(value))
+
+  def reset() : Unit = set(key.defaultValue)
 
   def update( doUpdate : T => T ) = set( doUpdate(this.now()) )
 
