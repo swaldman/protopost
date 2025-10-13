@@ -6,9 +6,11 @@ import com.raquo.laminar.api.L.{*, given}
 val documentEscapeEvents = documentEvents( _.onKeyDown.filter( ke => ke.keyCode == 27 || ke.key == "Escape" || ke.key == "Esc") )
 //val onEscapePress: EventProcessor[dom.KeyboardEvent, dom.KeyboardEvent] = onKeyPress.filter(_.keyCode == dom.KeyCode.Escape) // doesn't reliably work!
 
-// straight from laminar docs
-// https://laminar.dev/documentation
-val onEnterPress: EventProcessor[dom.KeyboardEvent, dom.KeyboardEvent] = onKeyPress.filter(_.keyCode == dom.KeyCode.Enter)
+// originally straight from laminar docs - https://laminar.dev/documentation
+// but note: keyCode can be undefined during browser autocomplete, so we check the key property as well
+val onEnterPress: EventProcessor[dom.KeyboardEvent, dom.KeyboardEvent] = onKeyPress.filter { ke =>
+  ke.key == "Enter" || (ke.keyCode.isInstanceOf[Int] && ke.keyCode == dom.KeyCode.Enter)
+}
 
 def blackHr() : HtmlElement =
   hr(
