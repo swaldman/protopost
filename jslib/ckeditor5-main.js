@@ -272,6 +272,54 @@ const editorConfig = {
 
 console.log("executing ckeditor5-main.js")
 
+
+/*
+  With some badgering, I mostly let claude.ai implement this. After reviewing the code and asking
+  some questions, it produced this useful summary:
+
+    The loader object is an instance of CKEditor 5's FileLoader class from the FileRepository plugin. Here's what it provides:
+
+    Key properties:
+    - file - A Promise that resolves to the native browser File object being uploaded
+    - uploaded - A property you set to track how many bytes have been uploaded (for progress bars)
+    - uploadTotal - A property you set to track the total bytes to upload
+    - status - The current status of the upload ('idle', 'reading', 'uploading', 'uploaded', 'error', 'aborted')
+
+    The upload adapter pattern:
+    Your adapter class must implement:
+    - upload() - Returns a Promise that resolves to an object with { default: url } (the URL where the uploaded file can be accessed)
+    - abort() - (Optional) Cancels the upload
+
+    Documentation:
+    The official CKEditor 5 documentation for this is at:
+    - https://ckeditor.com/docs/ckeditor5/latest/framework/deep-dive/upload-adapter.html
+    - https://ckeditor.com/docs/ckeditor5/latest/api/module_upload_filerepository-FileLoader.html
+
+    In our implementation, we:
+    1. Get the File from loader.file promise
+    2. Upload it via XHR
+    3. Update loader.uploaded and loader.uploadTotal in the progress callback (for the progress bar)
+    4. Resolve with { default: imageUrl } when complete
+
+    The loader handles all the internal CKEditor state management - we just provide the upload mechanism.
+
+    ...you don't need to set the status property. That's managed internally by CKEditor's FileLoader class based on the lifecycle
+    of the Promise you return from  upload():
+
+    - When you call upload(), CKEditor sets status to 'reading'
+    - When your Promise is pending, it's 'uploading'
+    - When your Promise resolves, it becomes 'uploaded'
+    - When your Promise rejects, it becomes 'error'
+    - If abort() is called, it becomes 'aborted'
+
+    The status property is read-only from the adapter's perspective - you observe it, you don't set it. Your adapter's job is just to:
+    1. Return a Promise from upload()
+    2. Update uploaded and uploadTotal for progress (which we do)
+    3. Optionally implement abort() (which we do)
+
+    CKEditor handles all the status transitions automatically based on how your Promise behaves. So your current implementation is correct!
+*/
+
 // Custom upload adapter for Protopost
 class ProtopostUploadAdapter {
     constructor(loader, postId, protopostLocation) {
