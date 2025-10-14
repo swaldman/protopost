@@ -79,6 +79,7 @@ def saveLoadOnCurrentPostSwap(
   protopostLocation              : Uri,
   mbPrevPostDefinition           : Option[PostDefinition],
   mbNewPostDefinition            : Option[PostDefinition],
+  newPostContentType             : String,
   backend                        : WebSocketBackend[scala.concurrent.Future],
   currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
   recoveredRevisionsLsi          : LocalStorageItem[List[Tuple2[RevisionTimestamp,NewPostRevision]]],
@@ -115,7 +116,7 @@ def saveLoadOnCurrentPostSwap(
     request.send(backend).map( _.body ).map( decodeOrThrow ).map: mbPostRevision =>
       mbPostRevision match
         case Some( pr ) => currentPostLocalPostContentLsi.set( PostContent( pr.contentType, pr.body ) )
-        case None => currentPostLocalPostContentLsi.set( PostContent.default )
+        case None => currentPostLocalPostContentLsi.set( PostContent.default.copy(contentType = newPostContentType) )
       localContentDirtyVar.set(false)
   (mbPrevPostDefinition,mbNewPostDefinition) match
     case (Some(ppd),Some(npd)) =>

@@ -76,7 +76,8 @@ const editorConfig = {
 			'code',
 			'|',
 			'horizontalLine',
-			'link',
+                        'link',
+                        'insertImage',
 			'insertTable',
 			'blockQuote',
 			'codeBlock',
@@ -271,12 +272,121 @@ const editorConfig = {
 
 console.log("executing ckeditor5-main.js")
 
+// Custom upload adapter for Protopost
+class ProtopostUploadAdapter {
+    constructor(loader, postId, protopostLocation) {
+        this.loader = loader;
+        this.postId = postId;
+        this.protopostLocation = protopostLocation;
+    }
+
+    upload() {
+        return this.loader.file
+            .then(file => new Promise((resolve, reject) => {
+                this._initRequest(file);
+                this._initListeners(resolve, reject, file);
+                this._sendRequest(file);
+            }));
+    }
+
+    abort() {
+        if (this.xhr) {
+            this.xhr.abort();
+        }
+    }
+
+    _initRequest(file) {
+        const xhr = this.xhr = new XMLHttpRequest();
+        // Remove trailing slash from protopostLocation if present
+        const baseUrl = this.protopostLocation.replace(/\/$/, '');
+        xhr.open('POST', `${baseUrl}/protopost/upload-post-media/${this.postId}/${file.name}`, true);
+        xhr.responseType = 'json';
+    }
+
+    _initListeners(resolve, reject, file) {
+        const xhr = this.xhr;
+        const loader = this.loader;
+        const genericErrorText = `Couldn't upload file: ${file.name}.`;
+
+        xhr.addEventListener('error', () => reject(genericErrorText));
+        xhr.addEventListener('abort', () => reject());
+        xhr.addEventListener('load', () => {
+            const response = xhr.response;
+
+            console.log('Upload response:', response);
+
+            if (!response || response.error) {
+                return reject(response && response.error ? response.error.message : genericErrorText);
+            }
+
+            // The response should contain the PostMediaInfo with the path
+            // Since the app uses a <base> tag for post media, we can use just the filename as a relative URL
+            const imageUrl = response.path;
+
+            console.log('Resolving with image URL:', imageUrl);
+
+            // Dispatch custom event for upload completion
+            console.log('CKEditor upload complete:', file.name);
+            const event = new CustomEvent('ckeditorUploadComplete', {
+                detail: {
+                    fileName: file.name
+                }
+            });
+            document.dispatchEvent(event);
+
+            resolve({
+                default: imageUrl
+            });
+        });
+
+        if (xhr.upload) {
+            xhr.upload.addEventListener('progress', evt => {
+                if (evt.lengthComputable) {
+                    loader.uploadTotal = evt.total;
+                    loader.uploaded = evt.loaded;
+                }
+            });
+        }
+    }
+
+    _sendRequest(file) {
+        // Set Content-Type header
+        if (file.type) {
+            this.xhr.setRequestHeader('Content-Type', file.type);
+        }
+
+        // Send the file as binary data
+        this.xhr.send(file);
+    }
+}
+
+// Plugin to integrate the upload adapter
+function ProtopostUploadAdapterPlugin(editor) {
+    editor.plugins.get('FileRepository').createUploadAdapter = (loader) => {
+        // Get postId and protopostLocation from global context
+        const postId = globalThis.protopostCurrentPostId;
+        const protopostLocation = globalThis.protopostLocation;
+
+        if (!postId) {
+            console.error('No protopostCurrentPostId set for image upload');
+            return null;
+        }
+
+        return new ProtopostUploadAdapter(loader, postId, protopostLocation);
+    };
+}
+
 // globalThis.bindCkEditor = ( containerId ) => {
 //  //return InlineEditor.create(document.querySelector('#'+containerId), editorConfig);
 //  return DecoupledEditor.create(document.querySelector('#'+containerId), editorConfig);
 // }
 globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
-    const out = DecoupledEditor.create(document.querySelector('#'+mainContainerId), editorConfig);
+    // Add the upload adapter plugin to the config
+    const configWithUpload = Object.assign({}, editorConfig, {
+        extraPlugins: [ProtopostUploadAdapterPlugin]
+    });
+
+    const out = DecoupledEditor.create(document.querySelector('#'+mainContainerId), configWithUpload);
     out.then( editor => {
         const toolbarContainer = document.querySelector('#'+toolbarContainerId);
         editor.ui.view.toolbar.element.style.width=0
@@ -307,6 +417,7 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
           // The DOM is already loaded, execute the function immediately
           recomputeToolbarWidth();
         }
+
         toolbarContainer.appendChild( editor.ui.view.toolbar.element );
     } ).catch( error => {
         console.error( error );

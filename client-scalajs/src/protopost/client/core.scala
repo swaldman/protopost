@@ -12,6 +12,7 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.*
 @JSGlobalScope
 object Globals extends js.Object:
   val protopostLocation : String = js.native
+  var protopostCurrentPostId : Int = js.native
 
 @js.native
 @JSGlobal
@@ -40,8 +41,8 @@ enum LoginLevel( val cssColor : String, val isLoggedIn : Boolean ):
   case high    extends LoginLevel("green",true)
 
 enum Composer( val label : String ):
-  case `text-and-preview` extends Composer( "Text and preview (plaintext, markdown, html)" )
   case `WYSIWYG`          extends Composer( "WYSIWYG (html)" )
+  case `text-and-preview` extends Composer( "Text and preview (plaintext, markdown, html)" )
 
 object PostContent:
   val default = PostContent("text/plain","")

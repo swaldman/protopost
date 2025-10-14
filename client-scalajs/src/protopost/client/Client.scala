@@ -12,10 +12,12 @@ import scala.collection.immutable
 import scala.util.{Success,Failure}
 import scala.util.control.NonFatal
 
+import scala.scalajs.js
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
+
 import protopost.common.PosterId
 import protopost.common.api.{*,given}
 
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import protopost.client.util.rebasePage
 
 object Client:
@@ -26,7 +28,7 @@ object Client:
 
   val UntitledPostLabel = "(untitled post)"
 
-  val DefaultComposer = Composer.`text-and-preview`
+  val DefaultComposer = Composer.WYSIWYG
 
   val LoginStatusUpdateIntervalMsecs         = 6000
   val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
@@ -84,6 +86,11 @@ class Client( val protopostLocation : Uri ):
 
   val composerLsi = LocalStorageItem(LocalStorageItem.Key.composer)
   val composerSignal = composerLsi.signal
+
+  val newPostContentTypeSignal = composerSignal.map: composer =>
+    composer match
+      case Composer.WYSIWYG => "text/html"
+      case Composer.`text-and-preview` => "text/markdown"
 
   val currentPostLocalPostContentLsi = LocalStorageItem(LocalStorageItem.Key.currentPostLocalPostContent)
   val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
@@ -154,6 +161,17 @@ class Client( val protopostLocation : Uri ):
       .collect { case (_,true,Some(pd),pc) => NewPostRevision(pd.postId,pc.contentType,pc.text) }
       .distinct
 
+  private val reloadPostMediaRequestEventBus = new EventBus[Unit]
+  private val reloadPostMediaRequestWriteBus = reloadPostMediaRequestEventBus.writer
+  private val reloadPostMediaRequestListener : js.Function1[dom.Event, Unit] = (evt: dom.Event) => reloadPostMediaRequestWriteBus.onNext( () )
+  private val reloadPostMediaRequestObserver = Observer[Option[PostDefinition]]: mbpd =>
+    mbpd match
+      case Some( pd ) =>
+        util.request.loadCurrentPostMedia(protopostLocation,pd.postId,backend,currentPostMediaVar)
+      case None =>
+        dom.console.warn("We're seeing a 'ckeditorUploadComplete' event while there is no current post to update for?")
+
+
   private val loginObserver = Observer[LoginLevel]: level =>
     println(s"loginObserver - level: ${level}")
     if level.isLoggedIn then
@@ -222,16 +240,18 @@ class Client( val protopostLocation : Uri ):
       case Some( _ )                  => /* ignore */
       case None                       => doHardUpdate()
 
-  private val currentPostDefinitionLastChangeTupleObserver = Observer[Tuple2[Option[PostDefinition],Option[PostDefinition]]]: (prev, latest) =>
-    util.request.saveLoadOnCurrentPostSwap(protopostLocation,prev,latest,backend,currentPostLocalPostContentLsi,recoveredRevisionsLsi,localContentDirtyVar)
+  private val currentPostDefinitionLastChangeTupleObserver = Observer[Tuple3[Option[PostDefinition],Option[PostDefinition],String]]: (prev, latest, newPostContentType) =>
+    util.request.saveLoadOnCurrentPostSwap(protopostLocation,prev,latest,newPostContentType,backend,currentPostLocalPostContentLsi,recoveredRevisionsLsi,localContentDirtyVar)
     latest match
       case Some( pd ) =>
         util.request.loadCurrentPostRevisionHistory(protopostLocation,pd.postId,backend,currentPostAllRevisionsVar)
         util.request.loadCurrentPostMedia(protopostLocation,pd.postId,backend,currentPostMediaVar)
+        Globals.protopostCurrentPostId = pd.postId
         rebasePage(Some(protopostLocation.addPath("protopost","post-media",pd.postId.toString,"").toString)) // we add the empty string to get the directory trailing slash
       case None =>
         currentPostAllRevisionsVar.set( None )
         currentPostMediaVar.set( None )
+        Globals.protopostCurrentPostId = 0 // falsey!
         rebasePage(None)
 
   def updateCurrentPostRevisions( postId : Int ) =
@@ -244,9 +264,14 @@ class Client( val protopostLocation : Uri ):
         updateLoginStatusStream.addObserver( updateLoginStatusObserver )
         loginStatusSignal.changes.throttle(UnsuccessfulLoginStatusCheckRetryMs).addObserver( mustHardUpdateLoginStatusObserver ) // important that these changes are NOT distinct, so we retry every minute, even on the "same" failure
         loginLevelChangeEvents.addObserver(loginObserver)
-        currentPostDefinitionLastChangeTuple.addObserver(currentPostDefinitionLastChangeTupleObserver)
+        currentPostDefinitionLastChangeTuple.withCurrentValueOf(newPostContentTypeSignal).addObserver(currentPostDefinitionLastChangeTupleObserver)
         doSaveEventStream.addObserver( doSaveEventObserver )
         posterNoAuthSignal.withCurrentValueOf(lastLoggedInPosterSignal).addObserver( localStorageUserFreshnessObserver ) // monitor for changes in user logged in to this browser, clear local storage if there is a change
+        reloadPostMediaRequestEventBus.events.withCurrentValueOf(currentPostDefinitionSignal).addObserver( reloadPostMediaRequestObserver )
+        dom.document.addEventListener("ckeditorUploadComplete", reloadPostMediaRequestListener)
+      },
+      onUnmountCallback { elem =>
+        dom.document.removeEventListener("ckeditorUploadComplete", reloadPostMediaRequestListener)
       },
       idAttr("protopost-client-default"),
       // very annoyingly, there's not an easy way to set grid- and hover-related style elements (beyond display.grid itself) in laminar

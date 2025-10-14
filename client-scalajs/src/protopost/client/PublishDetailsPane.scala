@@ -18,6 +18,8 @@ object PublishDetailsPane:
     import Client.PublishDetailsPaneLabelCommonModifiers
     import client.*
 
+    val subsectionLabelModifiers = Seq( fontSize.pt(10), fontWeight.bold )
+
     val fileUploadComponentsVal : Var[(Option[String],Option[dom.File])] = Var(Tuple2(None,None))
     val fileUploadComponentsSignal = fileUploadComponentsVal.signal
 
@@ -105,6 +107,7 @@ object PublishDetailsPane:
     )
 
     val SectionMarginTopRem = 1
+    val SubsectionMarginTopRem = 0.5
 
     div(
       display.flex,
@@ -141,68 +144,82 @@ object PublishDetailsPane:
         display.flex,
         flexDirection.column,
         label(
-          forId := "post-unique-id-input",
+          forId := "attributes-section",
           PublishDetailsPaneLabelCommonModifiers,
-          "post unique ID:"
+          "attributes:"
         ),
-        input(
-          marginTop.rem(0.25),
-          idAttr := "post-unique-id-input",
-          `type` := "text",
-          disabled <-- postNotAnchorableSignal,
-          placeholder := "(optional, can only be set once if published) a unique identifier for this post.",
-          value <-- postAnchorSignal
-        )
-      ),
-      div(
-        marginTop.rem(SectionMarginTopRem),
-        display.flex,
-        flexDirection.column,
         div(
-          label(
-            forId := "post-in-reply-to-input",
-            PublishDetailsPaneLabelCommonModifiers,
-            "in reply to:"
-          )
+          sectionBorderPaddingMargin,
+          display.flex,
+          flexDirection.column,
+          div(
+            display.flex,
+            flexDirection.column,
+            label(
+              subsectionLabelModifiers,
+              forId := "post-unique-id-input",
+              "post unique ID:"
+            ),
+            input(
+              marginTop.rem(0.25),
+              idAttr := "post-unique-id-input",
+              `type` := "text",
+              disabled <-- postNotAnchorableSignal,
+              placeholder := "(optional, can only be set once if published) a unique identifier for this post.",
+              value <-- postAnchorSignal
+            )
+          ),
+          div(
+            marginTop.rem(SubsectionMarginTopRem),
+            display.flex,
+            flexDirection.column,
+            div(
+              label(
+                subsectionLabelModifiers,
+                forId := "post-in-reply-to-input",
+                "in reply to:"
+              )
+            ),
+            input(
+              marginTop.rem(0.25),
+              `type` := "text",
+              idAttr := "post-in-reply-to-input",
+              placeholder := "(optional) URL identifying the post to which this is a reply"
+            )
+          ),
+          div(
+            marginTop.rem(SubsectionMarginTopRem),
+            display.flex,
+            flexDirection.column,
+            div(
+              label(
+                subsectionLabelModifiers,
+                forId := "post-major-update-description-input",
+                "major update description:"
+              )
+            ),
+            input(
+              marginTop.rem(0.25),
+              `type` := "text",
+              idAttr := "post-major-update-description-input",
+              disabled <-- fullyPublishedSignal.map( !_ ),
+              placeholder := "(optional, rare) a description of major update"
+            )
+          ),
+          div(
+            marginTop.rem(SubsectionMarginTopRem),
+            label(
+              subsectionLabelModifiers,
+              forId := "sprout-checkbox",
+              "sprout? "
+            ),
+            input(
+              idAttr := "sprout-checkbox",
+              `type` := "checkbox",
+              checked <-- sproutCheckedSignal
+            )
+          ),
         ),
-        input(
-          marginTop.rem(0.25),
-          `type` := "text",
-          idAttr := "post-in-reply-to-input",
-          placeholder := "(optional) URL identifying the post to which this is a reply"
-        )
-      ),
-      div(
-        marginTop.rem(SectionMarginTopRem),
-        display.flex,
-        flexDirection.column,
-        div(
-          label(
-            forId := "post-major-update-description-input",
-            PublishDetailsPaneLabelCommonModifiers,
-            "major update description:"
-          )
-        ),
-        input(
-          marginTop.rem(0.25),
-          `type` := "text",
-          idAttr := "post-major-update-description-input",
-          disabled <-- fullyPublishedSignal.map( !_ ),
-          placeholder := "(optional, rare) a description of major update"
-        )
-      ),
-      div(
-        marginTop.rem(SectionMarginTopRem),
-        label(
-          forId := "sprout-checkbox",
-          PublishDetailsPaneLabelCommonModifiers,
-          "sprout? "
-        ),
-        input(
-          idAttr := "sprout-checkbox",
-          `type` := "checkbox",
-          checked <-- sproutCheckedSignal
-        )
       ),
       RevisionsCards.create( client ).amend(
         marginTop.rem(SectionMarginTopRem),
@@ -250,6 +267,7 @@ object PublishDetailsPane:
               display.flex,
               flexDirection.row,
               label(
+                subsectionLabelModifiers,
                 forId := "post-media-file-path-input",
                 "customize filename or path: "
               ),
