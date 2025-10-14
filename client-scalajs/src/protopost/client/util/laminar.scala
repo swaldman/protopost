@@ -1,16 +1,31 @@
 package protopost.client.util.laminar
 
+import scala.scalajs.js
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
-val documentEscapeEvents = documentEvents( _.onKeyDown.filter( ke => ke.keyCode == 27 || ke.key == "Escape" || ke.key == "Esc") )
+val documentEscapeEvents =
+  // autocomplete sometimes causes emission of ill-formed key events
+  // at the document level, so we cautiously guard against these
+  def guardedCheckKeyEvent( ke : dom.KeyboardEvent ) : Boolean =
+    val keDyn = ke.asInstanceOf[js.Dynamic]
+    def goodByCode =
+      val keyCodeOrUndefined = keDyn.keyCode
+      (scala.scalajs.js.typeOf(keyCodeOrUndefined) == "number" && keyCodeOrUndefined.asInstanceOf[Int] == 27)
+    def goodByKey =
+      val keyOrUndefined = keDyn.key
+      if scala.scalajs.js.typeOf(keyOrUndefined) == "string" then
+        val keyStr = keyOrUndefined.toString()
+        (keyStr == "Escape" || keyStr == "Esc")
+      else
+        false
+    goodByCode || goodByKey
+  documentEvents( _.onKeyDown.filter( guardedCheckKeyEvent ) )
+
 //val onEscapePress: EventProcessor[dom.KeyboardEvent, dom.KeyboardEvent] = onKeyPress.filter(_.keyCode == dom.KeyCode.Escape) // doesn't reliably work!
 
-// originally straight from laminar docs - https://laminar.dev/documentation
-// but note: keyCode can be undefined during browser autocomplete, so we check the key property as well
-val onEnterPress: EventProcessor[dom.KeyboardEvent, dom.KeyboardEvent] = onKeyPress.filter { ke =>
-  ke.key == "Enter" || (ke.keyCode.isInstanceOf[Int] && ke.keyCode == dom.KeyCode.Enter)
-}
+val onEnterPress: EventProcessor[dom.KeyboardEvent, dom.KeyboardEvent] =
+  onKeyPress.filter( ke => ke.keyCode == dom.KeyCode.Enter || ke.key == "Enter" )
 
 def blackHr() : HtmlElement =
   hr(
