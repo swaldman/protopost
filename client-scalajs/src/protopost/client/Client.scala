@@ -253,7 +253,7 @@ class Client( val protopostLocation : Uri ):
           val hardUpdate = lastHardUpdate || elapsedSeconds > LoginStatusUpdateIfNotUpdatedLastSecs || r < LoginStatusUpdateHardUpdateProbability
           //println(s"hardUpdate: $hardUpdate")
           if hardUpdate then
-            println(s"hardUpdate: lastHardUpdate || $elapsedSeconds > ${LoginStatusUpdateIfNotUpdatedLastSecs} || $r < ${LoginStatusUpdateHardUpdateProbability}")
+            println(s"hardUpdate: $lastHardUpdate || $elapsedSeconds > ${LoginStatusUpdateIfNotUpdatedLastSecs} || $r < ${LoginStatusUpdateHardUpdateProbability}")
           Some(Tuple3(newStatus, now, hardUpdate))
         case None =>
           None

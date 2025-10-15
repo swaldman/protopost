@@ -14,7 +14,7 @@ import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 import com.mchange.conveniences.string.*
 
 object PublishDetailsPane:
-  def create( client : Client ) : HtmlElement =
+  def create( client : Client, idPrefix : String ) : HtmlElement =
     import Client.PublishDetailsPaneLabelCommonModifiers
     import client.*
 
@@ -84,27 +84,57 @@ object PublishDetailsPane:
           case None =>
             Seq.empty
 
-    val postMediaTableCard = div(
-      div(
-        idAttr := "post-media-table-card",
-        display.grid,
-        styleProp("grid-template-columns") := "1fr max-content max-content",
-        styleProp("row-gap") := "1fr max-content max-content",
-        fontSize.pt(10),
-        div(
-          fontWeight.bold,
-          "filename or path"
-        ),
-        div(
-          fontWeight.bold,
-          "size"
-        ),
-        div(
-          "\u00a0"
-        ),
-        children <-- postMediaTableRowsSignal
+    val postMediaTableCard =
+      val blankHeaderModifiers = Seq(
+        fontWeight.bold,
+        marginBottom.rem(0.25),
       )
-    )
+      val textHeaderModifiers =
+        blankHeaderModifiers :+ textDecoration.underline
+      div(
+        div(
+          idAttr := "${idPrexix}-post-media-table-card",
+          display.grid,
+          styleProp("grid-template-columns") := "1fr max-content max-content",
+          styleProp("row-gap") := "1fr max-content max-content",
+          fontSize.pt(10),
+          div(
+            textHeaderModifiers,
+            "filename or path"
+          ),
+          div(
+            textHeaderModifiers,
+            "size"
+          ),
+          div(
+            blankHeaderModifiers,
+            "\u00a0"
+          ),
+          children <-- postMediaTableRowsSignal
+        )
+      )
+
+    val actionsCard =
+      div (
+        button(
+          cls := "button-utilitarian",
+          role("button"),
+          disabled <-- notPublishableSignal,
+          text <-- publishUpdateButtonLabelSignal
+        ),
+      )
+
+    val actionsReloginCard =
+      div(
+        flexGrow(1),
+        LoginForm.create( client )
+      )
+
+    val actionsCardSignal = loginLevelSignal.map: ll =>
+      if ll == LoginLevel.high then
+        actionsCard
+      else
+        actionsReloginCard
 
     val SectionMarginTopRem = 1
     val SubsectionMarginTopRem = 0.5
@@ -118,25 +148,13 @@ object PublishDetailsPane:
       borderTopWidth.px(2),
       marginLeft.rem(1),
       paddingTop.rem(0.5),
-      div(
-        display.flex,
-        flexDirection.row,
-        label(
-          forId := "publication-status-display",
-          PublishDetailsPaneLabelCommonModifiers,
-          flexGrow(1),
-          "status:"
-        ),
-        button(
-          cls := "button-utilitarian",
-          role("button"),
-          float.right,
-          disabled <-- notPublishableSignal,
-          text <-- publishUpdateButtonLabelSignal
-        ),
+      label(
+        forId := "${idPrefix}-publication-status-display",
+        PublishDetailsPaneLabelCommonModifiers,
+        "status:"
       ),
       div(
-        idAttr := "publication-status-display",
+        idAttr := "${idPrefix}-publication-status-display",
         child <-- publicationStatusSpanSignal
       ),
       div(
@@ -144,7 +162,27 @@ object PublishDetailsPane:
         display.flex,
         flexDirection.column,
         label(
-          forId := "attributes-section",
+          forId := "${idPrefix}-publication-actions",
+          PublishDetailsPaneLabelCommonModifiers,
+          "actions:"
+        ),
+        div(
+          sectionBorderPaddingMargin,
+          idAttr := "${idPrefix}-publication-actions",
+          flexGrow(1),
+          display.flex,
+          flexDirection.row,
+          alignContent.center,
+          justifyContent.center,
+          child <-- actionsCardSignal
+        ),
+      ),
+      div(
+        marginTop.rem(SectionMarginTopRem),
+        display.flex,
+        flexDirection.column,
+        label(
+          forId := "${idPrefix}-attributes-section",
           PublishDetailsPaneLabelCommonModifiers,
           "attributes:"
         ),
@@ -157,12 +195,12 @@ object PublishDetailsPane:
             flexDirection.column,
             label(
               subsectionLabelModifiers,
-              forId := "post-unique-id-input",
+              forId := "${idPrefix}-post-unique-id-input",
               "post unique ID:"
             ),
             input(
               marginTop.rem(0.25),
-              idAttr := "post-unique-id-input",
+              idAttr := "${idPrefix}-post-unique-id-input",
               `type` := "text",
               disabled <-- postNotAnchorableSignal,
               placeholder := "(optional, can only be set once if published) a unique identifier for this post.",
@@ -176,14 +214,14 @@ object PublishDetailsPane:
             div(
               label(
                 subsectionLabelModifiers,
-                forId := "post-in-reply-to-input",
+                forId := "${idPrefix}-post-in-reply-to-input",
                 "in reply to:"
               )
             ),
             input(
               marginTop.rem(0.25),
               `type` := "text",
-              idAttr := "post-in-reply-to-input",
+              idAttr := "${idPrefix}-post-in-reply-to-input",
               placeholder := "(optional) URL identifying the post to which this is a reply"
             )
           ),
@@ -194,14 +232,14 @@ object PublishDetailsPane:
             div(
               label(
                 subsectionLabelModifiers,
-                forId := "post-major-update-description-input",
+                forId := "${idPrefix}-post-major-update-description-input",
                 "major update description:"
               )
             ),
             input(
               marginTop.rem(0.25),
               `type` := "text",
-              idAttr := "post-major-update-description-input",
+              idAttr := "${idPrefix}-post-major-update-description-input",
               disabled <-- fullyPublishedSignal.map( !_ ),
               placeholder := "(optional, rare) a description of major update"
             )
@@ -210,11 +248,11 @@ object PublishDetailsPane:
             marginTop.rem(SubsectionMarginTopRem),
             label(
               subsectionLabelModifiers,
-              forId := "sprout-checkbox",
+              forId := "${idPrefix}-sprout-checkbox",
               "sprout? "
             ),
             input(
-              idAttr := "sprout-checkbox",
+              idAttr := "${idPrefix}-sprout-checkbox",
               `type` := "checkbox",
               checked <-- sproutCheckedSignal
             )
@@ -229,12 +267,12 @@ object PublishDetailsPane:
         flexDirection.column,
         marginTop.rem(SectionMarginTopRem),
         label(
-          forId := "post-media-manager",
+          forId := "${idPrefix}-post-media-manager",
           PublishDetailsPaneLabelCommonModifiers,
           "post media:"
         ),
         div(
-          idAttr := "post-media-manager",
+          idAttr := "${idPrefix}-post-media-manager",
           sectionBorderPaddingMargin,
           div(
             display <-- currentPostMediaSignal.map( _.fold("none")(pmis => if pmis.isEmpty then "none" else "block") ),
@@ -268,10 +306,11 @@ object PublishDetailsPane:
               flexDirection.row,
               label(
                 subsectionLabelModifiers,
-                forId := "post-media-file-path-input",
+                forId := "${idPrefix}-post-media-file-path-input",
                 "customize filename or path: "
               ),
               input(
+                idAttr := "${idPrefix}-post-media-file-path-input",
                 marginLeft.rem(0.5),
                 flexGrow(1),
                 `type` := "text",

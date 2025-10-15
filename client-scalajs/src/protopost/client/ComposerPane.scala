@@ -128,24 +128,14 @@ object ComposerPane:
     val composeCardPublishDetailsPane =
       div(
         flexGrow(1),
-        PublishDetailsPane.create( client )
-      )
-
-    val composeCardReloginPane =
-      div(
-        flexGrow(1),
-        LoginForm.create( client )
+        PublishDetailsPane.create( client, "plaintext-composer" )
       )
 
     val composeCardSignal =
-      Signal.combine(composerPaneCurrentTabSignal,currentPostLocalPostContentSignal,loginLevelSignal).map: ( tab, pc, ll ) =>
+      Signal.combine(composerPaneCurrentTabSignal,currentPostLocalPostContentSignal).map: ( tab, pc ) =>
         tab match
           case ComposerPane.Tab.edit    => composeCardEdit
-          case ComposerPane.Tab.publish =>
-            if ll == LoginLevel.high then
-              composeCardPublishDetailsPane
-            else
-              composeCardReloginPane
+          case ComposerPane.Tab.publish => composeCardPublishDetailsPane
           case ComposerPane.Tab.preview =>
             pc.contentType match
               case "text/plain"     => composeCardPreviewTextPlain
