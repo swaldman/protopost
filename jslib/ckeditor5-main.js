@@ -436,6 +436,17 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
 
     const out = DecoupledEditor.create(document.querySelector('#'+mainContainerId), configWithUpload);
     out.then( editor => {
+        // Wrap setData to track when we're loading content vs user insertions
+        const originalSetData = editor.setData.bind(editor);
+        editor.setData = (data) => {
+            editor._protopostIsLoadingData = true;
+            try {
+                originalSetData(data);
+            } finally {
+                editor._protopostIsLoadingData = false;
+            }
+        };
+
         const toolbarContainer = document.querySelector('#'+toolbarContainerId);
         editor.ui.view.toolbar.element.style.width=0
 
@@ -470,13 +481,13 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
 
         // 1. Extend schema to allow custom attributes
         editor.model.schema.extend('imageBlock', {
-            allowAttributes: ['dataCkeditorUploaded', 'dataCkeditorAspectRatio']
+            allowAttributes: ['dataCkeditorInserted', 'dataCkeditorAspectRatio']
         });
 
-        // 2. Add downcast conversion so it appears as data-ckeditor-uploaded in HTML
+        // 2. Add downcast conversion so it appears as data-ckeditor-inserted in HTML
         //    and set width: 100% style on the img element
         editor.conversion.for('downcast').add(dispatcher => {
-            dispatcher.on('attribute:dataCkeditorUploaded:imageBlock', (evt, data, conversionApi) => {
+            dispatcher.on('attribute:dataCkeditorInserted:imageBlock', (evt, data, conversionApi) => {
 
                 if (!conversionApi.consumable.consume(data.item, evt.name)) {
                     return;
@@ -487,7 +498,7 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
 
                 if (data.attributeNewValue) {
                     // Set data attribute on figure
-                    viewWriter.setAttribute('data-ckeditor-uploaded', 'true', viewFigure);
+                    viewWriter.setAttribute('data-ckeditor-inserted', 'true', viewFigure);
 
                     // Set width: 100% and aspect-ratio styles on the img child element
                     const viewImg = viewFigure.getChild(0);
@@ -502,12 +513,12 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
                     }
                 } else {
                     // Remove the attribute to keep HTML clean when false
-                    viewWriter.removeAttribute('data-ckeditor-uploaded', viewFigure);
+                    viewWriter.removeAttribute('data-ckeditor-inserted', viewFigure);
                 }
             });
         });
 
-        // 3. Mark images when upload completes
+        // 3. Mark images inserted via UI (not from setData)
         editor.model.document.on('change:data', () => {
 
             const changes = editor.model.document.differ.getChanges();
@@ -515,23 +526,23 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
             // console.log( "change:data changes:" )
             // console.log( changes )
 
-            editor.model.change(writer => {
-                for (const change of changes) {
-                    // Mark uploaded images when uploadStatus becomes 'complete'
-                    if (change.type === 'attribute' &&
-                        change.attributeKey === 'uploadStatus' &&
-                        change.attributeNewValue === 'complete') {
-
-                        const item = change.range.start.nodeAfter || change.range.start.parent;
-                        if (item && item.name === 'imageBlock') {
-                            writer.setAttribute('dataCkeditorUploaded', true, item);
+            // Only mark images if we're NOT loading data
+            if (!editor._protopostIsLoadingData) {
+                editor.model.change(writer => {
+                    for (const change of changes) {
+                        // Mark any newly inserted images (from upload or URL toolbar)
+                        if (change.type === 'insert' && change.name === 'imageBlock') {
+                            const item = change.position.nodeAfter;
+                            if (item && item.name === 'imageBlock') {
+                                writer.setAttribute('dataCkeditorInserted', true, item);
+                            }
                         }
                     }
-                }
-            });
+                });
+            }
         });
 
-        // 4. Post-fixer to capture aspect ratio and remove width/height from uploaded images
+        // 4. Post-fixer to capture aspect ratio and remove width/height from UI-inserted images
         editor.model.document.registerPostFixer(writer => {
 
             const changes = editor.model.document.differ.getChanges();
@@ -546,7 +557,7 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
                     (change.attributeKey === 'width' || change.attributeKey === 'height')) {
 
                     const item = change.range.start.nodeAfter || change.range.start.parent;
-                    if (item && item.name === 'imageBlock' && item.getAttribute('dataCkeditorUploaded')) {
+                    if (item && item.name === 'imageBlock' && item.getAttribute('dataCkeditorInserted')) {
 
                         // Capture aspect ratio before removing dimensions
                         if (!item.hasAttribute('dataCkeditorAspectRatio')) {
