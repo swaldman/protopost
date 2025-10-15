@@ -69,7 +69,7 @@ object DestinationsAndPostsCard:
               case Some(posterNoAuth) =>
                 val di = destination.destinationIdentifier
                 val postDefinition = new PostDefinitionCreate( destination.seismicNode.id, destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
-                util.request.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierLsi )
+                util.request.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierManager )
                 resetComposersToEdit()
                 topPanelLocationLsi.set(TopPanel.Tab.currentPost)
               case None =>
@@ -86,7 +86,7 @@ object DestinationsAndPostsCard:
               backgroundColor <-- currentPostDefinitionSignal.map( _.fold("transparent")(cpd => if pd == cpd then "#ccffaa" else "transparent") ),
               ClickLink.create(title).amend(
                 onClick --> { _ =>
-                  currentPostIdentifierLsi.set(Some(PostIdentifier(destination.destinationIdentifier,pd.postId)))
+                  currentPostIdentifierManager.set(Some(PostIdentifier(destination.destinationIdentifier,pd.postId)))
                   topPanelLocationLsi.set(TopPanel.Tab.currentPost)
                 }
               ),

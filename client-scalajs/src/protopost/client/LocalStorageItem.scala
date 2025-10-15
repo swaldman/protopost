@@ -33,7 +33,7 @@ object LocalStorageItem:
     Key.values.foreach: key =>
       dom.window.localStorage.removeItem(key.toString())
 
-class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T]):
+class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T]) extends util.laminar.VarLike[T]:
   require( key.defaultValue != null, "The value of a LocalStorageItem cannot be null." )
 
   LocalStorageItem.instances = this :: LocalStorageItem.instances
@@ -42,7 +42,7 @@ class LocalStorageItem[T : JsonValueCodec](key: LocalStorageItem.Key[T]):
     Option(dom.window.localStorage.getItem(key.toString())).map( s => readFromString[T](s) )
   )
 
-  val signal: Signal[T] = _var.signal.map( _.getOrElse(key.defaultValue) )
+  val signal : Signal[T] = _var.signal.map( _.getOrElse(key.defaultValue) )
 
   def set(value: T): Unit =
     require( value != null, "The value of a LocalStorageItem cannot be null, define an variable of Option type instead." )

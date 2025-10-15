@@ -78,8 +78,37 @@ class Client( val protopostLocation : Uri ):
   val destinationsVar : Var[immutable.SortedSet[Destination]] = Var( immutable.SortedSet.empty )
   val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
 
-  val currentPostIdentifierLsi = LocalStorageItem(LocalStorageItem.Key.currentPostIdentifier)
-  val currentPostIdentifierSignal = currentPostIdentifierLsi.signal
+  object currentPostIdentifierManager extends util.laminar.VarLike[Option[PostIdentifier]]:
+    private def rebase( mbpi : Option[PostIdentifier] ) : Unit =
+      rebasePage( mbpi.map( pi => protopostLocation.addPath("protopost","post-media",pi.postId.toString,"").toString ) ) // we add the empty string to get the directory trailing slash
+
+    private def setGlobal( mbpi : Option[PostIdentifier] ) : Unit =
+      mbpi match
+        case Some( pi ) => Globals.protopostCurrentPostId = pi.postId
+        case None => Globals.protopostCurrentPostId = 0 // falsey!
+
+    private def init() : Unit =
+      val start = lsi.now()
+      rebase(start)
+      setGlobal(start)
+
+    val lsi = LocalStorageItem(LocalStorageItem.Key.currentPostIdentifier)
+
+    init()
+
+    def set( mbpi : Option[PostIdentifier] ) =
+      rebase( mbpi )
+      setGlobal( mbpi )
+      lsi.set(mbpi)
+
+    def update( doUpdate : Option[PostIdentifier] => Option[PostIdentifier] ) =
+      val updated = doUpdate( lsi.now() )
+      set( updated )
+
+    def signal : Signal[Option[PostIdentifier]] = lsi.signal
+  end currentPostIdentifierManager
+
+  val currentPostIdentifierSignal = currentPostIdentifierManager.signal
 
   val topPanelLocationLsi = LocalStorageItem(LocalStorageItem.Key.topPanelLocation)
   val topPanelLocationSignal : Signal[TopPanel.Tab] = topPanelLocationLsi.signal
@@ -250,13 +279,9 @@ class Client( val protopostLocation : Uri ):
       case Some( pd ) =>
         util.request.loadCurrentPostRevisionHistory(protopostLocation,pd.postId,backend,currentPostAllRevisionsVar)
         util.request.loadCurrentPostMedia(protopostLocation,pd.postId,backend,currentPostMediaVar)
-        Globals.protopostCurrentPostId = pd.postId
-        rebasePage(Some(protopostLocation.addPath("protopost","post-media",pd.postId.toString,"").toString)) // we add the empty string to get the directory trailing slash
       case None =>
         currentPostAllRevisionsVar.set( None )
         currentPostMediaVar.set( None )
-        Globals.protopostCurrentPostId = 0 // falsey!
-        rebasePage(None)
 
   def updateCurrentPostRevisions( postId : Int ) =
     util.request.loadCurrentPostRevisionHistory(protopostLocation,postId,backend,currentPostAllRevisionsVar)

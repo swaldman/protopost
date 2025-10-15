@@ -66,4 +66,9 @@ def tabsDiv[T](id : String, values : Array[T], currentTabVar : Var[T], currentTa
     tabs
   )
 
+trait VarLike[T]:
+  def set( t : T )                : Unit
+  def update( doUpdate : T => T ) : Unit
+  def signal                      : Signal[T]
+end VarLike
 
