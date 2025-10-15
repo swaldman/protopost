@@ -36,7 +36,7 @@ object CkEditorComposerPane:
     def on( eventType : String, callback : js.Function1[Object,Unit]) : Unit   = js.native
 
   enum Tab:
-    case edit, publish
+    case edit, source, publish
 
   val ckEditorVar : Var[Option[CkEditor]] = Var(None)
   val ckEditorSignal = ckEditorVar.signal
@@ -107,6 +107,57 @@ object CkEditorComposerPane:
         ckEditorContainer
       )
 
+    // we don't want to sync back to CkEditor.getData()'s value while we are typing,
+    // since CkEditor accepts our edits but eliminates whitespace.
+    //
+    // so we let our textarea sync to a local Var (sourceCodeTextAreaContents), send to currentPostLocalPostContentVar,
+    // but only accept updates from that Var when the source tab is not displayed.
+    val sourceCodeTextAreaValueChangeEvents =
+      Signal.combine(currentPostLocalPostContentSignal,ckEditorComposerPaneCurrentTabSignal).changes.distinct
+        //.map { tup => dom.console.log(tup); tup }
+        .collect:
+          case ( postContent, ckEditorTab ) if ckEditorTab != Tab.source => postContent.text
+
+    val sourceCodeTextAreaContents : Var[String] = Var("")
+
+    val sourceCard =
+      div(
+        flexGrow(1),
+        display.flex,
+        flexDirection.column,
+        borderStyle.solid,
+        borderColor.black,
+        borderWidth.px(2),
+        borderRadius.px(10),
+        div (
+          textAlign.center,
+          marginTop.rem(0.5),
+          button(
+            cls := "button-utilitarian",
+            "beautify / pretty-print",
+            onClick --> { _ =>
+              sourceCodeTextAreaContents.update( Globals.html_beautify )
+            }
+          )
+        ),
+        textArea(
+          idAttr := "ckeditor-composer-source-text-area",
+          fontFamily("monospace"),
+          outline("none"),
+          borderWidth.px(0),
+          paddingTop.rem(0.5),
+          paddingLeft.rem(1),
+          paddingRight.rem(1),
+          paddingBottom.rem(1),
+          flexGrow(1),
+          //width.percent(100),
+          //height.percent(100),
+          resize("none"),
+          onInput.mapToValue.compose( _.debounce(500) ) --> Observer.combine(composerRawTextAreaChangeObserver,sourceCodeTextAreaContents.writer),
+          value <-- sourceCodeTextAreaContents
+        )
+      )
+
     val publishCard = PublishDetailsPane.create( client ).amend( flexGrow(1) )
 
     val reloginCard = LoginForm.create( client ).amend( flexGrow(1) )
@@ -123,12 +174,14 @@ object CkEditorComposerPane:
       child <-- Signal.combine(ckEditorComposerPaneCurrentTabSignal,loginLevelSignal).map { (tab,ll) =>
                    tab match
                      case Tab.edit                             => ckEditorCard
+                     case Tab.source                           => sourceCard
                      case Tab.publish if ll == LoginLevel.high => publishCard
                      case Tab.publish                          => reloginCard
       },
       onMountCallback { mountContext =>
         // println( s"mount: $mountContext" )
         given Owner = mountContext.owner
+        sourceCodeTextAreaValueChangeEvents.addObserver(sourceCodeTextAreaContents.writer)
         if ckEditorSignal.now().isEmpty then
           CkGlobals.bindCkEditor( "ckeditor-container", "ckeditor-toolbar-container" )
             .toFuture

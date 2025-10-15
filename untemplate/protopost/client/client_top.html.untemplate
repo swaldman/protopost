@@ -16,6 +16,7 @@ import com.mchange.conveniences.string.*
                 }
     </script>
     <link rel="stylesheet" href="https://cdn.ckeditor.com/ckeditor5/47.0.0/ckeditor5.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.15.4/beautify-html.min.js"></script>
     <style>
       * {
           box-sizing: border-box;
@@ -49,6 +50,9 @@ import com.mchange.conveniences.string.*
   <script type="module">
     globalThis.protopostLocation = "<( protopostLocation )>";
     globalThis.protopostCurrentPostId = 0;
+    function beautify_html( html, options ) {
+        beautify.html( html, options );
+    }
     await import('<( pathJoin(protopostLocation, "/protopost/client/scalajs/jslib/ckeditor5-main.js") )>');
     await import('<( pathJoin(protopostLocation, "/protopost/client/scalajs/main.js") )>');
   </script>

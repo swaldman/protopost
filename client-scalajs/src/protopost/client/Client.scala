@@ -151,6 +151,10 @@ class Client( val protopostLocation : Uri ):
     borderRadius.px(10),
   )
 
+  val composerRawTextAreaChangeObserver = Observer[String]: (value) =>
+    currentPostLocalPostContentLsi.update( _.copy(text=value) )
+    localContentDirtyVar.set(true)
+
   private val updateLoginStatusStream = EventStream.periodic(LoginStatusUpdateIntervalMsecs,false)
 
   private val autosaveRequestStream = EventStream.periodic(AutosaveCheckFrequencyMsecs,false)
@@ -374,7 +378,7 @@ class Client( val protopostLocation : Uri ):
         |
         |/* ComposerPane */
         |
-        |#composer-text-area:focus {
+        |#composer-text-area:focus, #ckeditor-composer-source-text-area:focus {
         |  border-color: black;
         |  outline: none;
         |}

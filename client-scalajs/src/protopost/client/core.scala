@@ -13,6 +13,7 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.*
 object Globals extends js.Object:
   val protopostLocation : String = js.native
   var protopostCurrentPostId : Int = js.native
+  def html_beautify(html : String ) : String = js.native
 
 @js.native
 @JSGlobal

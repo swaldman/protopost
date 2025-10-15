@@ -27,10 +27,6 @@ object ComposerPane:
       currentPostLocalPostContentLsi.update( _.copy(contentType=value) )
       localContentDirtyVar.set(true)
 
-    val textAreaChangeObserver = Observer[String]: (value) =>
-      currentPostLocalPostContentLsi.update( _.copy(text=value) )
-      localContentDirtyVar.set(true)
-
     val currentPostDefinitionChangeObserver = Observer[Option[PostDefinition]]: mbpd =>
       composerPaneCurrentTabVar.set(ComposerPane.Tab.edit) // go back to default edit tab when the post definition has updates
 
@@ -74,7 +70,7 @@ object ComposerPane:
           //width.percent(100),
           //height.percent(100),
           resize("none"),
-          onInput.mapToValue.compose( _.debounce(500) ) --> textAreaChangeObserver,
+          onInput.mapToValue.compose( _.debounce(500) ) --> composerRawTextAreaChangeObserver,
           value <-- currentPostLocalPostContentSignal.map( _.text )
         )
       )
