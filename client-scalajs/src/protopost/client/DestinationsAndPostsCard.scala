@@ -70,6 +70,7 @@ object DestinationsAndPostsCard:
                 val di = destination.destinationIdentifier
                 val postDefinition = new PostDefinitionCreate( destination.seismicNode.id, destination.name, posterNoAuth.id, authors = Seq(posterNoAuth.fullName) )
                 util.request.hardUpdateNewPostDefinition( protopostLocation, di, postDefinition, backend, destinationsToKnownPostsVar, currentPostIdentifierLsi )
+                resetComposersToEdit()
                 topPanelLocationLsi.set(TopPanel.Tab.currentPost)
               case None =>
                 println("Cannot create new post, posterNoAuthSignal seems unset? We are not properly logged in?")

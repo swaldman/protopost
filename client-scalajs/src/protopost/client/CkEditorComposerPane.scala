@@ -113,10 +113,10 @@ object CkEditorComposerPane:
     // so we let our textarea sync to a local Var (sourceCodeTextAreaContents), send to currentPostLocalPostContentVar,
     // but only accept updates from that Var when the source tab is not displayed.
     val sourceCodeTextAreaValueChangeEvents =
-      Signal.combine(currentPostLocalPostContentSignal,ckEditorComposerPaneCurrentTabSignal).changes.distinct
+      Signal.combine(currentPostLocalPostContentSignal,topPanelLocationSignal,ckEditorComposerPaneCurrentTabSignal).changes.distinct
         //.map { tup => dom.console.log(tup); tup }
         .collect:
-          case ( postContent, ckEditorTab ) if ckEditorTab != Tab.source => postContent.text
+          case ( postContent, topPanelTab, ckEditorTab ) if topPanelTab != TopPanel.Tab.currentPost || ckEditorTab != Tab.source => postContent.text
 
     val sourceCodeTextAreaContents : Var[String] = Var("")
 

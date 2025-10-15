@@ -466,6 +466,37 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
           recomputeToolbarWidth();
         }
 
+/*
+        // Configure uploaded images to use width: 100% instead of fixed dimensions
+        editor.model.document.on('change:data', () => {
+            console.log("in attribute fixer... post ID: " + globalThis.protopostCurrentPostId)
+            if (globalThis.protopostCurrentPostId) { // avoid race condition, do nothing if no current post ID via which to resolve images has yet been set
+                console.log("past protopostCurrentPostId guard ...")
+                editor.model.change(writer => {
+                    for (const change of editor.model.document.differ.getChanges()) {
+                        if (change.type === 'insert' && change.name === 'imageBlock') {
+                            const image = change.position.nodeAfter;
+                            if (image) {
+                                // Remove width and height attributes, set width to 100% via style
+                                writer.removeAttribute('width', image);
+                                writer.removeAttribute('height', image);
+                                // Set inline style for width
+                                const currentStyle = image.getAttribute('htmlAttributes')?.styles || {};
+                                writer.setAttribute('htmlAttributes', {
+                                    ...image.getAttribute('htmlAttributes'),
+                                    styles: {
+                                        ...currentStyle,
+                                        width: '100%'
+                                    }
+                                }, image);
+                            }
+                        }
+                    }
+                })
+            };
+        });
+*/
+
         toolbarContainer.appendChild( editor.ui.view.toolbar.element );
     } ).catch( error => {
         console.error( error );
