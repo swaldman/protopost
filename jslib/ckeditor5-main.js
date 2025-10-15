@@ -466,36 +466,43 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
           recomputeToolbarWidth();
         }
 
-/*
         // Configure uploaded images to use width: 100% instead of fixed dimensions
         editor.model.document.on('change:data', () => {
             console.log("in attribute fixer... post ID: " + globalThis.protopostCurrentPostId)
-            if (globalThis.protopostCurrentPostId) { // avoid race condition, do nothing if no current post ID via which to resolve images has yet been set
+            if (globalThis.protopostCurrentPostId) {
                 console.log("past protopostCurrentPostId guard ...")
                 editor.model.change(writer => {
                     for (const change of editor.model.document.differ.getChanges()) {
-                        if (change.type === 'insert' && change.name === 'imageBlock') {
-                            const image = change.position.nodeAfter;
-                            if (image) {
-                                // Remove width and height attributes, set width to 100% via style
-                                writer.removeAttribute('width', image);
-                                writer.removeAttribute('height', image);
-                                // Set inline style for width
-                                const currentStyle = image.getAttribute('htmlAttributes')?.styles || {};
+                        console.log(change);
+                        // Check for width or height attributes being added to imageBlock
+                        if (change.type === 'attribute' &&
+                            (change.attributeKey === 'width' || change.attributeKey === 'height') &&
+                            change.attributeOldValue === null) {
+
+                            // Find the image element at this range
+                            const item = change.range.start.nodeAfter || change.range.start.parent;
+                            console.log("item:");
+                            console.log(item)
+                            if (item && item.name === 'imageBlock') {
+                                // Remove the width/height attributes
+                                writer.removeAttribute('width', item);
+                                writer.removeAttribute('height', item);
+
+                                // Set width to 100% via style
+                                const currentStyle = item.getAttribute('htmlAttributes')?.styles || {};
                                 writer.setAttribute('htmlAttributes', {
-                                    ...image.getAttribute('htmlAttributes'),
+                                    ...item.getAttribute('htmlAttributes'),
                                     styles: {
                                         ...currentStyle,
                                         width: '100%'
                                     }
-                                }, image);
+                                }, item);
                             }
                         }
                     }
                 })
             };
         });
-*/
 
         toolbarContainer.appendChild( editor.ui.view.toolbar.element );
     } ).catch( error => {
