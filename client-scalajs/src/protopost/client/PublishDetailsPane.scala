@@ -116,6 +116,10 @@ object PublishDetailsPane:
 
     val actionsCard =
       div (
+        display.flex,
+        flexDirection.row,
+        alignContent.center,
+        justifyContent.center,
         button(
           cls := "button-utilitarian",
           role("button"),
@@ -127,7 +131,19 @@ object PublishDetailsPane:
     val actionsReloginCard =
       div(
         flexGrow(1),
-        LoginForm.create( client )
+        display.flex,
+        flexDirection.column,
+        alignContent.center,
+        justifyContent.center,
+        div(
+          fontWeight.bold,
+          fontSize.pt(11),
+          paddingBottom.rem(1),
+          "You must re-login before publishing, updating, or deleting."
+        ),
+        LoginForm.create( client ).amend(
+          flexGrow(1)
+        )
       )
 
     val actionsCardSignal = loginLevelSignal.map: ll =>
@@ -171,7 +187,7 @@ object PublishDetailsPane:
           idAttr := "${idPrefix}-publication-actions",
           flexGrow(1),
           display.flex,
-          flexDirection.row,
+          flexDirection.column,
           alignContent.center,
           justifyContent.center,
           child <-- actionsCardSignal
