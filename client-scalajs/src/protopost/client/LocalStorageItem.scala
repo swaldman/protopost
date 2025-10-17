@@ -22,6 +22,7 @@ object LocalStorageItem:
     case recoveredRevisions          extends Key[List[Tuple2[RevisionTimestamp,NewPostRevision]]] (Nil)
     case openDestinations            extends Key[Set[DestinationIdentifier]]                      (Set.empty)
     case lastLoggedInPoster          extends Key[Option[PosterId]]                                (None)
+    case externalJsConfig            extends Key[ProtopostExternalJsConfig]                       (ProtopostExternalJsConfig.default)
 
   /* ick */
   var instances : List[LocalStorageItem[?]] = Nil 

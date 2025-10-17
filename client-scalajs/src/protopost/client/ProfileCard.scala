@@ -8,6 +8,7 @@ import protopost.common.EmailAddress
 
 object ProfileCard:
   def create( client : Client ) : HtmlElement =
+    import Client.PublishDetailsPaneLabelCommonModifiers
     import client.*
 
     def makeComposerRadioButton( composer : Composer ) : HtmlElement =
@@ -68,13 +69,36 @@ object ProfileCard:
       hr(
       ),
       div(
-        fontSize.pt(Client.CardSectionTitleFontSizePt),
-        fontWeight.bold,
-        "Composer",
+        label(
+          forId := "profile-composer-properties",
+          PublishDetailsPaneLabelCommonModifiers,
+          "composer properties"
+        ),
         div(
-          fontSize.pt(Client.CardBaseTextSizePt),
+          sectionBorderPaddingMargin,
+          display.flex,
+          flexDirection.column,
+          //fontSize.pt(Client.CardBaseTextSizePt),
           fontWeight.normal,
-          Composer.values.map( makeComposerRadioButton )
+          lineHeight.percent(150),
+          makeComposerRadioButton( Composer.`WYSIWYG`),
+          div(
+            display.flex,
+            flexDirection.row,
+            marginLeft.rem(1.5),
+            input(
+              `type` := "checkbox",
+              checked <-- externalJsConfigSignal.map( _.ckeditorLoadedImagesDefaultToWidth100Percent ),
+              onInput.mapToChecked --> { checked =>
+                externalJsConfigManager.update( _.copy(ckeditorLoadedImagesDefaultToWidth100Percent = checked) )
+              }
+            ),
+            div (
+              marginLeft.rem(0.25),
+              "image insertions default to width 100%"
+            )
+          ),
+          makeComposerRadioButton( Composer.`text-and-preview`),
         )
       )
     )

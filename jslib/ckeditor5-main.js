@@ -361,7 +361,7 @@ class ProtopostUploadAdapter {
         xhr.addEventListener('load', () => {
             const response = xhr.response;
 
-            console.log('Upload response:', response);
+            // console.log('Upload response:', response);
 
             if (!response || response.error) {
                 return reject(response && response.error ? response.error.message : genericErrorText);
@@ -477,48 +477,15 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
           recomputeToolbarWidth();
         }
 
-        // Configure uploaded images to use width: 100% instead of fixed dimensions
+        // Configure uploaded images to not define fixed width and height attributes,
+        // and optionally use width: 100% as a style
 
         // 1. Extend schema to allow custom attributes
         editor.model.schema.extend('imageBlock', {
-            allowAttributes: ['dataCkeditorInserted', 'dataCkeditorAspectRatio']
+            allowAttributes: ['dataCkeditorInserted', 'dataCkeditorAspectRatio', 'dataCkEditorWidthPercent100']
         });
 
-        // 2. Add downcast conversion so it appears as data-ckeditor-inserted in HTML
-        //    and set width: 100% style on the img element
-        editor.conversion.for('downcast').add(dispatcher => {
-            dispatcher.on('attribute:dataCkeditorInserted:imageBlock', (evt, data, conversionApi) => {
-
-                if (!conversionApi.consumable.consume(data.item, evt.name)) {
-                    return;
-                }
-
-                const viewFigure = conversionApi.mapper.toViewElement(data.item);
-                const viewWriter = conversionApi.writer;
-
-                if (data.attributeNewValue) {
-                    // Set data attribute on figure
-                    viewWriter.setAttribute('data-ckeditor-inserted', 'true', viewFigure);
-
-                    // Set width: 100% and aspect-ratio styles on the img child element
-                    const viewImg = viewFigure.getChild(0);
-                    if (viewImg && viewImg.name === 'img') {
-                        viewWriter.setStyle('width', '100%', viewImg);
-
-                        // Set aspect ratio if we stored it
-                        const aspectRatio = data.item.getAttribute('dataCkeditorAspectRatio');
-                        if (aspectRatio) {
-                            viewWriter.setStyle('aspect-ratio', aspectRatio, viewImg);
-                        }
-                    }
-                } else {
-                    // Remove the attribute to keep HTML clean when false
-                    viewWriter.removeAttribute('data-ckeditor-inserted', viewFigure);
-                }
-            });
-        });
-
-        // 3. Mark images inserted via UI (not from setData)
+        // 2. Mark images inserted via UI (not from setData)
         editor.model.document.on('change:data', () => {
 
             const changes = editor.model.document.differ.getChanges();
@@ -533,8 +500,14 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
                         // Mark any newly inserted images (from upload or URL toolbar)
                         if (change.type === 'insert' && change.name === 'imageBlock') {
                             const item = change.position.nodeAfter;
-                            if (item && item.name === 'imageBlock') {
+                            if (item && item.name === 'imageBlock' && !item.getAttribute('dataCkeditorInserted')) {
+                                //console.log("marking with dataCkeditorInserted", item)
                                 writer.setAttribute('dataCkeditorInserted', true, item);
+                                const wp100 =
+                                    (typeof globalThis.protopostExternalJsConfig === 'undefined' ||
+                                     typeof globalThis.protopostExternalJsConfig.ckeditorLoadedImagesDefaultToWidth100Percent === 'undefined' ||
+                                     globalThis.protopostExternalJsConfig.ckeditorLoadedImagesDefaultToWidth100Percent);
+                                writer.setAttribute('dataCkEditorWidthPercent100', wp100, item);
                             }
                         }
                     }
@@ -542,7 +515,9 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
             }
         });
 
-        // 4. Post-fixer to capture aspect ratio and remove width/height from UI-inserted images
+
+        // 3. Post-fixer to capture aspect ratio and remove width/height from UI-inserted images
+        //    Will rerun until no more fixes have been made
         editor.model.document.registerPostFixer(writer => {
 
             const changes = editor.model.document.differ.getChanges();
@@ -553,14 +528,18 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
                 // console.log( "postfixer change:" )
                 // console.log( change )
 
-                if (change.type === 'attribute' &&
-                    (change.attributeKey === 'width' || change.attributeKey === 'height')) {
+                if (change.type === 'attribute') {
+                    if (change.attributeKey === 'width' || change.attributeKey === 'height') {
 
-                    const item = change.range.start.nodeAfter || change.range.start.parent;
-                    if (item && item.name === 'imageBlock' && item.getAttribute('dataCkeditorInserted')) {
+                        const item = change.range.start.nodeAfter || change.range.start.parent;
+                        // Only process if marked as inserted AND not already processed (no aspect ratio yet)
+                        if (item && item.name === 'imageBlock' &&
+                            item.getAttribute('dataCkeditorInserted') &&
+                            !item.hasAttribute('dataCkeditorAspectRatio')) {
 
-                        // Capture aspect ratio before removing dimensions
-                        if (!item.hasAttribute('dataCkeditorAspectRatio')) {
+                            // console.log("about to adjust width/height/style", item);
+
+                            // Capture aspect ratio before removing dimensions
                             const width = item.getAttribute('width');
                             const height = item.getAttribute('height');
 
@@ -570,22 +549,58 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
                                 writer.setAttribute('dataCkeditorAspectRatio', `${width}/${height}`, item);
                                 wasFixed = true;
                             }
-                        }
 
-                        // Remove width/height attributes
-                        if (item.hasAttribute('width')) {
-                            writer.removeAttribute('width', item);
-                            wasFixed = true;
-                        }
-                        if (item.hasAttribute('height')) {
-                            writer.removeAttribute('height', item);
-                            wasFixed = true;
+                            // Remove width/height attributes only on first processing
+                            if (item.hasAttribute('width')) {
+                                writer.removeAttribute('width', item);
+                                wasFixed = true;
+                            }
+                            if (item.hasAttribute('height')) {
+                                writer.removeAttribute('height', item);
+                                wasFixed = true;
+                            }
                         }
                     }
                 }
             }
 
             return wasFixed;
+        });
+
+        // 4. Add downcast conversion so it appears as data-ckeditor-inserted in HTML
+        //    and set width: 100% style on the img element
+        editor.conversion.for('downcast').add(dispatcher => {
+            dispatcher.on('attribute:dataCkeditorInserted:imageBlock', (evt, data, conversionApi) => {
+
+                // console.log("data", data);
+
+                if (!conversionApi.consumable.consume(data.item, evt.name)) {
+                    return;
+                }
+
+                const viewFigure = conversionApi.mapper.toViewElement(data.item);
+                const viewWriter = conversionApi.writer;
+
+                if (data.attributeNewValue) {
+                    // Set width: 100% (by default, or if configured) and aspect-ratio styles on the img child element
+                    const viewImg = viewFigure.getChild(0);
+
+                    if (viewImg && viewImg.name === 'img') {
+                        const wp100 = data.item.getAttribute('dataCkEditorWidthPercent100');
+                        if (wp100) {
+                            viewWriter.setStyle('width', '100%', viewImg);
+                        }
+
+                        // Set aspect ratio if we stored it
+                        const aspectRatio = data.item.getAttribute('dataCkeditorAspectRatio');
+                        if (aspectRatio) {
+                            viewWriter.setStyle('aspect-ratio', aspectRatio, viewImg);
+                        }
+                    }
+                }
+
+                // viewWriter.setAttribute('data-ckeditor-insertion-completed', 'true', viewFigure);
+            });
         });
 
         toolbarContainer.appendChild( editor.ui.view.toolbar.element );

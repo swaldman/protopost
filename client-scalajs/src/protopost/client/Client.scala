@@ -19,6 +19,7 @@ import protopost.common.PosterId
 import protopost.common.api.{*,given}
 
 import protopost.client.util.rebasePage
+import protopost.client.util.laminar.VarLike
 
 object Client:
   val CardPaddingLeftRightRem = 0.5d
@@ -164,6 +165,42 @@ class Client( val protopostLocation : Uri ):
 
   val currentPostMediaVar : Var[Option[Seq[PostMediaInfo]]] = Var(None)
   val currentPostMediaSignal = currentPostMediaVar.signal
+
+  object externalJsConfigManager extends VarLike[ProtopostExternalJsConfig]:
+    private def init() : Unit =
+      val externalJsConfig = lsi.now().toJsObject
+
+      /*
+      // see https://www.scala-js.org/news/2020/02/25/announcing-scalajs-1.0.0/
+      // "The js.typeOf “method” is magical when its argument is a member of a global scope object."
+
+      if js.typeOf(js.Dynamic.global.protopostExternalJsConfig) == "undefined" then
+          js.Dynamic.global.updateDynamic("protopostExternalJsConfig")(externalJsConfig) // oops... fails with ReferenceError
+      else
+        Globals.protopostExternalJsConfig = externalJsConfig
+      */
+
+      // we'll just make sure (empty) protopostExternalJsConfig already exists, in our launch javascript
+      Globals.protopostExternalJsConfig = externalJsConfig
+
+    end init
+
+    val lsi = LocalStorageItem(LocalStorageItem.Key.externalJsConfig)
+
+    init()
+
+    def set( pejc : ProtopostExternalJsConfig ) =
+      Globals.protopostExternalJsConfig = pejc.toJsObject
+      lsi.set(pejc)
+
+    def update( doUpdate : ProtopostExternalJsConfig => ProtopostExternalJsConfig ) =
+      val updated = doUpdate( lsi.now() )
+      set( updated )
+
+    def signal : Signal[ProtopostExternalJsConfig] = lsi.signal
+  end externalJsConfigManager
+
+  val externalJsConfigSignal = externalJsConfigManager.signal
 
   private val manualSaveEventBus : EventBus[Unit] = new EventBus[Unit]
 

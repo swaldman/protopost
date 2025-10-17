@@ -50,6 +50,7 @@ import com.mchange.conveniences.string.*
   <script type="module">
     globalThis.protopostLocation = "<( protopostLocation )>";
     globalThis.protopostCurrentPostId = 0;
+    globalThis.protopostExternalJsConfig = {};
     function beautify_html( html, options ) {
         beautify.html( html, options );
     }
