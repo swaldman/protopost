@@ -136,9 +136,10 @@ object PublishDetailsPane:
         alignContent.center,
         justifyContent.center,
         div(
+          color.red,
           fontWeight.bold,
-          fontSize.pt(11),
-          paddingBottom.rem(1),
+          fontSize.pt(10),
+          paddingBottom.rem(1.5),
           "You must re-login before publishing, updating, or deleting."
         ),
         LoginForm.create( client ).amend(
