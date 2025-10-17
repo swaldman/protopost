@@ -398,7 +398,7 @@ object ServerLogic extends SelfLogging:
         def writeToDb() : Task[Unit] =
           ZIO.attemptBlocking:
             Using.resource( new BufferedInputStream( os.read.inputStream(tempFile) ) ): is =>
-              db.newPostMedia(postId,fullPath,contentType,os.size(tempFile),is)( conn )
+              db.upsertPostMedia(postId,fullPath,contentType,os.size(tempFile),is)( conn )
         for
           len <- streamToFile()
           _   <- writeToDb()

@@ -150,6 +150,14 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
       sprout = sprout,
       inReplyToSpecifier = inReplyToSpecifier
     )( conn )
+  def upsertPostMedia(
+    postId        : Int,
+    mediaPath     : String,
+    contentType   : Option[String],
+    contentLength : Long,
+    media         : InputStream
+  )( conn : Connection ) =
+    Schema.Table.PostMedia.upsert(postId,mediaPath,contentType,contentLength,media)( conn )
 
   object txn:
     def createUser( authManager : AuthManager[PosterId] )( email : EmailAddress, fullName : String, password : Password )( ds : DataSource ) : Task[PosterId] =

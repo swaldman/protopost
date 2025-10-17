@@ -26,6 +26,7 @@ import protopost.server.db.PgSchema.V1.Table.Poster.posterExistsForEmail
 
 import java.io.InputStream
 import java.time.Instant
+import java.io.ByteArrayOutputStream
 
 object PgSchema extends SelfLogging:
   object Unversioned:
@@ -499,6 +500,7 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY(post_id) references post(id)
              |)""".stripMargin
         val Insert = "INSERT INTO post_media(post_id, media_path, content_type, content_length, media) VALUES (?,?,?,?,?)"
+        val UpsertSuffix =" ON CONFLICT (post_id, media_path) DO UPDATE SET content_type = ?, media = ?"
         val SelectInfoByPost = "SELECT post_id, media_path, content_type, content_length FROM post_media WHERE post_id = ? ORDER BY media_path ASC"
         val SelectInfoByPostIdMediaPath = "SELECT post_id, media_path, content_type, content_length, media FROM post_media WHERE post_id = ? AND media_path = ?"
         val DeleteByPostIdMediaPath = "DELETE FROM post_media WHERE post_id = ? AND media_path = ?"
@@ -514,6 +516,26 @@ object PgSchema extends SelfLogging:
             setStringOptional(ps, 3, Types.VARCHAR, contentType)
             ps.setLong(4,contentLength)
             ps.setBinaryStream(5,media)
+            ps.executeUpdate()
+        def upsert( postId : Int, mediaPath : String, contentType : Option[String], contentLength : Long, media : InputStream )( conn : Connection ) =
+          //TRACE.log( s"Table.PostMedia.insert( $postId, $mediaPath, $contentType, $contentLength, media-as-input-stream )" )
+          val mediaBytes =
+            val completedBaos =
+              Using.resources(media,new ByteArrayOutputStream(contentLength.toInt)): (is, baos) =>
+                var b : Int = is.read()
+                while b >= 0 do
+                  baos.write(b)
+                  b = is.read()
+                baos
+            completedBaos.toByteArray()
+          Using.resource( conn.prepareStatement(Insert + UpsertSuffix) ): ps =>
+            ps.setInt(1, postId)
+            ps.setString(2, mediaPath)
+            setStringOptional(ps, 3, Types.VARCHAR, contentType)
+            ps.setLong(4,contentLength)
+            ps.setBytes(5,mediaBytes)
+            ps.setLong(6,contentLength)
+            ps.setBytes(7,mediaBytes)
             ps.executeUpdate()
         def selectInfoByPost( postId : Int )( conn : Connection ) : Seq[PostMediaInfo] =
           Using.resource( conn.prepareStatement(SelectInfoByPost) ): ps =>
