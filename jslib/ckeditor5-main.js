@@ -468,7 +468,7 @@ globalThis.bindCkEditor = ( mainContainerId, toolbarContainerId ) => {
         }
         window.addEventListener("resize", recomputeToolbarWidth);
 
-        console.log("document.readyState: " + document.readyState)
+        // console.log("document.readyState: " + document.readyState)
         if (document.readyState === "loading") {
           // The DOM is still loading, attach the event listener
           document.addEventListener("DOMContentLoaded", recomputeToolbarWidth);

@@ -276,9 +276,6 @@ object PublishDetailsPane:
           ),
         ),
       ),
-      RevisionsCards.create( client ).amend(
-        marginTop.rem(SectionMarginTopRem),
-      ),
       div(
         display.flex,
         flexDirection.column,
@@ -361,6 +358,9 @@ object PublishDetailsPane:
             )
           )
         )
-      )
+      ),
+      RevisionsCards.create( client ).amend(
+        marginTop.rem(SectionMarginTopRem),
+      ),
     )
 
