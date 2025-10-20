@@ -484,6 +484,7 @@ object PgSchema extends SelfLogging:
              |  publication_event         publication_event_type,
              |  major_update_description  VARCHAR(2048),
              |  update_confirmation_state VARCHAR(128),   -- usually a git commit id
+             |  pubication_log            TEXT,
              |  PRIMARY KEY ( post_id, update_time ),
              |  FOREIGN KEY(post_id, save_time) REFERENCES post_revision(post_id, save_time)
              |)""".stripMargin
@@ -552,6 +553,43 @@ object PgSchema extends SelfLogging:
             ps.setString(2, mediaPath)
             ps.executeUpdate()
       end PostMedia
+      object SubscribedFeed extends Creatable:
+        override val Create =
+          """|CREATE TABLE subscribed_feed (
+             |  id             INTEGER       NOT NULL,
+             |  feed_url       VARCHAR(1024) NOT NULL,
+             |  update_period  INTEGER       NOT NULL,
+             |  PRIMARY KEY ( id )
+             |)""".stripMargin
+      end SubscribedFeed
+      object DestinationFeedSubscription extends Creatable:
+        override val Create =
+          """|CREATE TABLE destination_feed_subscription (
+             |  seismic_node_id    INTEGER       NOT NULL,
+             |  name               VARCHAR(1024) NOT NULL,
+             |  subscribed_feed_id INTEGER       NOT NULL,
+             |  PRIMARY KEY ( seismic_node_id, name, subscribed_feed_id ),
+             |  FOREIGN KEY (seismic_node_id, name) REFERENCES destination(seismic_node_id,name),
+             |  FOREIGN KEY (subscribed_feed_id) REFERENCES subscribed_feed(id)
+             |)""".stripMargin
+      end DestinationFeedSubscription
+      object PostComment extends Creatable:
+        override val Create =
+          """|CREATE TABLE post_comment (
+             |  id               INTEGER NOT NULL,
+             |  post_id          INTEGER NOT NULL,
+             |  hidden           BOOLEAN NOT NULL,
+             |  source_url       VARCHAR(1024),
+             |  source_rss_guid  VARCHAR(1024),
+             |  author           VARCHAR(1024),
+             |  publication_time TIMESTAMP,
+             |  content_html     TEXT,
+             |  PRIMARY KEY ( id ),
+             |  FOREIGN KEY ( post_id ) REFERENCES post( id ),
+             |  UNIQUE( source_url ),
+             |  UNIQUE( source_rss_guid )
+             |)""".stripMargin
+      end PostComment
     end Table
     object Sequence:
       private def selectNext[T]( seqName : String )( wrap : Int => T )( conn : Connection )  : T =
@@ -569,6 +607,10 @@ object PgSchema extends SelfLogging:
         protected val Create = "CREATE SEQUENCE post_id_seq AS INTEGER"
         def selectNext( conn : Connection ) : Int = Sequence.selectNext( "post_id_seq" )( scala.Predef.identity )( conn )
       end PostId
+      object SubscribedFeedId extends Creatable:
+        protected val Create = "CREATE SEQUENCE subscribed_feed_id_seq AS INTEGER"
+        def selectNext( conn : Connection ) : Int = Sequence.selectNext( "subscribed_feed_id_seq" )( scala.Predef.identity )( conn )
+      end SubscribedFeedId
     end Sequence
     object Index:
       object PostByDestinationOwnerIndex extends Creatable:
