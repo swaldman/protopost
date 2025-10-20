@@ -73,6 +73,19 @@ object RevisionsCards:
 
     val currentPostAllRevisionsLinks =
       val direct = currentPostAllRevisionsSignal.map( _.fold(Seq.empty[RevisionTimestamp])(_.revisionTimestampReverseChronological) )
+      def makeRevisionLink( rt : RevisionTimestamp, initial : RevisionTimestamp, signal : Signal[RevisionTimestamp] ) =
+        // this is unusual, we can just ignore the update signal, because the revision timestamp for an id (revision timestamp) is
+        // unique and invariant
+        div(
+          TinyLink.create( RevisionTimestampFormatter.format(rt.asInstant) ).amend(
+            onClick --> { _ => selectedRevisionVar.set(Some(rt)) }
+          )
+        )
+      direct.split( identity )( makeRevisionLink ) // we'll only construct anew if we don't already have one for revision ID
+
+    /*
+      // naive, without the caching/retention provided by split...
+      // see https://laminar.dev/documentation#lists-of-children
       direct.map: srt =>
         srt.map : rt =>
           div(
@@ -80,6 +93,7 @@ object RevisionsCards:
               onClick --> { _ => selectedRevisionVar.set(Some(rt)) }
             )
           )
+     */
 
     val noRevisionHistoryLoadedCard =
       div(
@@ -100,7 +114,7 @@ object RevisionsCards:
           div(
             sectionBorderPaddingMargin,
             idAttr := "revisons-cards-timestamp-list",
-            children <-- currentPostAllRevisionsLinks // XXX: this is really inefficient, learn the Laminar Way of selective updates
+            children <-- currentPostAllRevisionsLinks
           )
       )
 

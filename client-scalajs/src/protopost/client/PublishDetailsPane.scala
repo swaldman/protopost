@@ -3,8 +3,7 @@ package protopost.client
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
-import protopost.common.api.PostDefinition
-import protopost.common.api.PostRevisionHistory
+import protopost.common.api.{PostDefinition,PostMediaInfo,PostRevisionHistory}
 
 import sttp.model.Uri
 import sttp.client4.WebSocketBackend
@@ -22,25 +21,35 @@ object PublishDetailsPane:
 
     val fileUploadComponentsVal : Var[(Option[String],Option[dom.File])] = Var(Tuple2(None,None))
     val fileUploadComponentsSignal = fileUploadComponentsVal.signal
+    val fileUploadComponentsDistinctChanges = fileUploadComponentsSignal.changes.distinct
 
     val publicationAttemptedSignal     = currentPostDefinitionSignal.map( _.fold(false)( _.publicationAttempted ) )
     val publishUpdateButtonLabelSignal = publicationAttemptedSignal.map( pa => if pa then "update post" else "publish post" )
 
-    val publicationStatusSpanSignal = currentPostDefinitionSignal.map: mbpd =>
-      mbpd.fold(span("Unknown.")): pd =>
-        if pd.publicationAttempted then
-          pd.htmlPermalink match
-            case Some( permalink ) =>
-              span(
-                a(
-                  href := permalink,
-                  "Published"
-                ),
-                "."
-              )
-            case None => span("Publication attempted, awaiting permalink.")
-        else
-          span("Unpublished.")
+    val publicationStatusSpanSignal =
+      val unknownSpan     = span("Unknown.")
+      val unpublishedSpan = span("Unpublished.")
+      val noPermalinkSpan = span("Publication attempted, awaiting permalink.")
+      val mbPermalinkSignal =
+        currentPostDefinitionSignal.map: mbpd =>
+          mbpd.flatMap: pd =>
+            if pd.publicationAttempted then pd.htmlPermalink else None
+      val publishedSpan =
+        span(
+          a(
+            href <-- mbPermalinkSignal.map( _.getOrElse("javascript:alert('Oops. Bug. pubishedSpan should never be displayed with no permalink')") ),
+            "Published"
+          ),
+          "."
+        )
+      currentPostDefinitionSignal.map: mbpd =>
+        mbpd.fold( unknownSpan ): pd =>
+          if pd.publicationAttempted then
+            pd.htmlPermalink match
+              case Some( permalink ) => publishedSpan
+              case None => noPermalinkSpan
+          else
+            unpublishedSpan
 
     val fullyPublishedSignal = currentPostDefinitionSignal.map( _.fold(false)( pd => pd.publicationAttempted && pd.htmlPermalink.nonEmpty ) )
 
@@ -63,26 +72,30 @@ object PublishDetailsPane:
           case None     => false
 
     val postMediaTableRowsSignal : Signal[Seq[HtmlElement]] =
-      currentPostMediaSignal.map: mbpmis =>
-        mbpmis match
-          case Some(pmis) =>
-            pmis.flatMap: pmi =>
-              Seq(
-                div(a(href:=pmi.path,textDecoration.none,pmi.path)),
-                div(humanReadableByteLength(pmi.length)),
-                div(
-                  cursor.pointer,
-                  alignSelf.center,
-                  color.red,
-                  marginLeft.rem(0.25),
-                  "\u00d7",
-                  onClick --> { _ =>
-                    util.request.deleteMediaItemForPost(protopostLocation,pmi.postId,pmi.path,backend,currentPostMediaVar)
-                  }
-                )
-              )
-          case None =>
-            Seq.empty
+      def rowFromPostMediaInfo( id : (Int,String), initial : PostMediaInfo, updates : Signal[PostMediaInfo] ) : Seq[HtmlElement] =
+        val (postId, path) = id
+        Seq(
+          div(a(href:=path,textDecoration.none,path)),
+          div(
+            text <-- updates.map( pmi => humanReadableByteLength(pmi.length) )
+          ),
+          div(
+            cursor.pointer,
+            alignSelf.center,
+            color.red,
+            marginLeft.rem(0.25),
+            "\u00d7",
+            onClick --> { _ =>
+              util.request.deleteMediaItemForPost(protopostLocation,postId,path,backend,currentPostMediaVar)
+            }
+          )
+        )
+      val pmisSignal : Signal[Seq[PostMediaInfo]] =
+        currentPostMediaSignal.map: mbpmis =>
+          mbpmis match
+            case Some(pmis) => pmis
+            case None => Seq.empty
+      pmisSignal.split( pmi => (pmi.postId, pmi.path) )( rowFromPostMediaInfo ).map( _.flatten )
 
     val postMediaTableCard =
       val blankHeaderModifiers = Seq(
@@ -302,6 +315,9 @@ object PublishDetailsPane:
             input(
               fontFamily("sans-serif"),
               `type` := "file",
+              value <-- fileUploadComponentsDistinctChanges.collect {
+                case ( _, None ) => null
+              },
               onChange.mapToFiles --> { files =>
                 if files.length > 0 then
                   if files.length > 1 then dom.console.warn(s"Expected one selected file, found ${files.length}, using first: ${files}")
@@ -312,7 +328,7 @@ object PublishDetailsPane:
                       fuc.copy( _2 = Some(files.head) )
                 else
                   fileUploadComponentsVal.update( _.copy( _2 = None ) )
-              }
+              },
             ),
             div(
               marginTop.rem(0.5),
@@ -328,7 +344,10 @@ object PublishDetailsPane:
                 marginLeft.rem(0.5),
                 flexGrow(1),
                 `type` := "text",
-                value <-- fileUploadComponentsSignal.changes.distinct.collect { case (Some(fp), _ ) => fp },
+                value <-- fileUploadComponentsDistinctChanges.collect {
+                  case (Some(fp), _ ) => fp
+                  case (None, _ )     => ""
+                },
                 onChange.mapToValue --> { filePath =>
                   val trimmed = filePath.trim
                   if trimmed.nonEmpty then

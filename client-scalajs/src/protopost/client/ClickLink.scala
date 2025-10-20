@@ -4,11 +4,21 @@ import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
 object ClickLink:
-  def create( linkText : String ) : HtmlElement =
-    a(
+  val baseModifiers = Seq(
       cls("click-link"),
       cursor.default,
+  )
+
+  def create( linkText : String ) : HtmlElement =
+    a(
+      baseModifiers,
       linkText
+    )
+
+  def create( linkTextSignal : Signal[String] ) : HtmlElement =
+    a(
+      baseModifiers,
+      text <-- linkTextSignal
     )
 
 

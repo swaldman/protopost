@@ -24,7 +24,7 @@ object DestinationsAndPostsCard:
     object DestinationPane:
       def create( destination : Destination, initOpen : Boolean = false ) : HtmlElement =
         // println( s"DestinationPane.create( $destination, $initOpen )" )
-        
+
         val di = destination.destinationIdentifier
 
         if initOpen then openDestinationsLsi.update( set => set + di )
@@ -45,12 +45,18 @@ object DestinationsAndPostsCard:
                 val pds = destinationMap.map( (k,v) => v )
                 pds.to(immutable.SortedSet)
 
+          val postDefinitionsListSignal : Signal[List[PostDefinition]] =
+            postDefinitionsSignal.map: mbPdset =>
+              mbPdset match
+                case Some( pdset ) => pdset.toList
+                case None => List.empty
+
           val openPostDefinitionsSignal = Signal.combine(openSignal,postDefinitionsSignal)
 
           val postsOpenObserver = Observer[(Boolean,Option[immutable.SortedSet[PostDefinition]])]: (open : Boolean, mbpdset : Option[immutable.SortedSet[PostDefinition]]) =>
               if open && mbpdset.isEmpty then updatePosts()
 
-          val newPostCreatedObserver = Observer[(Option[PostIdentifier],Option[immutable.SortedSet[PostDefinition]])]( (mbPostIdentifier, mbCurrentPostDefinitions) => 
+          val newPostCreatedObserver = Observer[(Option[PostIdentifier],Option[immutable.SortedSet[PostDefinition]])]( (mbPostIdentifier, mbCurrentPostDefinitions) =>
             mbPostIdentifier match
               case Some( postIdentifier ) =>
                 if postIdentifier.destinationIdentifier == destination.destinationIdentifier then
@@ -78,7 +84,31 @@ object DestinationsAndPostsCard:
           def updatePosts() =
             util.request.hardUpdateDestinationsToKnownPosts( protopostLocation, destination.destinationIdentifier, backend, destinationsToKnownPostsVar )
 
-          private def postDiv( pd : PostDefinition ) : HtmlElement =
+          def postDiv( postId : Int, initial : PostDefinition, updates : Signal[PostDefinition] ) : HtmlElement =
+            val titleSignal = updates.map( _.title.fold(Client.UntitledPostLabel)(t => s""""$t"""") )
+            val authorsSignal = updates.map( pd => commaListAnd( pd.authors ).fold("")( authors => s"by ${authors}" ) )
+            div(
+              fontSize.pt(10),
+              backgroundColor <-- currentPostDefinitionSignal.map( _.fold("transparent")(cpd => if postId == cpd.postId then "#ccffaa" else "transparent") ),
+              ClickLink.create(titleSignal).amend(
+                onClick --> { _ =>
+                  currentPostIdentifierManager.set(Some(PostIdentifier(destination.destinationIdentifier,postId)))
+                  topPanelLocationLsi.set(TopPanel.Tab.currentPost)
+                }
+              ),
+              " ",
+              span(
+                text <-- authorsSignal,
+              ),
+              " ",
+              span(
+                fontSize.pt(8),
+                s"[Post ID #${postId}]"
+              )
+            )
+
+/*
+          private def naivePostDiv( pd : PostDefinition ) : HtmlElement =
             val title = pd.title.fold(Client.UntitledPostLabel)(t => s""""$t"""")
             val authors = commaListAnd( pd.authors ).fold("")( authors => s"by ${authors}" )
             div(
@@ -100,6 +130,7 @@ object DestinationsAndPostsCard:
                 s"[Post ID #${pd.postId}]"
               )
             )
+*/
           def create() : HtmlElement =
             // println( s"PostsPane.create( $destination, $initOpen )" )
             div(
@@ -110,11 +141,7 @@ object DestinationsAndPostsCard:
               fontSize.pt(10),
               lineHeight.percent(120),
               display <-- openSignal.map( open => if open then "block" else "none" ),
-              children <-- {postDefinitionsSignal.map: mbPdset =>
-                mbPdset match
-                  case Some( pdset ) => pdset.toList.map(pd => postDiv(pd))
-                  case None => List.empty
-              },
+              children <-- postDefinitionsListSignal.split( _.postId )( postDiv ),
               onMountCallback { mountContext =>
                 // println( s"mount: $mountContext" )
                 given Owner = mountContext.owner
@@ -181,4 +208,3 @@ object DestinationsAndPostsCard:
       util.laminar.blackHr(),
       children <-- destinationPanesSignal
     )
-
