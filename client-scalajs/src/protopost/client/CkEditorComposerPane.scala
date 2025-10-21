@@ -160,6 +160,52 @@ object CkEditorComposerPane:
 
     val publishCard = PublishDetailsPane.create( client, "ckeditor-composer" ).amend( flexGrow(1) )
 
+    def mainMountCallback( mountContext : MountContext[HtmlElement] ) : Unit =
+      // println( s"mount: $mountContext" )
+      given Owner = mountContext.owner
+      sourceCodeTextAreaValueChangeEvents.addObserver(sourceCodeTextAreaContents.writer)
+      if ckEditorSignal.now().isEmpty then
+        CkGlobals.bindCkEditor( "ckeditor-container", "ckeditor-toolbar-container" )
+          .toFuture
+          .onComplete: attempt =>
+            attempt match
+              case Success( ckEditor ) =>
+                println(s"ckEditor: $ckEditor")
+                def updateLocalContent() =
+                  currentPostLocalPostContentLsi.update: pc =>
+                    // don't update if we're just displaying a placeholder
+                    if pc.contentType == "text/html" && composerLsi.now() != Composer.`text-and-preview` then 
+                      val out = pc.copy(text=ckEditor.getData())
+                      localContentDirtyVar.set(true)
+                      out
+                    else
+                      pc
+                ckEditor.model.document.on("change:data", _ => updateLocalContent())
+                println("Set up event callback.")
+                ckEditorVar.set( Some( ckEditor ) )
+              case Failure( t ) =>
+                t.printStackTrace()
+      val loadContentObserver = Observer[Tuple3[PostContent,Option[CkEditor],Composer]]: (pc, mbcke, composer) =>
+        // println( "loadContentObserver" )
+        (composer, mbcke) match
+          case (Composer.WYSIWYG, Some( cke )) =>
+            if pc.contentType == "text/html" then
+              if cke.getData() != pc.text then cke.setData( pc.text )
+              cke.disableReadOnlyMode( LockId.BadContentOrComposer )
+            else
+              cke.setData(
+                """<div style="text-align: center; "><p style="color: red;"><b>This post contains non-HTML content, cannot edit with WYSIWYG composer.</b></p><p>Choose a different composer under "profile".</p></div>"""
+              )
+              cke.enableReadOnlyMode( LockId.BadContentOrComposer )
+          case (Composer.`text-and-preview`, Some( cke )) =>
+              cke.setData(
+                """<div style="text-align: center; "><b>WYSIWYG composer disabled by in profile by user.</b></div>"""
+              )
+              cke.enableReadOnlyMode( LockId.BadContentOrComposer )
+          case ( _, None) =>
+            /* ignore */
+      Signal.combine(currentPostLocalPostContentSignal.distinct,ckEditorVar.distinct,composerSignal.distinct).addObserver( loadContentObserver )
+
     div(
       marginTop.rem(1),
       marginLeft.rem(1),
@@ -175,50 +221,5 @@ object CkEditorComposerPane:
                      case Tab.source  => sourceCard
                      case Tab.publish => publishCard
       },
-      onMountCallback { mountContext =>
-        // println( s"mount: $mountContext" )
-        given Owner = mountContext.owner
-        sourceCodeTextAreaValueChangeEvents.addObserver(sourceCodeTextAreaContents.writer)
-        if ckEditorSignal.now().isEmpty then
-          CkGlobals.bindCkEditor( "ckeditor-container", "ckeditor-toolbar-container" )
-            .toFuture
-            .onComplete: attempt =>
-              attempt match
-                case Success( ckEditor ) =>
-                  println(s"ckEditor: $ckEditor")
-                  def updateLocalContent() =
-                    currentPostLocalPostContentLsi.update: pc =>
-                      // don't update if we're just displaying a placeholder
-                      if pc.contentType == "text/html" && composerLsi.now() != Composer.`text-and-preview` then 
-                        val out = pc.copy(text=ckEditor.getData())
-                        localContentDirtyVar.set(true)
-                        out
-                      else
-                        pc
-                  ckEditor.model.document.on("change:data", _ => updateLocalContent())
-                  println("Set up event callback.")
-                  ckEditorVar.set( Some( ckEditor ) )
-                case Failure( t ) =>
-                  t.printStackTrace()
-        val loadContentObserver = Observer[Tuple3[PostContent,Option[CkEditor],Composer]]: (pc, mbcke, composer) =>
-          // println( "loadContentObserver" )
-          (composer, mbcke) match
-            case (Composer.WYSIWYG, Some( cke )) =>
-              if pc.contentType == "text/html" then
-                if cke.getData() != pc.text then cke.setData( pc.text )
-                cke.disableReadOnlyMode( LockId.BadContentOrComposer )
-              else
-                cke.setData(
-                  """<div style="text-align: center; "><p style="color: red;"><b>This post contains non-HTML content, cannot edit with WYSIWYG composer.</b></p><p>Choose a different composer under "profile".</p></div>"""
-                )
-                cke.enableReadOnlyMode( LockId.BadContentOrComposer )
-            case (Composer.`text-and-preview`, Some( cke )) =>
-                cke.setData(
-                  """<div style="text-align: center; "><b>WYSIWYG composer disabled by in profile by user.</b></div>"""
-                )
-                cke.enableReadOnlyMode( LockId.BadContentOrComposer )
-            case ( _, None) =>
-              /* ignore */
-        Signal.combine(currentPostLocalPostContentSignal.distinct,ckEditorVar.distinct,composerSignal.distinct).addObserver( loadContentObserver )
-      },
+      onMountCallback( mainMountCallback )
     )

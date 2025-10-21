@@ -72,6 +72,7 @@ object TopPanel:
 
     div(
       idAttr("top-panel-frame"),
+      height.percent(100),
       borderColor <-- loginLevelSignal.map( _.cssColor ),
       borderStyle.solid,
       borderWidth.px(3),

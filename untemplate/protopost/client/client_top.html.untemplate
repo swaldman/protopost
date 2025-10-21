@@ -1,6 +1,8 @@
 import com.mchange.conveniences.string.*
 
 ( protopostLocation : String )[]~()>
+<!DOCTYPE html>
+
 <html>
   <head>
     <meta charset="UTF-8">
@@ -20,7 +22,20 @@ import com.mchange.conveniences.string.*
     <style>
       * {
           box-sizing: border-box;
+          min-width: 0px;
       }
+
+      /*   if this is too untargeted, consider perhaps, thanks claude */
+      /*
+         [style*="display: flex"] > *, [style*="display: grid"] > * {
+           min-width: 0;
+         }
+      */
+
+      html {
+          height: 100%;
+      }
+
       body {
           width: 100vw;
           height: 100vh;
@@ -30,8 +45,8 @@ import com.mchange.conveniences.string.*
           font-family: sans-serif;
       }
       #root {
-          width: 97.5vw;
-          height: 97.5vh;
+          width: 98vw;
+          height: 98vh;
           margin-top: 1vh;
           margin-bottom: 1vh;
           margin-left: 1vw;

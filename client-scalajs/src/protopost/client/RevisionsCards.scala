@@ -8,8 +8,6 @@ import com.raquo.laminar.modifiers.KeySetter
 import com.raquo.laminar.nodes.ReactiveHtmlElement
 import org.scalajs.dom.HTMLElement
 import protopost.common.api.{PostDefinition,RevisionTimestamp}
-import java.time.format.DateTimeFormatter
-import java.time.ZoneId
 import protopost.common.api.RetrievedPostRevision
 import protopost.client.util.safeHtmlFromUserHtml
 import protopost.client.util.safeHtmlFromMarkdown
@@ -22,8 +20,6 @@ object RevisionsCards:
   enum Card:
     case noRevisionHistoryLoaded, revisionHistoryList, revisionPreview
 
-  val RevisionTimestampFormatter = DateTimeFormatter.ofPattern("""yyyy'-'MM'-'dd' @ 'hh':'mm' 'a""").withZone( ZoneId.systemDefault() )
-
   def create( client : Client ) : HtmlElement =
     import Client.PublishDetailsPaneLabelCommonModifiers
     import client.*
@@ -31,6 +27,9 @@ object RevisionsCards:
     val selectedRevisionVar : Var[Option[RevisionTimestamp]] = Var(None)
 
     val previewRevisionVar : Var[Option[RetrievedPostRevision]] = Var(None)
+
+    val viewSourceVar : Var[Boolean] = Var(false)
+    val viewSourceSignal = viewSourceVar.signal
 
     val loadPreviewRevisionObserver = Observer[(RevisionTimestamp,PostDefinition)]: (rt,pd) =>
       util.request.loadPostRevision(
@@ -77,7 +76,7 @@ object RevisionsCards:
         // this is unusual, we can just ignore the update signal, because the revision timestamp for an id (revision timestamp) is
         // unique and invariant
         div(
-          TinyLink.create( RevisionTimestampFormatter.format(rt.asInstant) ).amend(
+          TinyLink.create( Client.RevisionTimestampFormatter.format(rt.asInstant) ).amend(
             onClick --> { _ => selectedRevisionVar.set(Some(rt)) }
           )
         )
@@ -119,6 +118,30 @@ object RevisionsCards:
       )
 
     val revisionPreviewCard =
+      val commonModifiers = Seq(
+          marginTop.rem(0.5),
+          borderTopWidth.px(2),
+          borderTopColor.black,
+          borderTopStyle.solid,
+          paddingTop.rem(0.5),
+          overflowX.scroll,
+      )
+      val formattedCard =
+        div(
+          commonModifiers,
+          fontFamily(serifFontFamilies),
+          inContext { thisNode =>
+            innerHtmlRevisionSignal --> { (mbHtml) => thisNode.ref.innerHTML = mbHtml.getOrElse("<b>No revision loaded</b>") }
+          }
+        )
+      val viewSourceCard =
+        div(
+          commonModifiers,
+          whiteSpace.pre,
+          fontFamily("monospace"),
+          text <-- innerHtmlRevisionSignal.map( _.getOrElse("No revision loaded.") )
+        )
+
       div(
         display <-- cardSignal.map( card => if card == Card.revisionPreview then "flex" else "none" ),
         flexDirection.column,
@@ -141,10 +164,20 @@ object RevisionsCards:
               cls := "button-utilitarian",
               role("button"),
               "back",
-              onClick --> { _ => selectedRevisionVar.set(None) }
+              onClick --> { _ =>
+                selectedRevisionVar.set(None)
+                viewSourceVar.set(false)
+              }
             ),
             div(
               flexGrow(1),
+              textAlign.center,
+              button(
+                cls := "button-utilitarian",
+                role("button"),
+                text <-- viewSourceSignal.map( vs => if vs then "view preview" else "view source" ),
+                onClick --> { _ => viewSourceVar.update(!_) }
+              ),
             ),
             button(
               cls := "button-utilitarian",
@@ -160,23 +193,12 @@ object RevisionsCards:
                   localContentDirtyVar.set(true)
                   //composerPaneCurrentTabVar.set(ComposerPane.Tab.edit)
                   resetComposersToEdit()
+                  viewSourceVar.set(false)
                 case _ => /* ignore */
               }
             ),
           ),
-          div(
-            marginTop.rem(0.5),
-            borderTopWidth.px(2),
-            borderTopColor.black,
-            borderTopStyle.solid,
-            paddingTop.rem(0.5),
-            overflowX.scroll,
-            minWidth.px(0),
-            maxWidth.percent(100),
-            inContext { thisNode =>
-              innerHtmlRevisionSignal --> { (mbHtml) => thisNode.ref.innerHTML = mbHtml.getOrElse("<b>No revision loaded</b>") }
-            }
-          )
+          child <-- viewSourceSignal.map( vs => if vs then viewSourceCard else formattedCard )
         )
       )
 

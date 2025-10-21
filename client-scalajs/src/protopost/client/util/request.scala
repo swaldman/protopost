@@ -201,7 +201,8 @@ def saveRevisionToServerUpdateRevisions(
         case Some( pri ) =>
           loadCurrentPostRevisionHistory(protopostLocation,npr.postId,backend,currentPostAllRevisionsVar)
         case None =>
-          /* nothing to do? what does it mean if we got None back? */
+          /* nothing to do? what does it mean if we got None back?                    */
+          /* It means nothing was actually saved because the revision hadn't changed. */
   updateVarFromApiResult[Option[PostRevisionIdentifier],Boolean]( request, backend, localContentDirtyVar, updater, sideEffectPostUpdate )
 
 def hardUpdateNewPostDefinition(
@@ -321,10 +322,12 @@ def updateVarFromApiResult[T : JsonValueCodec,U](
 
     future.onComplete:
       case Success(result) =>
-        //println( s"Setting result: ${result}" )
+        //println( s"updateVarFromApiResult - Setting result: ${result}" )
         laminarVar.update(updater(result))
         sideEffectPostUpdate(result)
-      case Failure(t) => errorHandler(t)
+      case Failure(t) =>
+        //println( s"updateVarFromApiResult - Handling error: ${t}" )
+        errorHandler(t)
   catch
     case NonFatal(t) => errorHandler(t)
 

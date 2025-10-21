@@ -226,7 +226,7 @@ object PublishDetailsPane:
             label(
               subsectionLabelModifiers,
               forId := "${idPrefix}-post-unique-id-input",
-              "post unique ID:"
+              "post anchor (unique ID):"
             ),
             input(
               marginTop.rem(0.25),

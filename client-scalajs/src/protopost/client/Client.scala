@@ -15,6 +15,9 @@ import scala.util.control.NonFatal
 import scala.scalajs.js
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
+import java.time.format.DateTimeFormatter
+import java.time.ZoneId
+
 import protopost.common.PosterId
 import protopost.common.api.{*,given}
 
@@ -40,6 +43,8 @@ object Client:
   val AutosaveCheckFrequencyMsecs = 180000 // autosave every three minutes while actively writing
 
   val PublishDetailsPaneLabelCommonModifiers = Seq( fontSize.pt(11), fontWeight.bold )
+
+  val RevisionTimestampFormatter = DateTimeFormatter.ofPattern("""yyyy'-'MM'-'dd' @ 'hh':'mm' 'a""").withZone( ZoneId.systemDefault() )
 
   @main
   def main() : Unit =
@@ -126,6 +131,7 @@ class Client( val protopostLocation : Uri ):
   val currentPostLocalPostContentSignal = currentPostLocalPostContentLsi.signal
 
   val recoveredRevisionsLsi = LocalStorageItem(LocalStorageItem.Key.recoveredRevisions)
+  val recoveredRevisionsSignal = recoveredRevisionsLsi.signal
 
   val localContentDirtyVar : Var[Boolean] = Var(false)
   val localContentDirtySignal = localContentDirtyVar.signal
@@ -229,7 +235,7 @@ class Client( val protopostLocation : Uri ):
     EventStream.merge(autosaveRequestStream,manualSaveEventBus.events)
       .withCurrentValueOf( localContentDirtyVar, currentPostIdentifierSignal, currentPostLocalPostContentSignal )
       .collect { case (_,true,Some(pd),pc) => NewPostRevision(pd.postId,pc.contentType,pc.text) }
-      .distinct
+      //.distinct // if it's distinct, edits that make a change then undo it can't clear the dirty var, because the save is not even attempted
 
   private val reloadPostMediaRequestEventBus = new EventBus[Unit]
   private val reloadPostMediaRequestWriteBus = reloadPostMediaRequestEventBus.writer
@@ -271,7 +277,8 @@ class Client( val protopostLocation : Uri ):
         LocalStorageItem.resetAll()
 
   private val doSaveEventObserver = Observer[NewPostRevision]: npr =>
-    util.request.saveRevisionToServerUpdateRevisions(protopostLocation, npr, backend, localContentDirtyVar,currentPostAllRevisionsVar)
+    // dom.console.log( "Saving revision.", npr )
+    util.request.saveRevisionToServerUpdateRevisions(protopostLocation, npr, backend, localContentDirtyVar, currentPostAllRevisionsVar)
 
   private val updateLoginStatusObserver = Observer[Int]: count =>
     // on initial mount, the update seems sometimes to skip,
@@ -340,6 +347,7 @@ class Client( val protopostLocation : Uri ):
         dom.document.removeEventListener("ckeditorUploadComplete", reloadPostMediaRequestListener)
       },
       idAttr("protopost-client-default"),
+      height.percent(100),
       // very annoyingly, there's not an easy way to set grid- and hover-related style elements (beyond display.grid itself) in laminar
       styleTag(
         """
@@ -387,7 +395,9 @@ class Client( val protopostLocation : Uri ):
         |.tab-pane.disabled a.tiny-link {
         |  color: gray;
         |}
-        |
+        |#profile-recovered-revisions a.tiny-link:hover {
+        |  color: green;
+        |}
         | /* modified from https://getcssscan.com/css-buttons-examples button-23 */
         |.button-utilitarian {
         |  background-color: #FFFFFF;
