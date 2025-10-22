@@ -22,6 +22,7 @@ import protopost.common.api.RevisionTimestamp
 import protopost.common.api.PostMediaInfo
 import scala.scalajs.js.typedarray.ArrayBuffer
 import scala.scalajs.js.typedarray.Int8Array
+import protopost.client.UnsavedRevision
 
 /*
 def rawBodyToLoginLevelOrThrow( rawBody : Either[ResponseException[String], LoginStatus] ) : LoginLevel =
@@ -83,13 +84,14 @@ def saveLoadOnCurrentPostSwap(
   newPostContentType             : String,
   backend                        : WebSocketBackend[scala.concurrent.Future],
   currentPostLocalPostContentLsi : LocalStorageItem[PostContent],
-  recoveredRevisionsLsi          : LocalStorageItem[List[Tuple2[RevisionTimestamp,NewPostRevision]]],
+  recoveredRevisionsLsi          : LocalStorageItem[List[UnsavedRevision]],
   localContentDirtyVar           : Var[Boolean]
 )(using ec : ExecutionContext) =
   //println(s"saveLoadOnCurrentPostSwap(...): mbPrevPostDefinition: $mbPrevPostDefinition, mbNewPostDefinition: $mbNewPostDefinition")
   def saveCurrent(ppd : PostDefinition) : Future[Unit] =
     val PostContent(contentType, body) = currentPostLocalPostContentLsi.now()
     val npr = NewPostRevision(ppd.postId, contentType, body)
+    //println( s"nickname: ${ppd.destination.nickname}" )
     def saveCurrentOrFail() : Future[Unit] =
         val request =
           basicRequest
@@ -99,7 +101,7 @@ def saveLoadOnCurrentPostSwap(
         request.send(backend).map( _.body ).map( _ => localContentDirtyVar.set(false) )
     def saveAsRecovered() : Unit =
       val rt = RevisionTimestamp( Instant.now() )
-      recoveredRevisionsLsi.update( list => (rt,npr) :: list )
+      recoveredRevisionsLsi.update( list => UnsavedRevision(rt,npr,ppd.destination) :: list )
     if body.nonEmpty then // don't potentially overwrite latest as strictly empty. more likely a bug than an intention
       saveCurrentOrFail().recover:
         case NonFatal(t) =>

@@ -1,6 +1,7 @@
 package protopost.client.util
 
 import protopost.client.{marked,DOMPurify}
+import protopost.common.api.Destination
 import org.scalajs.dom
 
 def epochSecondsNow() : Long = System.currentTimeMillis()/1000
@@ -26,3 +27,5 @@ def rebasePage( baseHttp : Option[String] ) : Unit =
       baseTags.foreach(base => base.remove())
       rebasePage( baseHttp )
 
+def destinationText( destination : Destination ) : String =
+  destination.nickname.getOrElse( s"${destination.name}@${destination.seismicNode.locationUrl}" )

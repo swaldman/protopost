@@ -5,44 +5,51 @@ import protopost.common.api.{PosterNoAuth, given}
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 import protopost.common.EmailAddress
-import protopost.common.api.RevisionTimestamp
-import protopost.common.api.NewPostRevision
+import protopost.common.api.{NewPostRevision,RevisionTimestamp}
+
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
+
 
 object ProfileCard:
   def create( client : Client ) : HtmlElement =
     import Client.PublishDetailsPaneLabelCommonModifiers
     import client.*
 
-    val selectedRecoveredRevisionVar : Var[Option[RevisionTimestamp]] = Var(None)
-    val selectedRecoveredRevisionSignal = selectedRecoveredRevisionVar.signal
-
-    val recoveredRevisionsTableHeadeModifiers = Seq(
+    val recoveredRevisionsTableHeaderModifiers = Seq(
       fontWeight.bold,
       fontSize.pt(10),
-      textDecoration.underline,
+      //textDecoration.underline,
       marginBottom.rem(0.25),
-      textAlign.center,
     )
 
     val commonRevisionsRowModifiers = Seq(
       fontSize.pt(10),
-      textAlign.center,
       // borderColor.fuchsia,
       // borderWidth.px(1),
       // borderStyle.solid,
     )
 
     val recoveredRevisionsRowSignal : Signal[Seq[Seq[HtmlElement]]] =
-      def makeRow( id : RevisionTimestamp, initial : Tuple2[RevisionTimestamp,NewPostRevision], updates : Signal[Tuple2[RevisionTimestamp,NewPostRevision]] ) : Seq[HtmlElement] =
+      def makeRow( id : RevisionTimestamp, initial : UnsavedRevision, updates : Signal[UnsavedRevision] ) : Seq[HtmlElement] =
         Seq(
           div(
             commonRevisionsRowModifiers,
-            initial(1).postId.toString()
+            textAlign.center,
+            initial.newPostRevision.postId.toString(),
+          ),
+          div(
+            //borderColor.fuchsia,
+            //borderWidth.px(1),
+            //borderStyle.solid,
+            commonRevisionsRowModifiers,
+            textAlign.left,
+            util.destinationText( initial.destination )
           ),
           div(
             commonRevisionsRowModifiers,
+            textAlign.left,
             TinyLink.create( Client.RevisionTimestampFormatter.format(id.asInstant) ).amend(
-              onClick --> { _ => selectedRecoveredRevisionVar.set(Some(id)) }
+              onClick( _.withCurrentValueOf(updates) ) --> { (_, ur) => selectedUnsavedRevisionVar.set(Some(ur)) }
             )
           ),
           div(
@@ -52,39 +59,62 @@ object ProfileCard:
             color.red,
             marginLeft.rem(0.25),
             "\u00d7",
-            // onClick --> { _ =>
-            //   util.request.deleteMediaItemForPost(protopostLocation,postId,path,backend,currentPostMediaVar)
-            // }
+            onClick --> { _ =>
+              recoveredRevisionsLsi.update( _.filter( _.revisionTimestamp != id ) )
+            }
           )
         )
-      recoveredRevisionsSignal.split( _(0) )( makeRow )
+      recoveredRevisionsSignal.split( _.revisionTimestamp )( makeRow )
+
+    val noRecoveredRevisionsCard =
+      div(
+        fontSize.pt(10),
+        fontStyle.italic,
+        "No unsaved revisions are available."
+      )
 
     val recoveredRevisionTableCard =
       div(
-        idAttr := "profile-recovered-revisions-table-card",
-        display.grid,
-        styleProp("grid-template-columns") := "max-content max-content max-content",
-        marginLeft.auto,
-        marginRight.auto,
-        columnGap.rem(0.5),
+        // borderWidth.px(1),
+        // borderStyle.solid,
+        // borderColor.fuchsia,
+        display.flex,
+        justifyContent.center,
         div(
-          recoveredRevisionsTableHeadeModifiers,
-          "post"
-        ),
-        div(
-          recoveredRevisionsTableHeadeModifiers,
-          "revision"
-        ),
-        div(
-          "\u00a0" // non-breaking space
-        ),
-        children <-- recoveredRevisionsRowSignal.map( _.flatten )
+          maxWidth.fitContent,
+          // borderWidth.px(1),
+          // borderStyle.solid,
+          // borderColor.green,
+          idAttr := "profile-recovered-revisions-table-card",
+          display.grid,
+          styleProp("grid-template-columns") := "max-content max-content max-content max-content",
+          columnGap.rem(0.5),
+          div(
+            recoveredRevisionsTableHeaderModifiers,
+            textAlign.center,
+            "post"
+          ),
+          div(
+            recoveredRevisionsTableHeaderModifiers,
+            textAlign.left,
+            "destination"
+          ),
+          div(
+            recoveredRevisionsTableHeaderModifiers,
+            textAlign.left,
+            "timestamp"
+          ),
+          div(
+            "\u00a0" // non-breaking space
+          ),
+          children <-- recoveredRevisionsRowSignal.map( _.flatten )
+        )
       )
 
-    val recoveredRevisionPreviewCard =
-      div(
-        "Test."
-      )
+    val recoveredRevisionPreviewCard = UnsavedRevisionPreviewCard.create( client )
+
+    def unselectedCard() : HtmlElement =
+      if recoveredRevisionsLsi.now().nonEmpty then recoveredRevisionTableCard else noRecoveredRevisionsCard
 
     def makeComposerRadioButton( composer : Composer ) : HtmlElement =
       div(
@@ -146,14 +176,14 @@ object ProfileCard:
         marginTop.rem(1),
         div(
           PublishDetailsPaneLabelCommonModifiers,
-          "composer properties"
+          "composer"
         ),
         div(
           sectionBorderPaddingMargin,
           idAttr := "profile-composer-properties",
           display.flex,
           flexDirection.column,
-          //fontSize.pt(Client.CardBaseTextSizePt),
+          fontSize.pt(10),
           fontWeight.normal,
           lineHeight.percent(150),
           makeComposerRadioButton( Composer.`WYSIWYG`),
@@ -180,20 +210,16 @@ object ProfileCard:
         marginTop.rem(1),
         div(
           PublishDetailsPaneLabelCommonModifiers,
-          "recovered unsaved revisions"
+          "unsaved recovered revisions"
         ),
         div(
           idAttr := "profile-recovered-revisions",
           display.flex,
+          flexDirection.column,
           justifyContent.center,
-          alignContent.center,
+          alignContent.stretch,
           sectionBorderPaddingMargin,
-          recoveredRevisionTableCard.amend(
-            display <-- selectedRecoveredRevisionSignal.map( mbrr => if mbrr.isEmpty then "grid" else "none" )
-          ),
-          recoveredRevisionPreviewCard.amend(
-            display <-- selectedRecoveredRevisionSignal.map( mbrr => if mbrr.isEmpty then "none" else "block" )
-          ),
+          child <-- Signal.combine(selectedUnsavedRevisionSignal,recoveredRevisionsSignal).map( tup => tup(0).fold( unselectedCard() )( _ => recoveredRevisionPreviewCard ) ),
         ),
       ),
     )

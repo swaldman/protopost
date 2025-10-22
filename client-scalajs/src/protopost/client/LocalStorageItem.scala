@@ -19,7 +19,7 @@ object LocalStorageItem:
     case topPanelLocation            extends Key[TopPanel.Tab]                                    (TopPanel.Tab.destinationsAndPosts)
     case currentPostIdentifier       extends Key[Option[PostIdentifier]]                          (None)
     case currentPostLocalPostContent extends Key[PostContent]                                     (PostContent.default)
-    case recoveredRevisions          extends Key[List[Tuple2[RevisionTimestamp,NewPostRevision]]] (Nil)
+    case recoveredRevisions          extends Key[List[UnsavedRevision]]                           (Nil)
     case openDestinations            extends Key[Set[DestinationIdentifier]]                      (Set.empty)
     case lastLoggedInPoster          extends Key[Option[PosterId]]                                (None)
     case externalJsConfig            extends Key[ProtopostExternalJsConfig]                       (ProtopostExternalJsConfig.default)

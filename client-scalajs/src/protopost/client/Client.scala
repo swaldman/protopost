@@ -83,6 +83,7 @@ class Client( val protopostLocation : Uri ):
   val posterNoAuthSignal : Signal[Option[PosterNoAuth]] = posterNoAuthVar.signal
   val destinationsVar : Var[immutable.SortedSet[Destination]] = Var( immutable.SortedSet.empty )
   val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
+  val destinationsToKnownPostsSignal = destinationsToKnownPostsVar.signal
 
   object currentPostIdentifierManager extends util.laminar.VarLike[Option[PostIdentifier]]:
     private def rebase( mbpi : Option[PostIdentifier] ) : Unit =
@@ -171,6 +172,9 @@ class Client( val protopostLocation : Uri ):
 
   val currentPostMediaVar : Var[Option[Seq[PostMediaInfo]]] = Var(None)
   val currentPostMediaSignal = currentPostMediaVar.signal
+
+  val selectedUnsavedRevisionVar : Var[Option[UnsavedRevision]] = Var(None)
+  val selectedUnsavedRevisionSignal = selectedUnsavedRevisionVar.signal
 
   object externalJsConfigManager extends VarLike[ProtopostExternalJsConfig]:
     private def init() : Unit =
@@ -341,6 +345,10 @@ class Client( val protopostLocation : Uri ):
         doSaveEventStream.addObserver( doSaveEventObserver )
         posterNoAuthSignal.withCurrentValueOf(lastLoggedInPosterSignal).addObserver( localStorageUserFreshnessObserver ) // monitor for changes in user logged in to this browser, clear local storage if there is a change
         reloadPostMediaRequestEventBus.events.withCurrentValueOf(currentPostDefinitionSignal).addObserver( reloadPostMediaRequestObserver )
+
+        // we don't want to erase the local-storage current post on app startup, so we don't update the current post based on selectedUnsavedRevision when it is None
+        selectedUnsavedRevisionSignal.addObserver( Observer[Option[UnsavedRevision]](mbur => if mbur.nonEmpty then currentPostIdentifierManager.set( mbur.map(_.postIdentifier))) ) 
+
         dom.document.addEventListener("ckeditorUploadComplete", reloadPostMediaRequestListener)
       },
       onUnmountCallback { elem =>

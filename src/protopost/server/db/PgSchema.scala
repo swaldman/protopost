@@ -151,12 +151,12 @@ object PgSchema extends SelfLogging:
             ps.setString(2, name)
             Using.resource( ps.executeQuery() )( uniqueResult( "destination-defined" )( _.getBoolean(1) ) )
         def nicknameForDefined( seismicNodeId : Int, name : String )( conn : Connection ) : Option[String] =
-          Using.resource( conn.prepareStatement( SelectDefined ) ): ps =>
+          Using.resource( conn.prepareStatement( SelectNickname ) ): ps =>
             ps.setInt(1, seismicNodeId)
             ps.setString(2, name)
             Using.resource( ps.executeQuery() )( uniqueResult( "nickname-for-defined" )( rs => Option(rs.getString(1)) ) )
         def nickname( seismicNodeId : Int, name : String )( conn : Connection ) : Option[Option[String]] =
-          Using.resource( conn.prepareStatement( SelectDefined ) ): ps =>
+          Using.resource( conn.prepareStatement( SelectNickname ) ): ps =>
             ps.setInt(1, seismicNodeId)
             ps.setString(2, name)
             Using.resource( ps.executeQuery() )( zeroOrOneResult( "nickname" )( rs => Option(rs.getString(1)) ) )

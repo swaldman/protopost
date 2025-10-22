@@ -21,9 +21,9 @@ object UpdateValue:
 sealed trait UpdateValue[+T]
 
 case class NewPostRevision(
-  postId      : Int,
-  contentType : String,
-  body        : String
+  postId          : Int,
+  contentType     : String,
+  body            : String
 )
 
 case class RetrievedPostRevision(

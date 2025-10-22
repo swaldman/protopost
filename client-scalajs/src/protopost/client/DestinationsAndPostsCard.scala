@@ -35,12 +35,12 @@ object DestinationsAndPostsCard:
           openDestinationsLsi.update: set =>
             if set(di) then set - di else set + di
 
-        val destinationText = destination.nickname.getOrElse( s"${destination.name}@${destination.seismicNode.locationUrl}" )
+        val destinationText = util.destinationText( destination )
 
         object PostsPane:
           val postDefinitionsSignal : Signal[Option[immutable.SortedSet[PostDefinition]]] =
             given Ordering[PostDefinition] = ReverseChronologicalPostDefinitions
-            destinationsToKnownPostsVar.signal.map: outerMap =>
+            destinationsToKnownPostsSignal.map: outerMap =>
               outerMap.get(destination.destinationIdentifier).map: destinationMap =>
                 val pds = destinationMap.map( (k,v) => v )
                 pds.to(immutable.SortedSet)

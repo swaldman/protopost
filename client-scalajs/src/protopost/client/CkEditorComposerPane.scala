@@ -84,6 +84,7 @@ object CkEditorComposerPane:
 
     val ckEditorCard =
       div(
+        idAttr := "ckeditor-card",
         padding.rem(1),
         borderStyle.solid,
         borderColor.black,

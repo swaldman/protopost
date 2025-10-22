@@ -3,10 +3,11 @@ package protopost.client
 import scala.scalajs.js
 import scala.scalajs.js.annotation.*
 
-import protopost.common.api.{LoginStatus,PostDefinition}
+import protopost.common.api.{Destination,DestinationIdentifier,LoginStatus,NewPostRevision,PostDefinition,RevisionTimestamp}
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
+import protopost.common.api.PostIdentifier
 
 /*
 // modified from https://www.scala-js.org/doc/interoperability/global-scope.html
@@ -74,9 +75,15 @@ case class PostContent( contentType : String, text : String )
 
 // case class PostInProgress( id : Int, dirtyToLocalStorage : Boolean, dirtyToServer : Boolean, fetchCurrentText : () => PostContent )
 
+case class UnsavedRevision( revisionTimestamp : RevisionTimestamp, newPostRevision : NewPostRevision, destination : Destination ):
+  lazy val postIdentifier = PostIdentifier(destination.destinationIdentifier, newPostRevision.postId)
+
 given JsonValueCodec[ProtopostExternalJsConfig] = JsonCodecMaker.make
 
 given JsonValueCodec[Composer]    = JsonCodecMaker.make
 given JsonValueCodec[PostContent] = JsonCodecMaker.make
+
+given JsonValueCodec[UnsavedRevision] = JsonCodecMaker.make
+given given_JsonValueCodec_List_UnsavedRevision : JsonValueCodec[List[UnsavedRevision]] = JsonCodecMaker.make
 
 
