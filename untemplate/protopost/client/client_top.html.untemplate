@@ -25,6 +25,10 @@ import com.mchange.conveniences.string.*
           min-width: 0px;
       }
 
+      #ckeditor-card * {
+          min-width: unset;
+      }
+
       /*   if this is too untargeted, consider perhaps, thanks claude */
       /*
          [style*="display: flex"] > *, [style*="display: grid"] > * {
