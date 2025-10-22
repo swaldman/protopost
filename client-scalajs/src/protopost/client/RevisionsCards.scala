@@ -15,10 +15,9 @@ import sttp.client4.WebSocketBackend
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
 
-
 object RevisionsCards:
   enum Card:
-    case noRevisionHistoryLoaded, revisionHistoryList, revisionPreview
+    case noRevisionHistoryLoaded, noRevisionsSaved, revisionHistoryList, revisionPreview
 
   def create( client : Client ) : HtmlElement =
     import Client.PublishDetailsPaneLabelCommonModifiers
@@ -60,6 +59,8 @@ object RevisionsCards:
     val cardSignal =
       Signal.combine(currentPostAllRevisionsSignal,selectedRevisionVar).map: tup =>
         tup match
+          case ( Some( revisions ), _ ) if revisions.revisionTimestampReverseChronological.isEmpty =>
+            Card.noRevisionsSaved
           case ( Some(_), Some(_) ) =>
             Card.revisionPreview
           case ( Some(_), None )    =>
@@ -99,6 +100,14 @@ object RevisionsCards:
         display <-- cardSignal.map( card => if card == Card.noRevisionHistoryLoaded then "block" else "none" ),
         em(
           "No revision history loaded."
+        )
+      )
+
+    val noRevisionsSavedCard =
+      div(
+        display <-- cardSignal.map( card => if card == Card.noRevisionsSaved then "block" else "none" ),
+        em(
+          "No revisions have been saved."
         )
       )
 
@@ -204,6 +213,7 @@ object RevisionsCards:
       noRevisionHistoryLoadedCard,
       revisionHistoryListCard,
       revisionPreviewCard,
+      noRevisionsSavedCard,
       onMountCallback { mountContext =>
         given Owner = mountContext.owner
         currentPostDefinitionChangeEvents.filter( _.isEmpty).addObserver( Observer[Option[PostDefinition]]( _ => selectedRevisionVar.set(None) ) )
