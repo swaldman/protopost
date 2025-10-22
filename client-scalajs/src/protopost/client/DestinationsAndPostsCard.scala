@@ -93,6 +93,7 @@ object DestinationsAndPostsCard:
               ClickLink.create(titleSignal).amend(
                 onClick --> { _ =>
                   currentPostIdentifierManager.set(Some(PostIdentifier(destination.destinationIdentifier,postId)))
+                  resetComposersToEdit()
                   topPanelLocationLsi.set(TopPanel.Tab.currentPost)
                 }
               ),
