@@ -178,8 +178,7 @@ object PublishDetailsPane:
       borderTopWidth.px(2),
       marginLeft.rem(1),
       paddingTop.rem(0.5),
-      label(
-        forId := "${idPrefix}-publication-status-display",
+      div(
         PublishDetailsPaneLabelCommonModifiers,
         "status:"
       ),
@@ -191,8 +190,7 @@ object PublishDetailsPane:
         marginTop.rem(SectionMarginTopRem),
         display.flex,
         flexDirection.column,
-        label(
-          forId := "${idPrefix}-publication-actions",
+        div(
           PublishDetailsPaneLabelCommonModifiers,
           "actions:"
         ),
@@ -211,8 +209,7 @@ object PublishDetailsPane:
         marginTop.rem(SectionMarginTopRem),
         display.flex,
         flexDirection.column,
-        label(
-          forId := "${idPrefix}-attributes-section",
+        div(
           PublishDetailsPaneLabelCommonModifiers,
           "attributes:"
         ),
@@ -293,8 +290,7 @@ object PublishDetailsPane:
         display.flex,
         flexDirection.column,
         marginTop.rem(SectionMarginTopRem),
-        label(
-          forId := "${idPrefix}-post-media-manager",
+        div(
           PublishDetailsPaneLabelCommonModifiers,
           "post media:"
         ),

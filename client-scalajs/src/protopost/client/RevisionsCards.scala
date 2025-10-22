@@ -105,8 +105,7 @@ object RevisionsCards:
     val revisionHistoryListCard =
       div(
           display <-- cardSignal.map( card => if card == Card.revisionHistoryList then "block" else "none" ),
-          label(
-            forId := "revisons-cards-timestamp-list",
+          div(
             PublishDetailsPaneLabelCommonModifiers,
             "revisions:"
           ),
@@ -145,8 +144,7 @@ object RevisionsCards:
       div(
         display <-- cardSignal.map( card => if card == Card.revisionPreview then "flex" else "none" ),
         flexDirection.column,
-        label(
-          forId := "revisons-cards-preview",
+        div(
           PublishDetailsPaneLabelCommonModifiers,
           "revision preview:"
         ),

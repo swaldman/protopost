@@ -144,8 +144,7 @@ object ProfileCard:
       util.laminar.blackHr(),
       div(
         marginTop.rem(1),
-        label(
-          forId := "profile-composer-properties",
+        div(
           PublishDetailsPaneLabelCommonModifiers,
           "composer properties"
         ),
@@ -179,8 +178,7 @@ object ProfileCard:
       ),
       div(
         marginTop.rem(1),
-        label(
-          forId := "profile-recovered-revisions",
+        div(
           PublishDetailsPaneLabelCommonModifiers,
           "recovered unsaved revisions"
         ),
