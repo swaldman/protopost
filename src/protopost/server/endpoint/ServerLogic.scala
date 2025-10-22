@@ -48,7 +48,7 @@ object ServerLogic extends SelfLogging:
 
   private def toEpochSecond( instant : Instant ) = instant.toEpochMilli / 1000
 
-  def authenticatePoster(appResources : AppResources)(authInfo : jwt.PosterAuthInfo): ZOut[jwt.AuthenticatedPoster] =
+  def authenticatePoster(appResources : AppResources)(authInfo : jwt.PosterAuthInfo): ZOut[AuthenticatedPosterMbJwtExpiration] =
     ZOut.fromTask:
       ZIO.attempt:
         val identity = appResources.localIdentity
@@ -73,7 +73,23 @@ object ServerLogic extends SelfLogging:
               if level != claims.securityLevel then
                 throw new BadCredentials( s"Token authenticated as security level ${claims.securityLevel} was misplaced in request as token_security_+${level}" )
 
-              jwt.AuthenticatedPoster(claims, level)
+              val extensionTokenMbJwtExpiration =
+                if level == jwt.SecurityLevel.low && claims.expiration.isBefore( now.plus(1, ChronoUnit.HOURS) ) then // if our low-security login is expiring within an hour
+                  val expiration = now.plus(2, ChronoUnit.HOURS)
+                  val extensionLowSecurityJwt = jwt.createSignJwt( appResources.localIdentity.privateKey )(
+                    keyId = claims.keyId,
+                    subject = claims.subject,
+                    issuedAt = now,
+                    expiration = expiration,
+                    jti = newJti(appResources),
+                    securityLevel = jwt.SecurityLevel.low
+                  )
+                  Some( (jwt = extensionLowSecurityJwt, expiration = expiration) )
+                else
+                  None
+
+              val authenticatedPoster = jwt.AuthenticatedPoster(claims, level)
+              ( authenticatedPoster = authenticatedPoster, mbJwtExpiration = extensionTokenMbJwtExpiration )
             catch
               case bc: BadCredentials => throw bc
               case t: Throwable =>
@@ -84,7 +100,22 @@ object ServerLogic extends SelfLogging:
 
   def parseSubject( aposter : jwt.AuthenticatedPoster ) : Subject = Subject.parse(aposter.claims.subject)
 
-  def posterInfo( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[PosterNoAuth] =
+  extension[T] ( base : ZOut[T] )
+    def prependOptionalLowSecurityExtensionCookie( appResources : AppResources )( mbJwtExpiration : Option[JwtExpiration] ) : ZOut[(Option[CookieValueWithMeta],T)] =
+      val mbCookie =
+        val mbRawCookieEither =
+          mbJwtExpiration.map: jwtExpiration =>
+            CookieValueWithMeta.safeApply(
+              jwt.Jwt.s(jwtExpiration.jwt),
+              expires=Some(jwtExpiration.expiration),
+              secure=appResources.inProduction,
+              httpOnly=true,
+              sameSite=Some(SameSite.Strict)
+            )
+        mbRawCookieEither.map( peel )
+      base.map( t => (mbCookie, t) )
+
+  private def _posterInfo( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[PosterNoAuth] =
     ZOut.fromOptionalTask:
       val db = appResources.database
       val ds = appResources.dataSource
@@ -92,7 +123,11 @@ object ServerLogic extends SelfLogging:
       withConnectionTransactional(ds): conn =>
         db.posterById(subject.posterId)(conn).map( _.toApiPosterNoAuth )
 
-  def destinations( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[Set[Destination]] =
+  def posterInfo( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( unit : Unit ) : ZOut[(Option[CookieValueWithMeta],PosterNoAuth)] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _posterInfo( appResources )( authenticatedPoster )( unit ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+  
+  private def _destinations( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( unit : Unit ) : ZOut[Set[Destination]] =
     ZOut.fromTask:
       val db = appResources.database
       val ds = appResources.dataSource
@@ -100,7 +135,11 @@ object ServerLogic extends SelfLogging:
       withConnectionTransactional(ds): conn =>
         db.destinationsByPosterId(subject.posterId)(conn)
 
-  def newPost( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postDefinitionCreate : PostDefinitionCreate ) : ZOut[PostDefinition] =
+  def destinations( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( unit : Unit ) : ZOut[(Option[CookieValueWithMeta],Set[Destination])] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _destinations( appResources )( authenticatedPoster )( unit ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+
+  private def _newPost( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postDefinitionCreate : PostDefinitionCreate ) : ZOut[PostDefinition] =
     ZOut.fromTask:
       val db = appResources.database
       val ds = appResources.dataSource
@@ -121,13 +160,21 @@ object ServerLogic extends SelfLogging:
           db.postDefinitionForId( postId )( conn ).getOrElse:
             throw new ApparentBug( s"We created a new post in the database with id #${postId}, yet when we look it up there is no post?" )
 
-  def destinationPosts( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( destinationIdentifier : DestinationIdentifier ) : ZOut[Set[PostDefinition]] =
+  def newPost( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postDefinitionCreate : PostDefinitionCreate ) : ZOut[(Option[CookieValueWithMeta],PostDefinition)] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _newPost( appResources )( authenticatedPoster )( postDefinitionCreate ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+  
+  private def _destinationPosts( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( destinationIdentifier : DestinationIdentifier ) : ZOut[Set[PostDefinition]] =
     ZOut.fromTask:
       val db = appResources.database
       val ds = appResources.dataSource
       val subject = parseSubject( authenticatedPoster )
       withConnectionTransactional(ds): conn =>
         db.postDefinitionsForDestinationAndOwner(destinationIdentifier.seismicNodeId, destinationIdentifier.name, subject.posterId)(conn)
+
+  def destinationPosts( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( destinationIdentifier : DestinationIdentifier ) : ZOut[(Option[CookieValueWithMeta],Set[PostDefinition])] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _destinationPosts( appResources )( authenticatedPoster )( destinationIdentifier ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
 
   private def translateNullableUpdateValueToDb[T]( existingValue : Option[T], updater : UpdateValue[T] ) : Option[T] =
     import UpdateValue.*
@@ -143,7 +190,7 @@ object ServerLogic extends SelfLogging:
       case `set-to-none` => Seq.empty
       case `leave-alone` => existingValue
 
-  def updatePostDefinition( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( pdu : PostDefinitionUpdate ) : ZOut[PostDefinition] =
+  def _updatePostDefinition( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( pdu : PostDefinitionUpdate ) : ZOut[PostDefinition] =
     // println( pdu )
     ZOut.fromTask:
       val db = appResources.database
@@ -181,6 +228,11 @@ object ServerLogic extends SelfLogging:
               throw new InsufficientPermissions( s"User ${subject.posterId} cannot update a post owned by user ${currentPostDefinition.owner.id}" )
           case None =>
             throw new UnknownPost( s"No post with is ${pdu.postId} exists to update." )
+
+  def updatePostDefinition( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( pdu : PostDefinitionUpdate ) : ZOut[(Option[CookieValueWithMeta],PostDefinition)] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _updatePostDefinition( appResources )( authenticatedPoster )( pdu ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+
 
   def jwks( appResources : AppResources )(u : Unit) : ZOut[jwt.Jwks] =
     ZOut.fromTask:
@@ -301,7 +353,7 @@ object ServerLogic extends SelfLogging:
         val lowSecurityExpiration = extractExpirationOrEpoch(lowSecurityToken)
         loginStatusFromExpirations( highSecurityExpiration, lowSecurityExpiration )
 
-  def newDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( npr : NewPostRevision ) : ZOut[Option[PostRevisionIdentifier]] =
+  private def _newDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( npr : NewPostRevision ) : ZOut[Option[PostRevisionIdentifier]] =
     ZOut.fromTask:
       val db = appResources.database
       withConnectionTransactional( appResources.dataSource ): conn =>
@@ -316,6 +368,10 @@ object ServerLogic extends SelfLogging:
               mbSaveTime.map( saveTime => PostRevisionIdentifier(npr.postId, saveTime) )
           case None =>
             throw new ResourceNotFound(s"No post with ID ${npr.postId} was found!")
+
+  def newDraft( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( npr : NewPostRevision ) : ZOut[(Option[CookieValueWithMeta],Option[PostRevisionIdentifier])] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _newDraft( appResources )( authenticatedPoster )( npr ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
 
   private def opIfOwner[T]( db : PgDatabase, authenticatedPoster : jwt.AuthenticatedPoster, conn : Connection, postId : Int )( op : (PgDatabase,Connection) => T) : T =
     val subject = parseSubject( authenticatedPoster )
@@ -341,15 +397,23 @@ object ServerLogic extends SelfLogging:
       withConnectionTransactionalZIO( appResources.dataSource ): conn =>
         opIfOwner(db,authenticatedPoster,conn,postId)( op )
 
-  def latestDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[Option[RetrievedPostRevision]] =
+  private def _latestDraft( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[Option[RetrievedPostRevision]] =
     def op( db : PgDatabase, conn : Connection ) : Option[RetrievedPostRevision] = db.postRevisionLatest(postId)( conn )
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 
-  def revisionHistory( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[PostRevisionHistory] =
+  def latestDraft( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postId : Int ) : ZOut[(Option[CookieValueWithMeta],Option[RetrievedPostRevision])] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _latestDraft( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+
+  private def _revisionHistory( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[PostRevisionHistory] =
     def op( db : PgDatabase, conn : Connection ) : PostRevisionHistory = db.postRevisionHistory(postId)( conn )
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 
-  def retrieveRevision( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( revisionTuple : (Int,Int,Int) ) : ZOut[RetrievedPostRevision] =
+  def revisionHistory( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postId : Int ) : ZOut[(Option[CookieValueWithMeta],PostRevisionHistory)] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _revisionHistory( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+  
+  private def _retrieveRevision( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( revisionTuple : (Int,Int,Int) ) : ZOut[RetrievedPostRevision] =
     val (postId,epochSeconds,nanos) = revisionTuple
     val saveTime = Instant.ofEpochSecond( epochSeconds, nanos )
 
@@ -360,10 +424,14 @@ object ServerLogic extends SelfLogging:
 
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 
+  def retrieveRevision( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( revisionTuple : (Int,Int,Int) ) : ZOut[(Option[CookieValueWithMeta],RetrievedPostRevision)] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _retrieveRevision( appResources )( authenticatedPoster )( revisionTuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+  
   private val GoodPathElementRegex = """^[A-Za-z0-9\.\-\_]+$""".r
   private val K32 = 32 * 1024
 
-  def uploadPostMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( uploadTuple : (Int,List[String],Option[String],ZStream[Any, Throwable, Byte]) ) : ZOut[PostMediaInfo] =
+  private def _uploadPostMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( uploadTuple : (Int,List[String],Option[String],ZStream[Any, Throwable, Byte]) ) : ZOut[PostMediaInfo] =
     val (postId, pathElements, contentType, stream ) = uploadTuple
 
     if pathElements.isEmpty then
@@ -412,16 +480,21 @@ object ServerLogic extends SelfLogging:
 
     onlyIfOwnerZIO(appResources)(authenticatedPoster)(postId)(op)
 
-  def postMediaByPostId( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int) : ZOut[Seq[PostMediaInfo]] =
-
+  def uploadPostMedia( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( uploadTuple : (Int,List[String],Option[String],ZStream[Any, Throwable, Byte]) ) : ZOut[(Option[CookieValueWithMeta],PostMediaInfo)] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _uploadPostMedia( appResources )( authenticatedPoster )( uploadTuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+  
+  private def _postMediaByPostId( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int) : ZOut[Seq[PostMediaInfo]] =
     def op( db : PgDatabase, conn : Connection ) : Seq[PostMediaInfo] = db.postMediaInfoByPostId( postId )( conn )
-
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
+
+  def postMediaByPostId( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postId : Int) : ZOut[(Option[CookieValueWithMeta],Seq[PostMediaInfo])] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _postMediaByPostId( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
 
   private def guessMimeType( fname : String ) : Option[String] = Option(URLConnection.getFileNameMap().getContentTypeFor(fname))
 
-  def postMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[(String,Array[Byte])] =
-
+  private def _postMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[(String,Array[Byte])] =
     val ( postId, pathElements ) = tuple 
 
     def op( db : PgDatabase, conn : Connection ) : (String,Array[Byte]) =
@@ -435,8 +508,12 @@ object ServerLogic extends SelfLogging:
 
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 
-  def deletePostMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[Unit] =
+  def postMedia( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( tuple : (Int,List[String]) ) : ZOut[(Option[CookieValueWithMeta],String,Array[Byte])] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _postMedia( appResources )( authenticatedPoster )( tuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).map:
+      case ( mbCookie, ( contentType, bytes ) ) => ( mbCookie, contentType, bytes )
 
+  private def _deletePostMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[Unit] =
     val ( postId, pathElements ) = tuple 
 
     def op( db : PgDatabase, conn : Connection ) : Unit =
@@ -445,5 +522,10 @@ object ServerLogic extends SelfLogging:
         throw new ResourceNotFound("Failed to find media for post $postId with path '${mediaPath}' in order to delete it.")
 
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
+
+  def deletePostMedia( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( tuple : (Int,List[String]) ) : ZOut[Option[CookieValueWithMeta]] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _deletePostMedia( appResources )( authenticatedPoster )( tuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).map:
+      case ( mbCookie, unit ) => mbCookie
 
 end ServerLogic

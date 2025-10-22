@@ -6,7 +6,7 @@ import protopost.common.api.*
 import protopost.common.{EmailAddress,Password,PosterId,Protocol}
 import protopost.server.crypto.{*,given}
 import protopost.server.exception.SignatureDoesNotVerify
-import protopost.server.jwt.{Jwk,Jwks,Jwt}
+import protopost.server.jwt.{AuthenticatedPoster,Jwk,Jwks,Jwt}
 
 import com.mchange.conveniences.throwable.*
 import com.mchange.cryptoutil.{*,given}
@@ -20,8 +20,13 @@ import java.security.interfaces.ECPrivateKey
 import java.util.Base64
 
 import scala.collection.immutable
+import java.time.Instant
 
 case class ReconstructableThrowable( throwableClass : Option[Class[?]], fullStackTrace : String )
+
+// let's play with named tuples!
+type JwtExpiration = ( jwt : Jwt, expiration : Instant )
+type AuthenticatedPosterMbJwtExpiration = ( authenticatedPoster : AuthenticatedPoster, mbJwtExpiration : Option[JwtExpiration] )
 
 object ZOut:
   def fromTask[U]( task : Task[U] ) : ZOut[U] = task.mapError( t => ReconstructableThrowable( Some(t.getClass()), t.fullStackTrace ) )

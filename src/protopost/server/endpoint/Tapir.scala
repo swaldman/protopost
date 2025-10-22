@@ -51,11 +51,11 @@ object Tapir extends SelfLogging:
 
   val NakedBase = endpoint.errorOut(errorHandler)
   val Base = NakedBase.in("protopost")
-  val PosterAuthenticated = Base.securityIn(
+  val PosterAuthenticated = (Base.securityIn(
     cookie[Option[String]]("token_security_high")
       .and(cookie[Option[String]]("token_security_low"))
       .mapTo[jwt.PosterAuthInfo]
-  )
+  )).out(setCookieOpt("token_security_low"))
 
   val Envelope = Base.in("envelope")
 
