@@ -134,6 +134,12 @@ object Tapir extends SelfLogging:
       .out(statusCode(StatusCode.NoContent))
       .out(emptyOutput)
 
+  val SubscribeToRssForComments =
+    PosterAuthenticated.post
+      .in( "subscribe-to-rss-for-comments" )
+      .in( jsonBody[RssSubscriptionRequest] )
+      .out( jsonBody[RssSubscriptionResponse] )
+
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*
 
@@ -163,6 +169,7 @@ object Tapir extends SelfLogging:
       PostMediaByPostId.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMediaByPostId(appResources) ),
       PostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMedia(appResources) ),
       DeletePostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( deletePostMedia(appResources) ),
+      SubscribeToRssForComments.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( subscribeToRssForComments( appResources ) )
     ) ++ rootAsClient.toList
 
 end Tapir

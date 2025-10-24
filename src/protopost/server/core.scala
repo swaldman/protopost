@@ -36,10 +36,15 @@ case class SeismicNodeWithId( id : Int, algcrv : String, pubkey : immutable.Arra
   lazy val identifierWithLocation = s"${identifier}:${location.toUrl}"
   lazy val toApiSeismicNode : api.SeismicNode = api.SeismicNode(id, algcrv, pubkey.hex0x, protocol, host, port)
 
+case class SubscribedFeed( id : Int, feedUrl : String, title : String, updatePeriodMins : Int ):
+  lazy val toApiSubscribableFeed : api.SubscribableFeed = api.SubscribableFeed( id, title )
+
 // typewrappers
 
 object ConfigProperties:
   private[protopost] inline def apply( p : Properties ) : ConfigProperties = p
   private[protopost] inline def p( cp : ConfigProperties ) : Properties = cp
 opaque type ConfigProperties = Properties
+
+
 

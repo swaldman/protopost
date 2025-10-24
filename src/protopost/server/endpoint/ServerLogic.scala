@@ -16,6 +16,7 @@ import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*
 import protopost.server.exception.{ApparentBug,BadCookieSettings,BadCredentials,BadMedia,BadMediaPath,BadPostDefinition,InsufficientPermissions,MissingConfig,NotLoggedIn,ResourceNotFound,UnknownPost}
 import protopost.server.jwt
+import protopost.server.rss
 import protopost.server.db.PgDatabase
 
 import com.mchange.rehash.*
@@ -400,7 +401,7 @@ object ServerLogic extends SelfLogging:
     val (postId,epochSeconds,nanos) = revisionTuple
     val saveTime = Instant.ofEpochSecond( epochSeconds, nanos )
 
-    def op( db : PgDatabase, conn : Connection ) : RetrievedPostRevision = 
+    def op( db : PgDatabase, conn : Connection ) : RetrievedPostRevision =
       db.postRevisionBySaveTime(postId,saveTime)( conn ) match
         case Some(rpr) => rpr
         case None      => throw new ResourceNotFound(s"No revision with save time ${saveTime} was found!")
@@ -461,7 +462,7 @@ object ServerLogic extends SelfLogging:
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 
   private def _postMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[(String,Array[Byte])] =
-    val ( postId, pathElements ) = tuple 
+    val ( postId, pathElements ) = tuple
 
     def op( db : PgDatabase, conn : Connection ) : (String,Array[Byte]) =
       val mediaPath = pathElements.mkString("/")
@@ -475,7 +476,7 @@ object ServerLogic extends SelfLogging:
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
 
   private def _deletePostMedia( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( tuple : (Int,List[String]) ) : ZOut[Unit] =
-    val ( postId, pathElements ) = tuple 
+    val ( postId, pathElements ) = tuple
 
     def op( db : PgDatabase, conn : Connection ) : Unit =
       val mediaPath = pathElements.mkString("/")
@@ -483,6 +484,24 @@ object ServerLogic extends SelfLogging:
         throw new ResourceNotFound("Failed to find media for post $postId with path '${mediaPath}' in order to delete it.")
 
     onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
+
+  private def _subscribeToRssForComments( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( rssSubscriptionRequest : RssSubscriptionRequest ) : ZOut[RssSubscriptionResponse] =
+    val db = appResources.database
+    val di = rssSubscriptionRequest.destinationIdentifier
+    val subject = parseSubject( authenticatedPoster )
+
+    def ensurePosterIsGrantedToDestination( conn : Connection ) : Task[Unit] =
+      if db.posterIsGrantedToDestination( di.seismicNodeId, di.name, subject.posterId )( conn ) then ZIO.unit else ZIO.fail( new InsufficientPermissions( "Poster is not granted access to destination: " + di ) )
+
+    ZOut.fromTask:
+      withConnectionTransactionalZIO( appResources.dataSource ): conn =>
+        for
+          _ <- ensurePosterIsGrantedToDestination( conn )
+          rawFeeds <- rss.findFeedsFromFeedSource( appResources.sttpClient )( rssSubscriptionRequest.feedSource )
+        yield
+          val subscribedFeeds = rawFeeds.map( rf => db.subscribedFeedFindCreateUpdateTitle( rf.href, rf.title, rss.DefaultFeedUpdatePeriodMins )( conn ) )
+          subscribedFeeds.map( sf => db.subscribeDestinationToFeed( di.seismicNodeId, di.name, sf.id )( conn ) )
+          RssSubscriptionResponse( di, subscribedFeeds.map( _.toApiSubscribableFeed ).toList )
 
   /*
    *  Utilities for conditional cookie-extension logic
@@ -506,7 +525,7 @@ object ServerLogic extends SelfLogging:
   def posterInfo( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( unit : Unit ) : ZOut[(Option[CookieValueWithMeta],PosterNoAuth)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _posterInfo( appResources )( authenticatedPoster )( unit ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
-  
+
   def destinations( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( unit : Unit ) : ZOut[(Option[CookieValueWithMeta],Set[Destination])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _destinations( appResources )( authenticatedPoster )( unit ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
@@ -514,7 +533,7 @@ object ServerLogic extends SelfLogging:
   def newPost( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postDefinitionCreate : PostDefinitionCreate ) : ZOut[(Option[CookieValueWithMeta],PostDefinition)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _newPost( appResources )( authenticatedPoster )( postDefinitionCreate ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
-  
+
   def destinationPosts( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( destinationIdentifier : DestinationIdentifier ) : ZOut[(Option[CookieValueWithMeta],Set[PostDefinition])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _destinationPosts( appResources )( authenticatedPoster )( destinationIdentifier ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
@@ -534,15 +553,15 @@ object ServerLogic extends SelfLogging:
   def revisionHistory( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postId : Int ) : ZOut[(Option[CookieValueWithMeta],PostRevisionHistory)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _revisionHistory( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
-  
+
   def retrieveRevision( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( revisionTuple : (Int,Int,Int) ) : ZOut[(Option[CookieValueWithMeta],RetrievedPostRevision)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _retrieveRevision( appResources )( authenticatedPoster )( revisionTuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
-  
+
   def uploadPostMedia( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( uploadTuple : (Int,List[String],Option[String],ZStream[Any, Throwable, Byte]) ) : ZOut[(Option[CookieValueWithMeta],PostMediaInfo)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _uploadPostMedia( appResources )( authenticatedPoster )( uploadTuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
-  
+
   def postMediaByPostId( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postId : Int) : ZOut[(Option[CookieValueWithMeta],Seq[PostMediaInfo])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _postMediaByPostId( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
@@ -556,5 +575,9 @@ object ServerLogic extends SelfLogging:
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _deletePostMedia( appResources )( authenticatedPoster )( tuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).map:
       case ( mbCookie, unit ) => mbCookie
+
+  def subscribeToRssForComments( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( rssSubscriptionRequest : RssSubscriptionRequest ) : ZOut[(Option[CookieValueWithMeta],RssSubscriptionResponse)] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _subscribeToRssForComments( appResources )( authenticatedPoster )( rssSubscriptionRequest ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
 
 end ServerLogic

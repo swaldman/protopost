@@ -115,6 +115,12 @@ case class DestinationIdentifier( seismicNodeId : Int, name : String )
 
 case class PostIdentifier( destinationIdentifier : DestinationIdentifier, postId : Int )
 
+case class SubscribableFeed( feedId : Int, title : String )
+
+case class RssSubscriptionRequest( destinationIdentifier : DestinationIdentifier, feedSource : String )
+
+case class RssSubscriptionResponse( destinationIdentifier : DestinationIdentifier, subscribedFeeds : List[SubscribableFeed] ) 
+
 // json codecs -- jsoniter-scala
 given JsonValueCodec[EmailAddress] = new JsonValueCodec[EmailAddress]:
   def decodeValue(in : JsonReader, default : EmailAddress) : EmailAddress = EmailAddress(in.readString(null))
@@ -167,8 +173,8 @@ given given_JsonValueCodec_Option_RetrievedPostRevision : JsonValueCodec[Option[
 given JsonValueCodec[PostRevisionIdentifier] = JsonCodecMaker.make
 given given_JsonValueCodec_Option_PostRevisionIdentifier : JsonValueCodec[Option[PostRevisionIdentifier]] = JsonCodecMaker.make
 
-given JsonValueCodec[RevisionTimestamp]                              = JsonCodecMaker.make
-given JsonValueCodec[Tuple2[RevisionTimestamp,NewPostRevision]]      = JsonCodecMaker.make
+given JsonValueCodec[RevisionTimestamp]                               = JsonCodecMaker.make
+given JsonValueCodec[Tuple2[RevisionTimestamp,NewPostRevision]]       = JsonCodecMaker.make
 given JsonValueCodec[List[Tuple2[RevisionTimestamp,NewPostRevision]]] = JsonCodecMaker.make
 
 given JsonValueCodec[PostRevisionHistory] = JsonCodecMaker.make
@@ -176,7 +182,11 @@ given JsonValueCodec[PostRevisionHistory] = JsonCodecMaker.make
 given JsonValueCodec[PostMediaInfo] = JsonCodecMaker.make
 given given_JsonValueCodec_Seq_PostMediaInfo : JsonValueCodec[Seq[PostMediaInfo]] = JsonCodecMaker.make
 
+given JsonValueCodec[SubscribableFeed]                                                    = JsonCodecMaker.make
+given given_JsonValueCodec_List_SubscribableFeed : JsonValueCodec[List[SubscribableFeed]] = JsonCodecMaker.make
 
+given JsonValueCodec[RssSubscriptionRequest]  = JsonCodecMaker.make
+given JsonValueCodec[RssSubscriptionResponse] = JsonCodecMaker.make
 
 
 

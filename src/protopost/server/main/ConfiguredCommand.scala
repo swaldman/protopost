@@ -9,6 +9,8 @@ import scala.util.control.NonFatal
 import zio.*
 import zio.http.Server as ZServer
 
+import sttp.client4.httpclient.zio.SttpClient
+
 import sttp.tapir.server.interceptor.log.DefaultServerLog
 import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
@@ -107,13 +109,11 @@ object ConfiguredCommand extends SelfLogging:
         httpApp  =  ZioHttpInterpreter(interpreterOptions(verbose)).toHttp(seps)
         _        <- INFO.zlog( s"Serving protopost API on port $p, location with identity '${ar.localIdentity.toPublicIdentity.toIdentifierWithLocation}'" )
         serverConfig = ZServer.Config.default.port(p).requestStreaming(ZServer.RequestStreaming.Enabled)
-        exitCode <- ZServer
+        _        <- ZServer
                       .serve(httpApp)
                       .tapDefect( c => FATAL.zlog("API web server failed unexpectedly, cause: " + c ) )
                       .provide(ZLayer.succeed(serverConfig), ZServer.live)
-                      .exitCode
-      yield
-        exitCode.code
+      yield 0
     end zcommand
   case object DbDump extends ConfiguredCommand:
     override def zcommand =

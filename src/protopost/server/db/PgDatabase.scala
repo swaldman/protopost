@@ -9,7 +9,7 @@ import java.time.Instant
 
 import protopost.common.api.{Destination,PostDefinition,PostDefinitionUpdate,PosterNoAuth}
 import protopost.common.{EmailAddress,PosterId,Protocol}
-import protopost.server.{PostDefinitionRaw,PosterWithAuth,SeismicNodeWithId}
+import protopost.server.{PostDefinitionRaw,PosterWithAuth,SeismicNodeWithId,SubscribedFeed}
 import protopost.server.exception.{ApparentBug,BadSeismicNodeId,UnknownPoster}
 
 import com.mchange.rehash.*
@@ -117,6 +117,8 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
   def postRevisionHistory( id : Int )( conn : Connection ) : PostRevisionHistory =
     val seq = Schema.Table.PostRevision.selectRevisionHistoryForPost(id)(conn)
     PostRevisionHistory(id, seq)
+  def posterIsGrantedToDestination( seismicNodeId : Int, destinationName : String, posterId : PosterId )( conn : Connection ) : Boolean =
+    Schema.Table.DestinationPoster.selectExists( seismicNodeId, destinationName, posterId )( conn )
   def posterForEmail( email : EmailAddress )( conn : Connection ) : Option[PosterWithAuth] =
     Schema.Table.Poster.selectPosterWithAuthByEmail( email )( conn )
   def posterById( id : PosterId )( conn : Connection ) : Option[PosterWithAuth] =
@@ -134,6 +136,22 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
     Schema.Table.SeismicNode.selectByAlgcrvPubkey( algcrv, pubkey )( conn )
   def seismicNodeByComponents( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByComponents( algcrv, pubkey, protocol, host, port )( conn )
+  def subscribeDestinationToFeed( seismicNodeId : Int, name : String, subscribedFeedId : Int )( conn : Connection ) =
+    Schema.Table.DestinationFeedSubscription.insert( seismicNodeId, name, subscribedFeedId )( conn )
+  def subscribedFeedByFeedUrl( feedUrl : String )( conn : Connection ) : Option[SubscribedFeed] =
+    Schema.Table.SubscribedFeed.selectByFeedUrl( feedUrl )( conn : Connection )
+  def subscribedFeedFindCreateUpdateTitle( feedUrl : String, title : String, updatePeriodMinsIfNotSet : Int )( conn : Connection ) : SubscribedFeed =
+    subscribedFeedByFeedUrl( feedUrl )( conn ) match
+      case Some( subscribedFeed ) =>
+        if subscribedFeed.title != title then
+          Schema.Table.SubscribedFeed.updateTitleById( subscribedFeed.id, title )( conn )
+          subscribedFeed.copy( title = title )
+        else
+          subscribedFeed
+      case None =>
+        val newId = Schema.Sequence.SubscribedFeedId.selectNext( conn )
+        Schema.Table.SubscribedFeed.insert( newId, feedUrl, title, updatePeriodMinsIfNotSet )( conn )
+        SubscribedFeed( newId, feedUrl, title, updatePeriodMinsIfNotSet )
   def updateHashForPoster( posterId : PosterId, hash : BCryptHash )( conn : Connection ) : Unit =
     Schema.Table.Poster.updateHash( posterId, hash )( conn )
   def updatePostDefinitionMain( 

@@ -11,9 +11,11 @@ import javax.sql.DataSource
 import scala.collection.mutable
 import com.auth0.jwk.{Jwk,JwkProvider,JwkProviderBuilder}
 
+import sttp.client4.httpclient.zio.SttpClient
+
 import ConfigProperties.{p as props}
 
-class AppResources( val configProperties : ConfigProperties ):
+class AppResources( val configProperties : ConfigProperties, val sttpClient : SttpClient ):
 
   lazy val dataSource : DataSource =
     import com.mchange.v2.c3p0.*

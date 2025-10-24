@@ -16,7 +16,7 @@ import com.mchange.cryptoutil.given
 import protopost.common.api
 import protopost.common.api.*
 import protopost.common.{EmailAddress,PosterId,Protocol}
-import protopost.server.{PosterWithAuth,PostDefinitionRaw,SeismicNodeWithId}
+import protopost.server.{PosterWithAuth,PostDefinitionRaw,SeismicNodeWithId,SubscribedFeed}
 import protopost.server.exception.UnknownPoster
 import protopost.server.identity.*
 import protopost.server.LoggingApi.*
@@ -233,7 +233,14 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY ( seismic_node_id ) references seismic_node(id),
              |  FOREIGN KEY ( poster_id ) references poster(id)
              |)""".stripMargin
-        val Insert = s"INSERT INTO destination_poster(seismic_node_id, destination_name, poster_id) VALUES (?,?,?)"
+        val Insert = "INSERT INTO destination_poster(seismic_node_id, destination_name, poster_id) VALUES (?,?,?)"
+        val SelectExists = "SELECT EXISTS (SELECT 1 FROM destination_poster WHERE seismic_node_id = ? AND destination_name = ? AND poster_id = ?)"
+        def selectExists( seismicNodeId : Int, destinationName : String, posterId : PosterId )( conn : Connection ) : Boolean =
+          Using.resource( conn.prepareStatement(SelectExists) ): ps =>
+            ps.setInt(1, seismicNodeId)
+            ps.setString(2, destinationName)
+            ps.setInt(3, PosterId.i(posterId))
+            Using.resource( ps.executeQuery() )( uniqueResult( "select-exists-destination-poster" )( _.getBoolean(1) ) )
         def insert( seismicNodeId : Int, destinationName : String, posterId : PosterId )( conn : Connection ) =
           Using.resource( conn.prepareStatement(Insert) ): ps =>
             ps.setInt(1, seismicNodeId)
@@ -556,11 +563,38 @@ object PgSchema extends SelfLogging:
       object SubscribedFeed extends Creatable:
         override val Create =
           """|CREATE TABLE subscribed_feed (
-             |  id             INTEGER       NOT NULL,
-             |  feed_url       VARCHAR(1024) NOT NULL,
-             |  update_period  INTEGER       NOT NULL,
-             |  PRIMARY KEY ( id )
+             |  id                 INTEGER       NOT NULL,
+             |  feed_url           VARCHAR(1024) NOT NULL,
+             |  title              VARCHAR(1024) NOT NULL,
+             |  update_period_mins INTEGER       NOT NULL, -- , but never update if there are no remaining survivors
+             |  PRIMARY KEY ( id ),
+             |  UNIQUE( feed_url )
              |)""".stripMargin
+        val Select = "SELECT id, feed_url, title, update_period_mins FROM subscribed_feed WHERE id = ?"
+        val SelectByFeedUrl = "SELECT id, feed_url, title, update_period_mins FROM subscribed_feed WHERE feed_url = ?"
+        val Insert = "INSERT INTO subscribed_feed ( id, feed_url, title, update_period_mins ) VALUES ( ?, ?, ?, ? )"
+        val UpdateTitleById = "UPDATE subscribed_feed SET title = ? WHERE id = ?"
+        private def extract( rs : ResultSet ) : SubscribedFeed = protopost.server.SubscribedFeed( rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4) )
+        def insert( id : Int, feedUrl : String, title : String, updatePeriodMins : Int )( conn : Connection )  =
+          Using.resource( conn.prepareStatement( Insert ) ): ps =>
+            ps.setInt( 1, id )
+            ps.setString( 2, feedUrl )
+            ps.setString( 3, title )
+            ps.setInt( 4, updatePeriodMins )
+            ps.executeUpdate()
+        def select( id : Int )( conn : Connection ) : Option[protopost.server.SubscribedFeed] =
+          Using.resource( conn.prepareStatement( Select ) ): ps =>
+            ps.setInt( 1, id )
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-subscribed-feed")( extract ) )
+        def selectByFeedUrl( feedUrl : String )( conn : Connection ) : Option[protopost.server.SubscribedFeed] =
+          Using.resource( conn.prepareStatement( SelectByFeedUrl ) ): ps =>
+            ps.setString( 1, feedUrl )
+            Using.resource( ps.executeQuery() )( zeroOrOneResult("select-subscribed-feed-by-feed-id")( extract ) )
+        def updateTitleById( id : Int, newTitle : String )( conn : Connection ) =
+          Using.resource( conn.prepareStatement( UpdateTitleById ) ): ps =>
+            ps.setString(1, newTitle)
+            ps.setInt(2, id)
+            ps.executeUpdate()
       end SubscribedFeed
       object DestinationFeedSubscription extends Creatable:
         override val Create =
@@ -572,6 +606,13 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY (seismic_node_id, name) REFERENCES destination(seismic_node_id,name),
              |  FOREIGN KEY (subscribed_feed_id) REFERENCES subscribed_feed(id)
              |)""".stripMargin
+        val Insert = "INSERT INTO destination_feed_subscription ( seismic_node_id, name, subscribed_feed_id ) VALUES (?,?,?)"
+        def insert( seismicNodeId : Int, name : String, subscribedFeedId : Int )( conn : Connection ) =
+          Using.resource( conn.prepareStatement( Insert ) ): ps =>
+            ps.setInt(1, seismicNodeId)
+            ps.setString(2, name)
+            ps.setInt(3, subscribedFeedId)
+            ps.executeUpdate()
       end DestinationFeedSubscription
       object PostComment extends Creatable:
         override val Create =

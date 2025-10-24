@@ -100,6 +100,9 @@ given Schema[Option[RetrievedPostRevision]] = Schema.derived
 
 given [T : Schema] : Schema[UpdateValue[T]] = Schema.derived[UpdateValue[T]]
 
+given Schema[SubscribableFeed]        = Schema.derived
+given Schema[RssSubscriptionRequest]  = Schema.derived
+given Schema[RssSubscriptionResponse] = Schema.derived
 
 
 

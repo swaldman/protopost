@@ -4,6 +4,10 @@ import java.util.Properties
 
 import zio.*
 
+import sttp.client4.*
+import sttp.model.*
+import sttp.client4.httpclient.zio.*
+
 import protopost.server.{AppResources,ConfigProperties,ExternalConfig}
 import protopost.server.exception.{InsecureConfigurationPropertiesFile,MissingConfig}
 
@@ -49,7 +53,9 @@ object ZLayers:
     ZLayer.fromZIO:
       ZIO.attempt( PidFileManager.installShutdownHookCarefulDelete() ) *> ZIO.succeed( new ShutdownHooks() )
 
-  val appResources : ZLayer[ConfigProperties, Throwable, AppResources] = ZLayer.fromFunction( (cp : ConfigProperties) => new AppResources(cp) )
+  val appResources : ZLayer[ConfigProperties & SttpClient, Throwable, AppResources] = ZLayer.fromFunction( (cp : ConfigProperties, sttpClient : SttpClient) => new AppResources(cp, sttpClient) )
+
+  val sttpClient : ZLayer[Any, Throwable, SttpClient] = HttpClientZioBackend.layer()
 
 
 
