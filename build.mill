@@ -1,6 +1,6 @@
 //| mill-version: 1.0.6
 //| mill-jvm-version: 21
-//| mvnDeps: ["com.mchange::untemplate-mill:0.3.0-SNAPSHOT","com.mchange::mill-daemon:0.2.1","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
+//| mvnDeps: ["com.mchange::untemplate-mill:0.3.0","com.mchange::mill-daemon:0.2.1","com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION"]
 //+-------------------------------------------------------------------------------------------------------------------------------------------------------
 
 package build
@@ -52,7 +52,7 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
       mvn"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
       mvn"com.mchange::sqlutil-scala-zio:0.0.6-SNAPSHOT",
       mvn"com.mchange::mill-daemon-util:0.1.2",
-      mvn"com.mchange::conveniences:0.0.6-SNAPSHOT",
+      mvn"com.mchange::conveniences:0.0.6",
       mvn"com.mchange::cryptoutil:0.0.3-SNAPSHOT",
       mvn"com.mchange::mailutil:${mailutilVersion}",
       mvn"com.mchange::rehash:0.0.1-SNAPSHOT",
@@ -104,7 +104,7 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
       super.mvnDeps() ++
       Seq(
         mvn"com.raquo::laminar::17.2.1",
-        mvn"com.mchange::conveniences::0.0.6-SNAPSHOT",
+        mvn"com.mchange::conveniences::0.0.6",
         mvn"com.softwaremill.sttp.client4::core::${sttpVersion}",
         mvn"com.softwaremill.sttp.client4::jsoniter::${sttpVersion}",
         mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core::${JsoniterVersion}",
