@@ -574,7 +574,7 @@ object PgSchema extends SelfLogging:
         val SelectByFeedUrl = "SELECT id, feed_url, title, update_period_mins FROM subscribed_feed WHERE feed_url = ?"
         val Insert = "INSERT INTO subscribed_feed ( id, feed_url, title, update_period_mins ) VALUES ( ?, ?, ?, ? )"
         val UpdateTitleById = "UPDATE subscribed_feed SET title = ? WHERE id = ?"
-        private def extract( rs : ResultSet ) : SubscribedFeed = protopost.server.SubscribedFeed( rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4) )
+        def extract( rs : ResultSet ) : SubscribedFeed = protopost.server.SubscribedFeed( rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4) )
         def insert( id : Int, feedUrl : String, title : String, updatePeriodMins : Int )( conn : Connection )  =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
             ps.setInt( 1, id )
@@ -606,9 +606,9 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY (seismic_node_id, name) REFERENCES destination(seismic_node_id,name),
              |  FOREIGN KEY (subscribed_feed_id) REFERENCES subscribed_feed(id)
              |)""".stripMargin
-        val Insert = "INSERT INTO destination_feed_subscription ( seismic_node_id, name, subscribed_feed_id ) VALUES (?,?,?)"
-        def insert( seismicNodeId : Int, name : String, subscribedFeedId : Int )( conn : Connection ) =
-          Using.resource( conn.prepareStatement( Insert ) ): ps =>
+        val InsertIdempotent = "INSERT INTO destination_feed_subscription ( seismic_node_id, name, subscribed_feed_id ) VALUES (?,?,?) ON CONFLICT ( seismic_node_id, name, subscribed_feed_id ) DO NOTHING"
+        def insertIdempotent( seismicNodeId : Int, name : String, subscribedFeedId : Int )( conn : Connection ) =
+          Using.resource( conn.prepareStatement( InsertIdempotent ) ): ps =>
             ps.setInt(1, seismicNodeId)
             ps.setString(2, name)
             ps.setInt(3, subscribedFeedId)
@@ -679,6 +679,12 @@ object PgSchema extends SelfLogging:
            |FROM poster
            |INNER JOIN destination_poster ON poster.id = destination_poster.poster_id
            |WHERE destination_poster.seismic_node_id = ? AND destination_poster.destination_name = ?""".stripMargin
+      val SelectSubscribedFeedByDestination =
+        """|SELECT subscribed_feed.id, subscribed_feed.feed_url, subscribed_feed.title, subscribed_feed.update_period_mins
+           |FROM subscribed_feed
+           |INNER JOIN destination_feed_subscription ON subscribed_feed.id = destination_feed_subscription.subscribed_feed_id
+           |WHERE destination_feed_subscription.seismic_node_id = ? AND destination_feed_subscription.name = ?""".stripMargin
+
       private def extractDestination( rs : ResultSet ) : Destination =
         val snid        = rs.getInt(1)
         val algcrv      = rs.getString(2)
@@ -704,5 +710,10 @@ object PgSchema extends SelfLogging:
           ps.setInt(1, snid)
           ps.setString(2, destinationName )
           Using.resource( ps.executeQuery() )( toSet( Table.Poster.extractPosterWithAuth ) )
+      def subscribedFeedsByDestination( seismicNodeId : Int, name : String )( conn : Connection ) : Set[SubscribedFeed] =
+        Using.resource( conn.prepareStatement( SelectSubscribedFeedByDestination ) ): ps =>
+          ps.setInt(1, seismicNodeId)
+          ps.setString(2, name)
+          Using.resource( ps.executeQuery() )( toSet( Table.SubscribedFeed.extract ) )
     end Join
   end V1

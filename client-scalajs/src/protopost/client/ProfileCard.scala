@@ -5,15 +5,27 @@ import protopost.common.api.{PosterNoAuth, given}
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 import protopost.common.EmailAddress
-import protopost.common.api.{NewPostRevision,RevisionTimestamp}
+import protopost.common.api.{Destination,DestinationIdentifier,NewPostRevision,RevisionTimestamp,SubscribableFeed}
 
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.*
+
+import scala.collection.immutable
+
+import util.laminar.onEnterPress
+import javax.swing.border.Border
 
 
 object ProfileCard:
   def create( client : Client ) : HtmlElement =
     import Client.PublishDetailsPaneLabelCommonModifiers
     import client.*
+
+    val destinationToFeedsVar : Var[immutable.SortedMap[Destination,immutable.SortedSet[SubscribableFeed]]] = Var(immutable.SortedMap.empty)
+    val destinationToFeedsSignal = destinationToFeedsVar.signal
+
+    val destinationsObserver = Observer[immutable.SortedSet[Destination]]: destinations =>
+      destinations.foreach: destination =>
+        util.request.updateFeedsForDestination( protopostLocation, destination, backend, destinationToFeedsVar )
 
     val recoveredRevisionsTableHeaderModifiers = Seq(
       fontWeight.bold,
@@ -116,6 +128,105 @@ object ProfileCard:
     def unselectedCard() : HtmlElement =
       if recoveredRevisionsLsi.now().nonEmpty then recoveredRevisionTableCard else noRecoveredRevisionsCard
 
+
+    val destinationRssCardsSignal =
+      def makeRssFeedRow( id : Int, initial : SubscribableFeed, updates : Signal[SubscribableFeed] ) : Seq[HtmlElement] =
+        Seq(
+          div(
+            initial.title
+          ),
+          div(
+            cursor.pointer,
+            alignSelf.center,
+            color.red,
+            marginLeft.rem(0.5),
+            "\u00d7",
+          )
+        )
+      def makeDestinationPane( id : DestinationIdentifier, initial : (Destination, immutable.SortedSet[SubscribableFeed]), updates : Signal[(Destination, immutable.SortedSet[SubscribableFeed])] ) : HtmlElement =
+
+        val messageVar : Var[Option[String]] = Var(None)
+        val resetBus = EventBus[Unit]()
+
+        val clearMessageObserver = Observer[Any]( _ => messageVar.set(None) )
+
+        lazy val noSubscritionsPane =
+          div(
+            //fontSize.pt(10),
+            fontWeight.normal,
+            em( "No subscriptions." )
+          )
+
+        div(
+          display.flex,
+          flexDirection.column,
+          borderColor := "#ddd",
+          borderWidth.px(1),
+          borderStyle.solid,
+          margin.rem(0.25),
+          padding.rem(0.25),
+          fontSize.pt(10),
+          div(
+            fontWeight.bold,
+            marginTop.rem(0.5),
+            marginBottom.rem(0.25),
+            util.destinationText( initial(0) )
+          ),
+          div(
+            marginLeft.rem(0.5),
+            display.grid,
+            styleProp("grid-template-columns") := "max-content max-content",
+            children <-- updates.map( _(1) ).split( _.feedId )( makeRssFeedRow ).map( _.toSeq.flatten ).map( s => if s.isEmpty then Seq(noSubscritionsPane) else s ),
+          ),
+          div(
+            display.flex,
+            flexDirection.column,
+            marginTop.rem(0.25),
+            marginBottom.rem(0.25),
+            div(
+              display.flex,
+              flexDirection.row,
+              alignItems.center,
+              fontSize.pt(9),
+              label(
+                forId := s"rss-subscribe-textfield-${id.seismicNodeId}-${id.name}",
+                fontWeight.bold,
+                paddingRight.rem(0.5),
+                "add feeds (rss, atom, html):"
+              ),
+              input(
+                idAttr := s"rss-subscribe-textfield-${id.seismicNodeId}-${id.name}",
+                flexGrow(1),
+                `type` := "text",
+                value <-- resetBus.events.map( _ => "" ),
+                onEnterPress.mapToValue --> { feedSource =>
+                  //println( s"$id -- subscribing to feed '${feedSource}'" )
+                  util.request.subscribeDestinationToFeedsFrom(
+                    protopostLocation,
+                    initial(0),
+                    feedSource,
+                    backend,
+                    messageVar,
+                    destinationToFeedsVar
+                  )
+                  resetBus.writer.onNext( () )
+                },
+                onBlur   --> clearMessageObserver,
+                onChange --> clearMessageObserver,
+                onKeyDown --> clearMessageObserver,
+              )
+            )
+          ),
+          div(
+            fontSize.pt(9),
+            color.red,
+            //borderStyle.solid, borderWidth.px(2), borderColor.red,
+            idAttr := s"rss-subscribe-textfield-message-${id.seismicNodeId}-${id.name}",
+            text <-- messageVar.signal.map( _.getOrElse("\u00a0") )
+          )
+        )
+      destinationToFeedsSignal.map( _.toList ).split(tup => tup(0).destinationIdentifier)( makeDestinationPane )
+
     def makeComposerRadioButton( composer : Composer ) : HtmlElement =
       div(
         input(
@@ -129,6 +240,11 @@ object ProfileCard:
       )
 
     div(
+      onMountCallback { mountContext =>
+        // println( s"mount: $mountContext" )
+        given Owner = mountContext.owner
+        destinationsSignal.addObserver( destinationsObserver )
+      },
       idAttr("profile-panel"),
       //backgroundColor("#ccccff"),
       //boxSizing.borderBox,
@@ -222,5 +338,21 @@ object ProfileCard:
           child <-- Signal.combine(selectedUnsavedRevisionSignal,recoveredRevisionsSignal).map( tup => tup(0).fold( unselectedCard() )( _ => recoveredRevisionPreviewCard ) ),
         ),
       ),
+      div(
+        marginTop.rem(1),
+        div(
+          PublishDetailsPaneLabelCommonModifiers,
+          "feeds to scan for comments"
+        ),
+        div(
+          idAttr := "profile-rss-subscribed",
+          display.flex,
+          flexDirection.column,
+          // justifyContent.center,
+          alignContent.stretch,
+          sectionBorderPaddingMargin,
+          padding.rem(0.25), // override!
+          children <-- destinationRssCardsSignal,
+        ),
+      ),
     )
-

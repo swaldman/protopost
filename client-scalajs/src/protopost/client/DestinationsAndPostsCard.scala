@@ -190,7 +190,7 @@ object DestinationsAndPostsCard:
     end DestinationPane
 
     val destinationPanesSignal : Signal[Seq[HtmlElement]] =
-      destinationsVar.signal.map: dset =>
+      destinationsSignal.map: dset =>
         if dset.size == 1 then
           List( DestinationPane.create(dset.head, initOpen = true ) )
         else

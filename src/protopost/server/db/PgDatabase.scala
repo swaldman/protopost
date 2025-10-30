@@ -23,6 +23,7 @@ import protopost.server.exception.UnacceptableContentType
 import protopost.common.api.RetrievedPostRevision
 import protopost.common.api.PostRevisionHistory
 import protopost.common.api.PostMediaInfo
+import protopost.common.api.DestinationIdentifier
 
 class PgDatabase( val SchemaManager : PgSchemaManager ):
   val Schema = SchemaManager.LatestSchema
@@ -137,9 +138,13 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
   def seismicNodeByComponents( algcrv : String, pubkey : Array[Byte], protocol : Protocol, host : String, port : Int )( conn : Connection ) : Option[SeismicNodeWithId] =
     Schema.Table.SeismicNode.selectByComponents( algcrv, pubkey, protocol, host, port )( conn )
   def subscribeDestinationToFeed( seismicNodeId : Int, name : String, subscribedFeedId : Int )( conn : Connection ) =
-    Schema.Table.DestinationFeedSubscription.insert( seismicNodeId, name, subscribedFeedId )( conn )
+    Schema.Table.DestinationFeedSubscription.insertIdempotent( seismicNodeId, name, subscribedFeedId )( conn )
   def subscribedFeedByFeedUrl( feedUrl : String )( conn : Connection ) : Option[SubscribedFeed] =
     Schema.Table.SubscribedFeed.selectByFeedUrl( feedUrl )( conn : Connection )
+  def subscribedFeedsByDestination( destinationIdentifier : DestinationIdentifier )( conn : Connection ) : Set[SubscribedFeed] =
+    subscribedFeedsByDestination( destinationIdentifier.seismicNodeId, destinationIdentifier.name )( conn )
+  def subscribedFeedsByDestination( seismicNodeId : Int, name : String )( conn : Connection ) : Set[SubscribedFeed] =
+    Schema.Join.subscribedFeedsByDestination( seismicNodeId, name  )( conn )
   def subscribedFeedFindCreateUpdateTitle( feedUrl : String, title : String, updatePeriodMinsIfNotSet : Int )( conn : Connection ) : SubscribedFeed =
     subscribedFeedByFeedUrl( feedUrl )( conn ) match
       case Some( subscribedFeed ) =>

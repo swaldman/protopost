@@ -36,7 +36,7 @@ object Client:
 
   val LoginStatusUpdateIntervalMsecs         = 6000
   val LoginStatusUpdateHardUpdateProbability = 1d/600 // so we hard update about once and hour
-  val LoginStatusUpdateIfNotUpdatedLastSecs  = 60
+  val LoginStatusUpdateIfNotUpdatedLastSecs  = 300
 
   val UnsuccessfulLoginStatusCheckRetryMs = 60000 // try again in a minute if we failed to login
 
@@ -81,7 +81,10 @@ class Client( val protopostLocation : Uri ):
 
   val posterNoAuthVar : Var[Option[PosterNoAuth]] = Var(None)
   val posterNoAuthSignal : Signal[Option[PosterNoAuth]] = posterNoAuthVar.signal
+
   val destinationsVar : Var[immutable.SortedSet[Destination]] = Var( immutable.SortedSet.empty )
+  val destinationsSignal = destinationsVar.signal
+
   val destinationsToKnownPostsVar : Var[Map[DestinationIdentifier,Map[Int,PostDefinition]]] = Var(Map.empty)
   val destinationsToKnownPostsSignal = destinationsToKnownPostsVar.signal
 

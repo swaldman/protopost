@@ -285,6 +285,16 @@ object ServerLogic extends SelfLogging:
 
   private def guessMimeType( fname : String ) : Option[String] = Option(URLConnection.getFileNameMap().getContentTypeFor(fname))
 
+  private def ensurePosterIsGrantedToDestination( db : PgDatabase, destinationIdentifier : DestinationIdentifier, subject : Subject)( conn : Connection ) : Task[Unit] =
+    ensurePosterIsGrantedToDestination( db, destinationIdentifier.seismicNodeId, destinationIdentifier.name, subject )( conn ) 
+
+  private def ensurePosterIsGrantedToDestination( db : PgDatabase, seismicNodeId : Int, destinationName : String, subject : Subject)( conn : Connection ) : Task[Unit] =
+    if db.posterIsGrantedToDestination( seismicNodeId, destinationName, subject.posterId )( conn ) then
+      ZIO.unit
+    else
+      ZIO.fail( new InsufficientPermissions( s"Poster is not granted access to destination: seismicNodeId: ${seismicNodeId}, destinationName: ${destinationName}" ) )
+
+
   /*
    *  Internal business-logic implementations for autheticated server endpoints
    */
@@ -490,18 +500,27 @@ object ServerLogic extends SelfLogging:
     val di = rssSubscriptionRequest.destinationIdentifier
     val subject = parseSubject( authenticatedPoster )
 
-    def ensurePosterIsGrantedToDestination( conn : Connection ) : Task[Unit] =
-      if db.posterIsGrantedToDestination( di.seismicNodeId, di.name, subject.posterId )( conn ) then ZIO.unit else ZIO.fail( new InsufficientPermissions( "Poster is not granted access to destination: " + di ) )
-
     ZOut.fromTask:
+      //println( s"rssSubscriptionRequest: $rssSubscriptionRequest" )
       withConnectionTransactionalZIO( appResources.dataSource ): conn =>
         for
-          _ <- ensurePosterIsGrantedToDestination( conn )
+          _ <- ensurePosterIsGrantedToDestination(db,di,subject)( conn )
           rawFeeds <- rss.findFeedsFromFeedSource( appResources.sttpClient )( rssSubscriptionRequest.feedSource )
         yield
           val subscribedFeeds = rawFeeds.map( rf => db.subscribedFeedFindCreateUpdateTitle( rf.href, rf.title, rss.DefaultFeedUpdatePeriodMins )( conn ) )
           subscribedFeeds.map( sf => db.subscribeDestinationToFeed( di.seismicNodeId, di.name, sf.id )( conn ) )
           RssSubscriptionResponse( di, subscribedFeeds.map( _.toApiSubscribableFeed ).toList )
+
+  private def _rssSubscriptionsByDestination( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( seismicNodeId : Int, name : String ) : ZOut[Set[SubscribableFeed]] =
+    val db = appResources.database
+    val subject = parseSubject( authenticatedPoster )
+
+    ZOut.fromTask:
+      withConnectionTransactionalZIO( appResources.dataSource ): conn =>
+        for
+          _ <- ensurePosterIsGrantedToDestination(db,seismicNodeId,name,subject)( conn )
+        yield
+          db.subscribedFeedsByDestination( seismicNodeId, name )( conn ).map( _.toApiSubscribableFeed )
 
   /*
    *  Utilities for conditional cookie-extension logic
@@ -524,60 +543,64 @@ object ServerLogic extends SelfLogging:
 
   def posterInfo( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( unit : Unit ) : ZOut[(Option[CookieValueWithMeta],PosterNoAuth)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _posterInfo( appResources )( authenticatedPoster )( unit ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _posterInfo( appResources )( authenticatedPoster )( unit ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def destinations( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( unit : Unit ) : ZOut[(Option[CookieValueWithMeta],Set[Destination])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _destinations( appResources )( authenticatedPoster )( unit ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _destinations( appResources )( authenticatedPoster )( unit ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def newPost( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postDefinitionCreate : PostDefinitionCreate ) : ZOut[(Option[CookieValueWithMeta],PostDefinition)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _newPost( appResources )( authenticatedPoster )( postDefinitionCreate ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _newPost( appResources )( authenticatedPoster )( postDefinitionCreate ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def destinationPosts( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( destinationIdentifier : DestinationIdentifier ) : ZOut[(Option[CookieValueWithMeta],Set[PostDefinition])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _destinationPosts( appResources )( authenticatedPoster )( destinationIdentifier ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _destinationPosts( appResources )( authenticatedPoster )( destinationIdentifier ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def updatePostDefinition( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( pdu : PostDefinitionUpdate ) : ZOut[(Option[CookieValueWithMeta],PostDefinition)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _updatePostDefinition( appResources )( authenticatedPoster )( pdu ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _updatePostDefinition( appResources )( authenticatedPoster )( pdu ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def newDraft( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( npr : NewPostRevision ) : ZOut[(Option[CookieValueWithMeta],Option[PostRevisionIdentifier])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _newDraft( appResources )( authenticatedPoster )( npr ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _newDraft( appResources )( authenticatedPoster )( npr ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def latestDraft( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postId : Int ) : ZOut[(Option[CookieValueWithMeta],Option[RetrievedPostRevision])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _latestDraft( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _latestDraft( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def revisionHistory( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postId : Int ) : ZOut[(Option[CookieValueWithMeta],PostRevisionHistory)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _revisionHistory( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _revisionHistory( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def retrieveRevision( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( revisionTuple : (Int,Int,Int) ) : ZOut[(Option[CookieValueWithMeta],RetrievedPostRevision)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _retrieveRevision( appResources )( authenticatedPoster )( revisionTuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _retrieveRevision( appResources )( authenticatedPoster )( revisionTuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def uploadPostMedia( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( uploadTuple : (Int,List[String],Option[String],ZStream[Any, Throwable, Byte]) ) : ZOut[(Option[CookieValueWithMeta],PostMediaInfo)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _uploadPostMedia( appResources )( authenticatedPoster )( uploadTuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _uploadPostMedia( appResources )( authenticatedPoster )( uploadTuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def postMediaByPostId( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postId : Int) : ZOut[(Option[CookieValueWithMeta],Seq[PostMediaInfo])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _postMediaByPostId( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _postMediaByPostId( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
   def postMedia( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( tuple : (Int,List[String]) ) : ZOut[(Option[CookieValueWithMeta],String,Array[Byte])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _postMedia( appResources )( authenticatedPoster )( tuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).map:
+    _postMedia( appResources )( authenticatedPoster )( tuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING).map:
       case ( mbCookie, ( contentType, bytes ) ) => ( mbCookie, contentType, bytes )
 
   def deletePostMedia( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( tuple : (Int,List[String]) ) : ZOut[Option[CookieValueWithMeta]] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _deletePostMedia( appResources )( authenticatedPoster )( tuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).map:
+    _deletePostMedia( appResources )( authenticatedPoster )( tuple ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING).map:
       case ( mbCookie, unit ) => mbCookie
 
   def subscribeToRssForComments( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( rssSubscriptionRequest : RssSubscriptionRequest ) : ZOut[(Option[CookieValueWithMeta],RssSubscriptionResponse)] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
-    _subscribeToRssForComments( appResources )( authenticatedPoster )( rssSubscriptionRequest ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration )
+    _subscribeToRssForComments( appResources )( authenticatedPoster )( rssSubscriptionRequest ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
+
+  def rssSubscriptionsByDestination( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( seismicNodeId : Int, name : String ) : ZOut[(Option[CookieValueWithMeta],Set[SubscribableFeed])] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _rssSubscriptionsByDestination( appResources )( authenticatedPoster )( seismicNodeId, name ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
 
 end ServerLogic

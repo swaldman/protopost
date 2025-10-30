@@ -115,6 +115,8 @@ case class DestinationIdentifier( seismicNodeId : Int, name : String )
 
 case class PostIdentifier( destinationIdentifier : DestinationIdentifier, postId : Int )
 
+object SubscribableFeed:
+  given Ordering[SubscribableFeed] = Ordering.by( sf => ( sf.title, sf.feedId ) )
 case class SubscribableFeed( feedId : Int, title : String )
 
 case class RssSubscriptionRequest( destinationIdentifier : DestinationIdentifier, feedSource : String )
@@ -184,6 +186,7 @@ given given_JsonValueCodec_Seq_PostMediaInfo : JsonValueCodec[Seq[PostMediaInfo]
 
 given JsonValueCodec[SubscribableFeed]                                                    = JsonCodecMaker.make
 given given_JsonValueCodec_List_SubscribableFeed : JsonValueCodec[List[SubscribableFeed]] = JsonCodecMaker.make
+given given_JsonValueCodec_Set_SubscribableFeed  : JsonValueCodec[Set[SubscribableFeed]] = JsonCodecMaker.make
 
 given JsonValueCodec[RssSubscriptionRequest]  = JsonCodecMaker.make
 given JsonValueCodec[RssSubscriptionResponse] = JsonCodecMaker.make

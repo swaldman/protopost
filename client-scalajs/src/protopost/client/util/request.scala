@@ -15,11 +15,9 @@ import scala.collection.immutable
 import scala.concurrent.{ExecutionContext,Future}
 import scala.util.control.NonFatal
 import com.github.plokhotnyuk.jsoniter_scala.core.JsonValueCodec
-import protopost.common.api.{DestinationIdentifier,NewPostRevision,PostDefinition,PostDefinitionCreate,PostDefinitionUpdate,PostIdentifier,PostRevisionHistory,PostRevisionIdentifier,RetrievedPostRevision,given}
+import protopost.common.api.*
 import protopost.client.PostContent
 import java.time.Instant
-import protopost.common.api.RevisionTimestamp
-import protopost.common.api.PostMediaInfo
 import scala.scalajs.js.typedarray.ArrayBuffer
 import scala.scalajs.js.typedarray.Int8Array
 import protopost.client.UnsavedRevision
@@ -31,8 +29,76 @@ def rawBodyToLoginLevelOrThrow( rawBody : Either[ResponseException[String], Logi
     case Right( loginStatus ) => LoginLevel.fromLoginStatus( loginStatus )
 */
 
+private def fragileParseOriginalMessageFromResponseException( re : ResponseException[?] ) : String =
+  val raw = re.toString()
+  val stop = raw.indexOf("\tat")
+  if stop >= 0 then
+    //println(s"stop: $stop")
+    val line = raw.substring(0,stop)
+    //println( s"line: $line" )
+    val lastColon = line.lastIndexOf(":")
+    //println(s"lastColon: $lastColon")
+    if lastColon >= 0 then
+      line.substring(lastColon+1).trim
+    else
+      line
+  else
+    raw
 
+def subscribeDestinationToFeedsFrom(
+  protopostLocation : Uri,
+  destination : Destination,
+  feedSource : String,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  messageVar : Var[Option[String]],
+  destinationToFeedsVar : Var[immutable.SortedMap[Destination,immutable.SortedSet[SubscribableFeed]]]
+)(using ec : ExecutionContext) : Unit =
+  val di = destination.destinationIdentifier
+  val request =
+    basicRequest
+      .post( protopostLocation.addPath("protopost", "subscribe-to-rss-for-comments" ) )
+      .body( asJson( RssSubscriptionRequest( destination.destinationIdentifier, feedSource ) ) )
+      .response( asJson[RssSubscriptionResponse] )
 
+  val future = request.send(backend)
+  future.onComplete: attempt =>
+    attempt match
+      case Success( response ) =>
+        response.body match
+          case Right( _ ) =>
+            // we want all the feeds, not just the new subscriptions
+            updateFeedsForDestination( protopostLocation, destination, backend, destinationToFeedsVar )
+          case Left( responseException ) =>
+            // println(s"In error handler, with ResponseException ${responseException}")
+            // dom.console.error( s"Response: ${responseException.response}" )
+            val message = fragileParseOriginalMessageFromResponseException( responseException )
+            println( s"ResponseException, parsed message: $message" )
+            println( "ResponseException:" )
+            println( responseException )
+            //responseException.printStackTrace()
+            messageVar.set( Some( s"Error: $message" ) )
+      case Failure( t ) =>
+        println(s"In network error handler, with Throwable ${t}")
+        t.printStackTrace()
+        messageVar.set( Some( t.getMessage() ) )
+
+def updateFeedsForDestination(
+  protopostLocation : Uri,
+  destination : Destination,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  destinationToFeedsVar : Var[immutable.SortedMap[Destination,immutable.SortedSet[SubscribableFeed]]]
+)(using ec : ExecutionContext) : Unit =
+  val di = destination.destinationIdentifier
+  val request =
+    basicRequest
+      .get( protopostLocation.addPath("protopost", "rss-subscriptions-by-destination", di.seismicNodeId.toString, di.name) )
+      .response( asJson[Set[SubscribableFeed]] )
+  val updater : Set[SubscribableFeed] => immutable.SortedMap[Destination,immutable.SortedSet[SubscribableFeed]] => immutable.SortedMap[Destination,immutable.SortedSet[SubscribableFeed]] =
+    feeds =>
+      map =>
+        val sorted = immutable.SortedSet.from(feeds)
+        map + Tuple2( destination, sorted )
+  updateVarFromApiResult( request, backend, destinationToFeedsVar, updater )
 
 def deleteMediaItemForPost(
   protopostLocation : Uri,
@@ -304,6 +370,13 @@ def decodeOrThrow[T]( rawBody : Either[ResponseException[String], T] ) : T =
 private val DefaultErrorHandler : Throwable => Unit =
   t =>
     def alert() : Unit = org.scalajs.dom.window.alert( t.toString() )
+    println(s"In DefaultErrorHandler, with Throwable ${t}")
+    t match
+      case re : sttp.client4.ResponseException[?] =>
+        dom.console.error( s"ResponseMetadata: ${re.response.toString}" )
+        println("ResponseException:")
+        println( re.toString() )
+      case _ => /* ignore */
     t.printStackTrace()
     t match
       case usce : sttp.client4.ResponseException.UnexpectedStatusCode[?] =>

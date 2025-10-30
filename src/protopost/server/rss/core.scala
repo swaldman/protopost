@@ -18,6 +18,8 @@ import protopost.server.LoggingApi.*
 import protopost.server.exception.MismatchedContentType
 import protopost.server.rss.ResolvedFeedSource.Html
 
+import com.mchange.conveniences.string.{*,given}
+
 given LogAdapter = logAdapterFor( "protopost.server.rss" )
 
 val DefaultFeedUpdatePeriodMins = 60 // eventually get rid of this, place it in config
@@ -61,20 +63,20 @@ sealed trait ResolvedFeedSource( typeName : String, val feedType : Option[FeedTy
 
 case class Feed( title : String, href : String, feedType : FeedType )
 
-private def feedSourceRequest( feedSource : String ) = basicRequest.get( Uri(feedSource) ).response(asStringAlways)
+private def feedSourceRequest( feedSource : String ) = basicRequest.get( /*Uri(feedSource)*/ uri"${feedSource}" ).response(asStringAlways)
 
-private def resolveFeedSourceFromContent( href : String, outerTitle : Option[String], feedSourceContent : String ) : Task[ResolvedFeedSource] =
+private def resolveFeedSourceFromContent( href : String, outerTitle : Option[String], feedSource : String, feedSourceContent : String ) : Task[ResolvedFeedSource] =
   val resolveXml =
     ZIO.attempt:
       val elem = XML.loadString( feedSourceContent )
       elem.label match
         case "rss"  => ResolvedFeedSource.Rss( href, outerTitle, elem )
-        case "atom" => ResolvedFeedSource.Atom( href, outerTitle, elem )
+        case "feed" => ResolvedFeedSource.Atom( href, outerTitle, elem )
         case other  => throw new UnexpectedXmlFeedSource("We do not support XML feeds of type '$other'.")
 
   val resolveHtml =
     ZIO.attempt:
-      val jsoupDoc = Jsoup.parse( feedSourceContent )
+      val jsoupDoc = Jsoup.parse( feedSourceContent, feedSource )
       if jsoupDoc.text == feedSourceContent then // that is, if there were no HTML tags
         throw new BadHtmlFeedSource( s"The document beginning '${feedSourceContent.take(30)}...' does not appear to be HTML" )
       else
@@ -93,7 +95,7 @@ private def loadFeedSource( sttpClient : SttpClient )( feedSource : String ) : T
 private def resolveFeedSource( sttpClient : SttpClient )( feedSource : String, outerTitle : Option[String] ) : Task[ResolvedFeedSource] =
   for
     ( mbContentType, content ) <- loadFeedSource( sttpClient )( feedSource )
-    fromContents <- resolveFeedSourceFromContent( feedSource, outerTitle, content )
+    fromContents <- resolveFeedSourceFromContent( feedSource, outerTitle, feedSource, content )
   yield
     mbContentType.map( _.takeWhile( _ != ';' ).trim ).foreach: ct =>
       if !fromContents.consistentContentTypes(ct) then
@@ -104,8 +106,9 @@ private def pullFeedSourcesFromHtml( `type` : String )( sttpClient : SttpClient 
   val elements = jsoupDoc.select(s"""link[rel="alternate"][type="${`type`}"]""")
 
   def extractOuterTitleHref( elem : JsoupElement ) : Option[(href: String, outerTitle: Option[String])] =
-    val hrefs = elem.attributes().asList().asScala.filter( _.getKey() == "href" ).map( _.getValue() )
-    val ots   = elem.attributes().asList().asScala.filter( _.getKey() == "title" ).map( _.getValue() )
+    val hrefs = elem.absUrl("href").toOptionNotBlank //.attributes().asList().asScala.filter( _.getKey() == "href" ).map( _.getValue() )
+    val ots   = elem.attr("title").toOptionNotBlank    //.attributes().asList().asScala.filter( _.getKey() == "title" ).map( _.getValue() )
+    TRACE.log( s"extractOuterTitleHref: hrefs=$hrefs, ots=$ots" )
     if hrefs.isEmpty then
       None
     else

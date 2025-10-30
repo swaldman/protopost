@@ -47,6 +47,7 @@ object Tapir extends SelfLogging:
       oneOfVariantValueMatcher(statusCode(StatusCode.Unauthorized).and(errorBodyOut(classOf[NotLoggedIn]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[NotLoggedIn]) => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.Unauthorized).and(errorBodyOut(classOf[InsufficientPermissions]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[InsufficientPermissions]) => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.InternalServerError).and(errorBodyOutLostThrowableClass())){ case rt : ReconstructableThrowable if rt.throwableClass == None => true },
+      oneOfVariantValueMatcher(statusCode(StatusCode.InternalServerError).and(errorBodyOutLostThrowableClass())){ case rt : ReconstructableThrowable => true },
   )
 
   val NakedBase = endpoint.errorOut(errorHandler)
@@ -140,6 +141,13 @@ object Tapir extends SelfLogging:
       .in( jsonBody[RssSubscriptionRequest] )
       .out( jsonBody[RssSubscriptionResponse] )
 
+  val RssSubscriptionsByDestination =
+    PosterAuthenticated.get
+      .in( "rss-subscriptions-by-destination" )
+      .in( path[Int] )
+      .in( path[String] )
+      .out( jsonBody[Set[SubscribableFeed]] )
+
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*
 
@@ -169,7 +177,8 @@ object Tapir extends SelfLogging:
       PostMediaByPostId.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMediaByPostId(appResources) ),
       PostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMedia(appResources) ),
       DeletePostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( deletePostMedia(appResources) ),
-      SubscribeToRssForComments.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( subscribeToRssForComments( appResources ) )
+      SubscribeToRssForComments.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( subscribeToRssForComments( appResources ) ),
+      RssSubscriptionsByDestination.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( rssSubscriptionsByDestination( appResources ) )
     ) ++ rootAsClient.toList
 
 end Tapir
