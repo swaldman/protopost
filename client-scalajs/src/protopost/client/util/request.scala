@@ -45,6 +45,22 @@ private def fragileParseOriginalMessageFromResponseException( re : ResponseExcep
   else
     raw
 
+def sendLatestToSelf(
+  protopostLocation : Uri,
+  postId : Int,
+  backend : WebSocketBackend[scala.concurrent.Future],
+)(using ec : ExecutionContext) : Unit =
+  val request = basicRequest.post( protopostLocation.addPath("protopost", "mail-latest-revision-to-self", postId.toString ) )
+  val future = request.send(backend)
+  future.onComplete: attempt =>
+    attempt match
+      case Success( _ ) =>
+        /* great! */
+      case Failure( t ) =>
+        println("sendLatestToSelf network error handler, with Throwable:")
+        t.printStackTrace()
+
+
 def unsubscribeDestinationFromFeed(
   protopostLocation : Uri,
   destination : Destination,
@@ -68,7 +84,7 @@ def unsubscribeDestinationFromFeed(
             println("Error while attempting to unsubscribe from feed:")
             println( errorMessage )
       case Failure( t ) =>
-        println(s"In network error handler, with Throwable ${t}")
+        println("In unsubscribeDestinationFromFeed network error handler, with Throwable:")
         t.printStackTrace()
 
 def subscribeDestinationToFeedsFromFeedSource(
@@ -104,7 +120,7 @@ def subscribeDestinationToFeedsFromFeedSource(
             //responseException.printStackTrace()
             messageVar.set( Some( s"Error: $message" ) )
       case Failure( t ) =>
-        println(s"In network error handler, with Throwable ${t}")
+        println("In subscribeDestinationToFeedsFromFeedSource network error handler, with Throwable:")
         t.printStackTrace()
         messageVar.set( Some( t.getMessage() ) )
 

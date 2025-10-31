@@ -551,9 +551,11 @@ object ServerLogic extends SelfLogging:
         yield
           ( postDefinition.title, commaListAnd( postDefinition.authors ), retrievedPostRevision.body )
       mbTitleAuthorsBody match
-        case Some( ( title, authors, body ) ) =>
+        case Some( ( mbTitle, mbAuthors, body ) ) =>
           import EmailAddress.{s as es}
-          Smtp.sendSimplePlaintext( body, subject=s""""${title}" by ${authors}""", from=fromAddress, to=es(subject.email) ) // should we use the db email rather than trust this?
+          val title = mbTitle.getOrElse("(untitled post)")
+          val authorPart = mbAuthors.fold("")( authors => s" by ${authors}" )
+          Smtp.sendSimplePlaintext( body, subject=s"""[protopost] "${title}"${authorPart}""", from=fromAddress, to=es(subject.email) ) // should we use the db email rather than trust this?
         case None =>
           throw new ResourceNotFound(s"Could not find post with ID ${postId}")
 

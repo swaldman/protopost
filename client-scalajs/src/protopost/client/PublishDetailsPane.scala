@@ -137,7 +137,13 @@ object PublishDetailsPane:
           cls := "button-utilitarian",
           role("button"),
           disabled <-- notPublishableSignal,
-          "mail to self"
+          "mail to self",
+          onClick( _.withCurrentValueOf(currentPostIdentifierSignal) ) --> { ( evt, mbpi ) =>
+            mbpi match
+              case Some( pi ) => util.request.sendLatestToSelf(protopostLocation,pi.postId,backend)
+              case None =>
+                dom.console.error("Tried to send latest revision to self while no post is current?")
+          }
         ),
         button(
           cls := "button-utilitarian",
