@@ -45,7 +45,33 @@ private def fragileParseOriginalMessageFromResponseException( re : ResponseExcep
   else
     raw
 
-def subscribeDestinationToFeedsFrom(
+def unsubscribeDestinationFromFeed(
+  protopostLocation : Uri,
+  destination : Destination,
+  feedId : Int,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  destinationToFeedsVar : Var[immutable.SortedMap[Destination,immutable.SortedSet[SubscribableFeed]]]
+)(using ec : ExecutionContext) : Unit =
+  val di = destination.destinationIdentifier
+  val request =
+    basicRequest.delete(
+      protopostLocation.addPath("protopost", "subscribe-to-rss-for-comments", di.seismicNodeId.toString, di.name, feedId.toString )
+    )
+  val future = request.send(backend)
+  future.onComplete: attempt =>
+    attempt match
+      case Success( response ) =>
+        response.body match
+          case Right( _ ) =>
+            updateFeedsForDestination( protopostLocation, destination, backend, destinationToFeedsVar )
+          case Left( errorMessage ) =>
+            println("Error while attempting to unsubscribe from feed:")
+            println( errorMessage )
+      case Failure( t ) =>
+        println(s"In network error handler, with Throwable ${t}")
+        t.printStackTrace()
+
+def subscribeDestinationToFeedsFromFeedSource(
   protopostLocation : Uri,
   destination : Destination,
   feedSource : String,

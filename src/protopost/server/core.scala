@@ -11,6 +11,7 @@ import com.mchange.cryptoutil.given
 import scala.collection.immutable
 
 import java.util.Properties
+import com.mchange.mailutil.Smtp
 
 val LoggingApi = logadapter.zio.ZApi( logadapter.log4j2.Api )
 
@@ -38,6 +39,8 @@ case class SeismicNodeWithId( id : Int, algcrv : String, pubkey : immutable.Arra
 
 case class SubscribedFeed( id : Int, feedUrl : String, title : String, updatePeriodMins : Int ):
   lazy val toApiSubscribableFeed : api.SubscribableFeed = api.SubscribableFeed( id, title )
+
+case class MailConfig( fromAddress : Smtp.Address, smtpContext : Smtp.Context )
 
 // typewrappers
 

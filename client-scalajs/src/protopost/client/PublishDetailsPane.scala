@@ -132,7 +132,19 @@ object PublishDetailsPane:
         display.flex,
         flexDirection.row,
         alignContent.center,
-        justifyContent.center,
+        justifyContent.spaceEvenly,
+        button(
+          cls := "button-utilitarian",
+          role("button"),
+          disabled <-- notPublishableSignal,
+          "mail to self"
+        ),
+        button(
+          cls := "button-utilitarian",
+          role("button"),
+          disabled <-- notPublishableSignal,
+          "request preview"
+        ),
         button(
           cls := "button-utilitarian",
           role("button"),

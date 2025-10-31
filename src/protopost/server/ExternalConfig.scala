@@ -17,6 +17,7 @@ object ExternalConfig:
     case `protopost.mode.production`
     case `protopost.media.max-length.default.mb`
     case `protopost.server.max-upload-size.mb`
+    case `protopost.server.mail.from-address`
 
   val Defaults = Map (
     Key.`protopost.token.security.high.validity.minutes` -> 120.toString,

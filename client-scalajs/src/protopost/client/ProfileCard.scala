@@ -130,10 +130,10 @@ object ProfileCard:
 
 
     val destinationRssCardsSignal =
-      def makeRssFeedRow( id : Int, initial : SubscribableFeed, updates : Signal[SubscribableFeed] ) : Seq[HtmlElement] =
+      def makeRssFeedRow( destination : Destination )( feedId : Int, initial : SubscribableFeed, updates : Signal[SubscribableFeed] ) : Seq[HtmlElement] =
         Seq(
           div(
-            initial.title
+            text <-- updates.map( _.title )
           ),
           div(
             cursor.pointer,
@@ -141,6 +141,9 @@ object ProfileCard:
             color.red,
             marginLeft.rem(0.5),
             "\u00d7",
+            onClick --> { _ =>
+              util.request.unsubscribeDestinationFromFeed( protopostLocation, destination, feedId, backend, destinationToFeedsVar )
+            }
           )
         )
       def makeDestinationPane( id : DestinationIdentifier, initial : (Destination, immutable.SortedSet[SubscribableFeed]), updates : Signal[(Destination, immutable.SortedSet[SubscribableFeed])] ) : HtmlElement =
@@ -149,6 +152,8 @@ object ProfileCard:
         val resetBus = EventBus[Unit]()
 
         val clearMessageObserver = Observer[Any]( _ => messageVar.set(None) )
+
+        val destination = initial(0)
 
         lazy val noSubscritionsPane =
           div(
@@ -170,13 +175,13 @@ object ProfileCard:
             fontWeight.bold,
             marginTop.rem(0.5),
             marginBottom.rem(0.25),
-            util.destinationText( initial(0) )
+            util.destinationText( destination )
           ),
           div(
-            marginLeft.rem(0.5),
+            marginLeft.rem(1),
             display.grid,
             styleProp("grid-template-columns") := "max-content max-content",
-            children <-- updates.map( _(1) ).split( _.feedId )( makeRssFeedRow ).map( _.toSeq.flatten ).map( s => if s.isEmpty then Seq(noSubscritionsPane) else s ),
+            children <-- updates.map( _(1) ).split( _.feedId )( makeRssFeedRow(destination) ).map( _.toSeq.flatten ).map( s => if s.isEmpty then Seq(noSubscritionsPane) else s ),
           ),
           div(
             display.flex,
@@ -192,7 +197,7 @@ object ProfileCard:
                 forId := s"rss-subscribe-textfield-${id.seismicNodeId}-${id.name}",
                 fontWeight.bold,
                 paddingRight.rem(0.5),
-                "add feeds (rss, atom, html):"
+                "add feeds (html, rss, atom):"
               ),
               input(
                 idAttr := s"rss-subscribe-textfield-${id.seismicNodeId}-${id.name}",
@@ -201,9 +206,9 @@ object ProfileCard:
                 value <-- resetBus.events.map( _ => "" ),
                 onEnterPress.mapToValue --> { feedSource =>
                   //println( s"$id -- subscribing to feed '${feedSource}'" )
-                  util.request.subscribeDestinationToFeedsFrom(
+                  util.request.subscribeDestinationToFeedsFromFeedSource(
                     protopostLocation,
-                    initial(0),
+                    destination,
                     feedSource,
                     backend,
                     messageVar,

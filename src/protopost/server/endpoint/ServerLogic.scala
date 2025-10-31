@@ -14,7 +14,7 @@ import protopost.common.api.{*,given}
 import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.{AppResources,ExternalConfig}
 import protopost.server.LoggingApi.*
-import protopost.server.exception.{ApparentBug,BadCookieSettings,BadCredentials,BadMedia,BadMediaPath,BadPostDefinition,InsufficientPermissions,MissingConfig,NotLoggedIn,ResourceNotFound,UnknownPost}
+import protopost.server.exception.*
 import protopost.server.jwt
 import protopost.server.rss
 import protopost.server.db.PgDatabase
@@ -30,10 +30,13 @@ import java.time.temporal.ChronoUnit
 import scala.util.control.NonFatal
 
 import com.mchange.sc.zsqlutil.*
+import com.mchange.conveniences.string.*
 
 import zio.stream.*
 import scala.util.Using
 import java.net.URLConnection
+
+import com.mchange.mailutil.Smtp
 
 object ServerLogic extends SelfLogging:
 
@@ -522,6 +525,40 @@ object ServerLogic extends SelfLogging:
         yield
           db.subscribedFeedsByDestination( seismicNodeId, name )( conn ).map( _.toApiSubscribableFeed )
 
+  private def _deleteRssSubscription( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( seismicNodeId : Int, name : String, feedId : Int ) : ZOut[Unit] =
+    val db = appResources.database
+    val subject = parseSubject( authenticatedPoster )
+
+    ZOut.fromTask:
+      withConnectionTransactionalZIO( appResources.dataSource ): conn =>
+        for
+          _ <- ensurePosterIsGrantedToDestination(db,seismicNodeId,name,subject)( conn )
+        yield
+          db.deleteRssSubscription(seismicNodeId,name,feedId)( conn )
+
+  private def _mailLatestRevisionToSelf( appResources : AppResources )( authenticatedPoster : jwt.AuthenticatedPoster )( postId : Int ) : ZOut[Unit] =
+    val subject = parseSubject( authenticatedPoster )
+    def op( db : PgDatabase, conn : Connection ) : Unit =
+      val mailConfig =
+        appResources.optionalMailConfig.getOrElse:
+          throw new SmtpNotSupported("Server has not been configured to support sending mail.")
+      given smtpContext : Smtp.Context = mailConfig.smtpContext
+      val fromAddress = mailConfig.fromAddress
+      val mbTitleAuthorsBody =
+        for
+          postDefinition <- db.postDefinitionForId( postId )( conn )
+          retrievedPostRevision <- db.postRevisionLatest( postId )( conn )
+        yield
+          ( postDefinition.title, commaListAnd( postDefinition.authors ), retrievedPostRevision.body )
+      mbTitleAuthorsBody match
+        case Some( ( title, authors, body ) ) =>
+          import EmailAddress.{s as es}
+          Smtp.sendSimplePlaintext( body, subject=s""""${title}" by ${authors}""", from=fromAddress, to=es(subject.email) ) // should we use the db email rather than trust this?
+        case None =>
+          throw new ResourceNotFound(s"Could not find post with ID ${postId}")
+
+    onlyIfOwner(appResources)(authenticatedPoster)(postId)(op)
+
   /*
    *  Utilities for conditional cookie-extension logic
    */
@@ -602,5 +639,15 @@ object ServerLogic extends SelfLogging:
   def rssSubscriptionsByDestination( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( seismicNodeId : Int, name : String ) : ZOut[(Option[CookieValueWithMeta],Set[SubscribableFeed])] =
     val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
     _rssSubscriptionsByDestination( appResources )( authenticatedPoster )( seismicNodeId, name ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING)
+
+  def deleteRssSubscription( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( seismicNodeId : Int, name : String, feedId : Int ) : ZOut[Option[CookieValueWithMeta]] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _deleteRssSubscription( appResources )( authenticatedPoster )( seismicNodeId, name, feedId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING).map:
+      case ( mbCookie, unit ) => mbCookie
+
+  def mailLatestRevisionToSelf( appResources : AppResources )( authenticatedPosterMbJwtExpiration : AuthenticatedPosterMbJwtExpiration )( postId : Int ) : ZOut[Option[CookieValueWithMeta]] =
+    val ( authenticatedPoster, mbJwtExpiration ) = authenticatedPosterMbJwtExpiration
+    _mailLatestRevisionToSelf( appResources )( authenticatedPoster )( postId ).prependOptionalLowSecurityExtensionCookie( appResources )( mbJwtExpiration ).zlogErrorDefect(WARNING).map:
+      case ( mbCookie, unit ) => mbCookie
 
 end ServerLogic

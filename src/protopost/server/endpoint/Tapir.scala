@@ -31,6 +31,8 @@ import protopost.server.jwt
 import sttp.model.headers.CookieValueWithMeta
 import protopost.server.jwt.AuthenticatedPoster
 import sttp.model.Header
+import protopost.server.exception.SmtpNotSupported
+import protopost.server.exception.SmtpNotSupported
 
 object Tapir extends SelfLogging:
 
@@ -46,6 +48,7 @@ object Tapir extends SelfLogging:
       oneOfVariantValueMatcher(statusCode(StatusCode.Forbidden).and(errorBodyOut(classOf[BadCredentials]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[BadCredentials]) => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.Unauthorized).and(errorBodyOut(classOf[NotLoggedIn]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[NotLoggedIn]) => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.Unauthorized).and(errorBodyOut(classOf[InsufficientPermissions]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[InsufficientPermissions]) => true },
+      oneOfVariantValueMatcher(statusCode(StatusCode.ServiceUnavailable).and(errorBodyOut(classOf[SmtpNotSupported]))){ case rt : ReconstructableThrowable if rt.throwableClass == Some(classOf[SmtpNotSupported]) => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.InternalServerError).and(errorBodyOutLostThrowableClass())){ case rt : ReconstructableThrowable if rt.throwableClass == None => true },
       oneOfVariantValueMatcher(statusCode(StatusCode.InternalServerError).and(errorBodyOutLostThrowableClass())){ case rt : ReconstructableThrowable => true },
   )
@@ -141,12 +144,27 @@ object Tapir extends SelfLogging:
       .in( jsonBody[RssSubscriptionRequest] )
       .out( jsonBody[RssSubscriptionResponse] )
 
+  val UnsubscribeToRssForComments =
+    PosterAuthenticated.delete
+      .in( "subscribe-to-rss-for-comments" )
+      .in( path[Int] )
+      .in( path[String] )
+      .in( path[Int] )
+      .out(statusCode(StatusCode.NoContent))
+      .out(emptyOutput)
+
   val RssSubscriptionsByDestination =
     PosterAuthenticated.get
       .in( "rss-subscriptions-by-destination" )
       .in( path[Int] )
       .in( path[String] )
       .out( jsonBody[Set[SubscribableFeed]] )
+
+  val MailLatestRevisionToSelf =
+    PosterAuthenticated.post
+      .in( "mail-latest-revision-to-self" )
+      .in( path[Int] )
+      .out( emptyOutput )
 
   def serverEndpoints( appResources : AppResources ) : List[ZServerEndpoint[Any,Any]] =
     import ServerLogic.*
@@ -178,7 +196,9 @@ object Tapir extends SelfLogging:
       PostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( postMedia(appResources) ),
       DeletePostMedia.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( deletePostMedia(appResources) ),
       SubscribeToRssForComments.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( subscribeToRssForComments( appResources ) ),
-      RssSubscriptionsByDestination.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( rssSubscriptionsByDestination( appResources ) )
+      UnsubscribeToRssForComments.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( deleteRssSubscription( appResources ) ),
+      RssSubscriptionsByDestination.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( rssSubscriptionsByDestination( appResources ) ),
+      MailLatestRevisionToSelf.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( mailLatestRevisionToSelf( appResources ) )
     ) ++ rootAsClient.toList
 
 end Tapir

@@ -40,6 +40,18 @@ class PgDatabase( val SchemaManager : PgSchemaManager ):
       case 0 => false
       case 1 => true
       case n => throw new ApparentBug(s"deletePostMedia(...) should at most delete a single row, apparently $n rows deleted.")
+  def deleteRssSubscription( seismicNodeId : Int, name : String, subscribedFeedId : Int )( conn : Connection ) : Boolean =
+    val rowsDeleted = Schema.Table.DestinationFeedSubscription.delete( seismicNodeId, name, subscribedFeedId )( conn )
+    val out =
+      rowsDeleted match
+        case 0 => false
+        case 1 => true
+        case n => throw new ApparentBug(s"deletePostMedia(...) should at most delete a single row, apparently $n rows deleted.")
+    if rowsDeleted > 0 then
+      val remainingSubscribers = Schema.Table.DestinationFeedSubscription.selectSubscriberCount( subscribedFeedId )( conn )
+      if remainingSubscribers == 0 then
+        Schema.Table.SubscribedFeed.delete( subscribedFeedId )( conn )
+    out
   def destinationsByPosterId( posterId : PosterId)( conn : Connection ) : Set[Destination] =
     Schema.Join.selectDestinationsForPosterId( posterId )( conn )
   def destinationDefined( seismicNodeId : Int, name : String )( conn : Connection ) : Boolean =

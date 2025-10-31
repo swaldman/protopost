@@ -574,6 +574,7 @@ object PgSchema extends SelfLogging:
         val SelectByFeedUrl = "SELECT id, feed_url, title, update_period_mins FROM subscribed_feed WHERE feed_url = ?"
         val Insert = "INSERT INTO subscribed_feed ( id, feed_url, title, update_period_mins ) VALUES ( ?, ?, ?, ? )"
         val UpdateTitleById = "UPDATE subscribed_feed SET title = ? WHERE id = ?"
+        val Delete = "DELETE FROM subscribed_feed WHERE id = ?"
         def extract( rs : ResultSet ) : SubscribedFeed = protopost.server.SubscribedFeed( rs.getInt(1), rs.getString(2), rs.getString(3), rs.getInt(4) )
         def insert( id : Int, feedUrl : String, title : String, updatePeriodMins : Int )( conn : Connection )  =
           Using.resource( conn.prepareStatement( Insert ) ): ps =>
@@ -595,6 +596,10 @@ object PgSchema extends SelfLogging:
             ps.setString(1, newTitle)
             ps.setInt(2, id)
             ps.executeUpdate()
+        def delete( id : Int )( conn : Connection ) =
+          Using.resource( conn.prepareStatement( Delete ) ): ps =>
+            ps.setInt(1, id)
+            ps.executeUpdate()
       end SubscribedFeed
       object DestinationFeedSubscription extends Creatable:
         override val Create =
@@ -607,12 +612,24 @@ object PgSchema extends SelfLogging:
              |  FOREIGN KEY (subscribed_feed_id) REFERENCES subscribed_feed(id)
              |)""".stripMargin
         val InsertIdempotent = "INSERT INTO destination_feed_subscription ( seismic_node_id, name, subscribed_feed_id ) VALUES (?,?,?) ON CONFLICT ( seismic_node_id, name, subscribed_feed_id ) DO NOTHING"
+        val Delete = "DELETE FROM destination_feed_subscription WHERE seismic_node_id = ? AND name = ? AND subscribed_feed_id = ?"
+        val SelectSubscriberCount = "SELECT count(*) FROM destination_feed_subscription WHERE subscribed_feed_id = ?"
         def insertIdempotent( seismicNodeId : Int, name : String, subscribedFeedId : Int )( conn : Connection ) =
           Using.resource( conn.prepareStatement( InsertIdempotent ) ): ps =>
             ps.setInt(1, seismicNodeId)
             ps.setString(2, name)
             ps.setInt(3, subscribedFeedId)
             ps.executeUpdate()
+        def delete( seismicNodeId : Int, name : String, subscribedFeedId : Int )( conn : Connection ) =
+          Using.resource( conn.prepareStatement( Delete ) ): ps =>
+            ps.setInt(1, seismicNodeId)
+            ps.setString(2, name)
+            ps.setInt(3, subscribedFeedId)
+            ps.executeUpdate()
+        def selectSubscriberCount( feedId : Int )( conn : Connection ) : Int =
+          Using.resource( conn.prepareStatement( SelectSubscriberCount ) ): ps =>
+            ps.setInt(1, feedId)
+            Using.resource( ps.executeQuery )( uniqueResult("select-subscriber-count")( _.getInt(1) ) )
       end DestinationFeedSubscription
       object PostComment extends Creatable:
         override val Create =

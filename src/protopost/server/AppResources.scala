@@ -14,8 +14,15 @@ import com.auth0.jwk.{Jwk,JwkProvider,JwkProviderBuilder}
 import sttp.client4.httpclient.zio.SttpClient
 
 import ConfigProperties.{p as props}
+import scala.util.Try
+import com.mchange.mailutil.Smtp
 
-class AppResources( val configProperties : ConfigProperties, val sttpClient : SttpClient ):
+import com.mchange.conveniences.javautil.*
+import scala.jdk.CollectionConverters.*
+
+import LoggingApi.*
+
+class AppResources( val configProperties : ConfigProperties, val sttpClient : SttpClient ) extends SelfLogging:
 
   lazy val dataSource : DataSource =
     import com.mchange.v2.c3p0.*
@@ -62,7 +69,22 @@ class AppResources( val configProperties : ConfigProperties, val sttpClient : St
         .getOrElse( throw new MissingConfig(s"Please set config key '$pvtKeyHexKey'. Cannot establish server identity with '$pvtKeyHexKey' unset.") )
     val privateKey = BouncyCastleSecp256r1.privateKeyFromHex( hex )
     val publicKey = BouncyCastleSecp256r1.publicKeyFromPrivate( privateKey )
-    LocalIdentity.ES256( location, Service.protopost, privateKey, publicKey ) 
+    LocalIdentity.ES256( location, Service.protopost, privateKey, publicKey )
+
+  lazy val optionalMailConfig =
+    val mbFromAddress = externalConfig.get( ExternalConfig.Key.`protopost.server.mail.from-address` ).flatMap( address => Try( Smtp.Address(address) ).toOption )
+    if mbFromAddress.isEmpty then
+      WARNING.log( s"Config property ${ExternalConfig.Key.`protopost.server.mail.from-address`} has not been set or is invalid; mailing of drafts will not be supported." )
+    def mbSmtpContext =
+      val out = Try( Smtp.Context( (Smtp.Context.defaultProperties().asScala.toMap ++ props(configProperties).asScala.toMap).toProperties, sys.env ) ).toOption
+      if out.isEmpty then
+        WARNING.log( s"SMTP configuration properties are not present; mailing of drafts will not be supported." )
+      out
+    for
+      fromAddress <- mbFromAddress
+      smtpContext <- mbSmtpContext
+    yield
+      MailConfig( fromAddress, smtpContext )
 
   object jwkProviders:
     private val innerMap : mutable.Map[Location.Simple,JwkProvider] = mutable.HashMap.empty[Location.Simple,JwkProvider]

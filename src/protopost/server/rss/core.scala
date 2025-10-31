@@ -30,7 +30,7 @@ enum FeedType:
 object ResolvedFeedSource:
   case class Rss ( href : String, outerTitle : Option[String], elem : Elem ) extends ResolvedFeedSource( "RSS", Some(FeedType.rss), Set("application/rss+xml","application/xml","text/xml") ):
     lazy val innerTitle : Option[String] =
-      val nodeSeq = (elem \ "rss" \ "channel" \ "title")
+      val nodeSeq = (elem \ "channel" \ "title")
       nodeSeq.size match
         case 0 => None
         case 1 => Some(nodeSeq.head.text)
@@ -39,7 +39,7 @@ object ResolvedFeedSource:
           Some(nodeSeq.head.text)
   case class Atom( href : String, outerTitle : Option[String], elem : Elem ) extends ResolvedFeedSource( "Atom", Some(FeedType.atom), Set("application/atom+xml","application/xml","text/xml") ):
     lazy val innerTitle : Option[String] =
-      val nodeSeq = (elem \ "feed" \ "title")
+      val nodeSeq = (elem \ "title")
       nodeSeq.size match
         case 0 => None
         case 1 => Some(nodeSeq.head.text)
@@ -157,4 +157,5 @@ def findFeedsFromFeedSource( sttpClient : SttpClient )( feedSource : String, out
     initial <- resolveFeedSource( sttpClient )( feedSource, outerTitle )
     rfsSet  <- resolveFeedSources( sttpClient )( initial )
   yield
+    // rfsSet.foreach( rfs => println( s"innerTitle: ${rfs.innerTitle}; outerTitle: ${rfs.outerTitle}; title: ${rfs.title}" ) )
     rfsSet.flatMap(feed)
