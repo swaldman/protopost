@@ -314,6 +314,7 @@ object ProfileCard:
             marginLeft.rem(1.5),
             input(
               `type` := "checkbox",
+              disabled <-- composerSignal.map( _ != Composer.`WYSIWYG` ),
               checked <-- externalJsConfigSignal.map( _.ckeditorLoadedImagesDefaultToWidth100Percent ),
               onInput.mapToChecked --> { checked =>
                 externalJsConfigManager.update( _.copy(ckeditorLoadedImagesDefaultToWidth100Percent = checked) )

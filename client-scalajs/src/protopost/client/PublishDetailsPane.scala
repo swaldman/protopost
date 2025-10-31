@@ -138,7 +138,7 @@ object PublishDetailsPane:
           role("button"),
           disabled <-- notPublishableSignal,
           "mail to self",
-          onClick( _.withCurrentValueOf(currentPostIdentifierSignal) ) --> { ( evt, mbpi ) =>
+          onClick( _.withCurrentValueOf(currentPostIdentifierSignal).debounce(1000) ) --> { ( evt, mbpi ) =>
             mbpi match
               case Some( pi ) => util.request.sendLatestToSelf(protopostLocation,pi.postId,backend)
               case None =>
