@@ -8,6 +8,14 @@ import java.time.Instant
 
 val LastCharString = "\uDBFF\uDFFD"
 
+/*
+ * Always is a bit of a hack, since it should always be supported,
+ * we can treat an empty set of optional features in the client to always
+ * be uninitialized.
+ */
+enum OptionalFeature:
+  case Always, Preview, Smtp
+
 object LoginStatus:
   val empty = LoginStatus(0L,0L)
 case class LoginStatus( highSecuritySecondsRemaining : Long, lowSecuritySecondsRemaining : Long )
@@ -190,6 +198,10 @@ given given_JsonValueCodec_Set_SubscribableFeed  : JsonValueCodec[Set[Subscribab
 
 given JsonValueCodec[RssSubscriptionRequest]  = JsonCodecMaker.make
 given JsonValueCodec[RssSubscriptionResponse] = JsonCodecMaker.make
+
+given JsonValueCodec[OptionalFeature] = JsonCodecMaker.make
+given given_JsonValueCodec_Set_OptionalFeature : JsonValueCodec[Set[OptionalFeature]] = JsonCodecMaker.make
+
 
 
 

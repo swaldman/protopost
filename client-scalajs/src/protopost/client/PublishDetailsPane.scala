@@ -3,7 +3,7 @@ package protopost.client
 import org.scalajs.dom
 import com.raquo.laminar.api.L.{*, given}
 
-import protopost.common.api.{PostDefinition,PostMediaInfo,PostRevisionHistory}
+import protopost.common.api.{OptionalFeature, PostDefinition,PostMediaInfo,PostRevisionHistory}
 
 import sttp.model.Uri
 import sttp.client4.WebSocketBackend
@@ -128,11 +128,7 @@ object PublishDetailsPane:
       )
 
     val actionsCard =
-      div (
-        display.flex,
-        flexDirection.row,
-        alignContent.center,
-        justifyContent.spaceEvenly,
+      lazy val mailToSelfButton =
         button(
           cls := "button-utilitarian",
           role("button"),
@@ -144,19 +140,38 @@ object PublishDetailsPane:
               case None =>
                 dom.console.error("Tried to send latest revision to self while no post is current?")
           }
-        ),
+        )
+
+      lazy val requestPreviewButton =
         button(
           cls := "button-utilitarian",
           role("button"),
           disabled <-- notPublishableSignal,
           "request preview"
-        ),
+        )
+
+      lazy val publishUpdateButton =
         button(
           cls := "button-utilitarian",
           role("button"),
           disabled <-- notPublishableSignal,
           text <-- publishUpdateButtonLabelSignal
-        ),
+        )
+
+      val actionButtonsSignal : Signal[Seq[HtmlElement]] =
+        optionalFeaturesSignal.map: set =>
+          Seq(
+            if set(OptionalFeature.Smtp) then Some( mailToSelfButton ) else None,
+            if set(OptionalFeature.Preview) then Some( requestPreviewButton ) else None,
+            Some( publishUpdateButton )
+          ).flatten
+
+      div (
+        display.flex,
+        flexDirection.row,
+        alignContent.center,
+        justifyContent.spaceEvenly,
+        children <-- actionButtonsSignal
       )
 
     val actionsReloginCard =
@@ -317,9 +332,9 @@ object PublishDetailsPane:
           sectionBorderPaddingMargin,
           div(
             display <-- currentPostMediaSignal.map( _.fold("none")(pmis => if pmis.isEmpty then "none" else "block") ),
-            postMediaTableCard
+            postMediaTableCard,
+            util.laminar.blackHr(),
           ),
-          util.laminar.blackHr(),
           div(
             marginTop.rem(0.5),
             fontSize.pt(10),

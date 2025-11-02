@@ -88,7 +88,13 @@ object Tapir extends SelfLogging:
       .in(cookie[Option[String]]("token_security_low"))
       .out(jsonBody[LoginStatus])
 
+  val OptionalFeatures =
+    Base.get
+      .in( "optional-features" )
+      .out( jsonBody[Set[OptionalFeature]] )
+
   val Client = Base.get.in("client").in("top.html").out(htmlBodyUtf8)
+
   val RootAsClient = NakedBase.in("").get.out(htmlBodyUtf8)
 
   val PosterInfo = PosterAuthenticated.get.in("poster-info").out(jsonBody[PosterNoAuth])
@@ -179,6 +185,7 @@ object Tapir extends SelfLogging:
       WellKnownJwks.zServerLogic( jwks( appResources ) ),
       Login.zServerLogic( login( appResources ) ),
       LoginStatus.zServerLogic( loginStatus( appResources ) ),
+      OptionalFeatures.zServerLogic( optionalFeatures( appResources ) ),
       Logout.zServerLogic( logout( appResources ) ),
       Client.zServerLogic( client( appResources ) ),
       PosterInfo.zServerSecurityLogic( authenticatePoster(appResources) ).serverLogic( posterInfo(appResources) ),

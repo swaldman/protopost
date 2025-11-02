@@ -16,7 +16,7 @@ import com.mchange.milldaemon.DaemonModule
 import scala.util.control.NonFatal
 
 trait ProtopostScalaModule extends ScalaModule:
-  override def scalaVersion = "3.7.2"
+  override def scalaVersion = "3.7.3"
 trait ProtopostScalaJSModule extends ProtopostScalaModule,ScalaJSModule:
   override def scalaJSVersion = "1.20.0"
 

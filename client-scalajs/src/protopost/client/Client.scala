@@ -179,6 +179,9 @@ class Client( val protopostLocation : Uri ):
   val selectedUnsavedRevisionVar : Var[Option[UnsavedRevision]] = Var(None)
   val selectedUnsavedRevisionSignal = selectedUnsavedRevisionVar.signal
 
+  val optionalFeaturesVar : Var[Set[OptionalFeature]] = Var( Set.empty )
+  val optionalFeaturesSignal = optionalFeaturesVar.signal
+
   object externalJsConfigManager extends VarLike[ProtopostExternalJsConfig]:
     private def init() : Unit =
       val externalJsConfig = lsi.now().toJsObject
@@ -348,6 +351,10 @@ class Client( val protopostLocation : Uri ):
         doSaveEventStream.addObserver( doSaveEventObserver )
         posterNoAuthSignal.withCurrentValueOf(lastLoggedInPosterSignal).addObserver( localStorageUserFreshnessObserver ) // monitor for changes in user logged in to this browser, clear local storage if there is a change
         reloadPostMediaRequestEventBus.events.withCurrentValueOf(currentPostDefinitionSignal).addObserver( reloadPostMediaRequestObserver )
+
+        //optionalFeaturesSignal.addObserver( Observer[Set[OptionalFeature]]( s => println(s) ) )
+
+        util.request.fetchOptionalFeatures( protopostLocation, backend, optionalFeaturesVar )
 
         // we don't want to erase the local-storage current post on app startup, so we don't update the current post based on selectedUnsavedRevision when it is None
         selectedUnsavedRevisionSignal.addObserver( Observer[Option[UnsavedRevision]](mbur => if mbur.nonEmpty then currentPostIdentifierManager.set( mbur.map(_.postIdentifier))) ) 

@@ -188,6 +188,13 @@ object ServerLogic extends SelfLogging:
         val lowSecurityExpiration = extractExpirationOrEpoch(lowSecurityToken)
         loginStatusFromExpirations( highSecurityExpiration, lowSecurityExpiration )
 
+  def optionalFeatures( appResources : AppResources )( unit : Unit ) : ZOut[Set[OptionalFeature]] =
+    ZOut.fromTask:
+      ZIO.attempt:
+        Set.from(appResources.optionalMailConfig.map( _ => OptionalFeature.Smtp )) +
+          OptionalFeature.Preview + // for now...
+          OptionalFeature.Always    // for ever...
+
   /*
    *  Authentication server logic
    */

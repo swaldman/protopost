@@ -45,6 +45,17 @@ private def fragileParseOriginalMessageFromResponseException( re : ResponseExcep
   else
     raw
 
+def fetchOptionalFeatures(
+  protopostLocation : Uri,
+  backend : WebSocketBackend[scala.concurrent.Future],
+  optionalFeaturesVar : Var[Set[OptionalFeature]]
+)(using ec : ExecutionContext) : Unit =
+  val request = 
+    basicRequest
+      .get( protopostLocation.addPath("protopost", "optional-features" ) )
+      .response( asJson[Set[OptionalFeature]] )
+  updateVarFromApiResult( request, backend, optionalFeaturesVar, ps => _ => ps )
+
 def sendLatestToSelf(
   protopostLocation : Uri,
   postId : Int,
@@ -59,7 +70,6 @@ def sendLatestToSelf(
       case Failure( t ) =>
         println("sendLatestToSelf network error handler, with Throwable:")
         t.printStackTrace()
-
 
 def unsubscribeDestinationFromFeed(
   protopostLocation : Uri,

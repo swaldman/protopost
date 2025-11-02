@@ -104,5 +104,8 @@ given Schema[SubscribableFeed]        = Schema.derived
 given Schema[RssSubscriptionRequest]  = Schema.derived
 given Schema[RssSubscriptionResponse] = Schema.derived
 
+given Schema[OptionalFeature] = Schema.derived
+
+
 
 
