@@ -28,6 +28,6 @@ Information on running your own instance will hopefully come soon.
 
 ## Acknowledgements
 
-This project has been supported in part by external financial sponsorship.
+This project has been supported by external financial sponsorship.
 Many thanks to Chris Peel for his support!
 
