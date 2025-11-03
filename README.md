@@ -20,7 +20,9 @@ Protopost tries to be very neurotic about not losing work. It autosaves revision
 
 ## Status
 
-The status of this project is still very early. It's a piece of "project restack", an attempt to reproduce the tools associated with newsletter platforms in an open, community hostable, ethical, and technically resilient manner. A related, much more mature tool is [_feedletter_](https://github.com/swaldman/feedletter), which will convert any site emitting full-content RSS [into a beautifully formatted newsletter](https://tech.interfluidity.com/2024/01/29/feedletter-tutorial/index.html), as well as [syndicate post notifications](https://tech.interfluidity.com/2025/01/14/syndicating-rss-to-mastodon-and-bluesky-with-feedletter/) to Mastodon and Bluesky. That one is ready to go! Please use it!
+The status of this project is still very early. It's a piece of "project restack", an attempt to reproduce the tools associated with newsletter platforms in an open, community-hostable, ethical, and technically resilient manner.
+
+A related, much more mature tool is [_feedletter_](https://github.com/swaldman/feedletter), which will convert any site emitting full-content RSS [into a beautifully formatted newsletter](https://tech.interfluidity.com/2024/01/29/feedletter-tutorial/index.html), as well as [syndicate post notifications](https://tech.interfluidity.com/2025/01/14/syndicating-rss-to-mastodon-and-bluesky-with-feedletter/) to Mastodon and Bluesky. That one is ready to go! Please use it!
 
 A test instance is of _protopost_ available at [https://protopost.test.mchange.com/](https://protopost.test.mchange.com/). It's gated — if you'd like to give it a try please contact [`swaldman@mchange.com`](mailto:swaldman@mchange.com).
 
@@ -28,6 +30,5 @@ Information on running your own instance will hopefully come soon.
 
 ## Acknowledgements
 
-This project has been supported by external financial sponsorship.
-Many thanks to Chris Peel for his support!
+This project has been supported by external financial sponsorship. Many thanks to Chris Peel for his support!
 
