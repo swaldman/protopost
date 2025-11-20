@@ -1,11 +1,14 @@
 package protopost.server
 
-import protopost.common.{PosterId,Protocol,Service}
+import com.mchange.restack.util.common.{Protocol,Service}
+import com.mchange.restack.util.server.crypto.BouncyCastleSecp256r1
+import com.mchange.restack.util.server.identity.{LocalIdentity,Location}
+
+import protopost.common.PosterId
 import protopost.server.{ExternalConfig,ConfigProperties}
-import protopost.server.crypto.BouncyCastleSecp256r1
 import protopost.server.db.{PgDatabase,PgSchemaManager}
 import protopost.server.exception.MissingConfig
-import protopost.server.identity.{LocalIdentity,Location}
+
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 import javax.sql.DataSource
 import scala.collection.mutable

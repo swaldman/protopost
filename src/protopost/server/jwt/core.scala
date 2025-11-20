@@ -1,12 +1,13 @@
 package protopost.server.jwt
 
+import com.mchange.restack.util.server.crypto.BouncyCastleSecp256r1
+
 import java.time.Instant
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 
-import protopost.common.Service
-import protopost.server.crypto.BouncyCastleSecp256r1
+import com.mchange.restack.util.common.Service
 
 enum SecurityLevel:
   case high, low

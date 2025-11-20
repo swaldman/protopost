@@ -2,9 +2,12 @@ package protopost.server.endpoint
 
 import zio.*
 
+import com.mchange.restack.util.common.endpoint.given
+import com.mchange.restack.util.server.crypto.{*,given}
+
+
 import protopost.common.api.*
-import protopost.common.{EmailAddress,Password,PosterId,Protocol}
-import protopost.server.crypto.{*,given}
+import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.exception.SignatureDoesNotVerify
 import protopost.server.jwt.{AuthenticatedPoster,Jwk,Jwks,Jwt}
 
@@ -82,7 +85,7 @@ given Schema[LoginStatus]            = Schema.derived
 given Schema[Envelope]               = Schema.derived
 given Schema[EmailPassword]          = Schema.derived
 given Schema[PosterNoAuth]           = Schema.derived
-given Schema[Protocol]               = Schema.derived
+//given Schema[Protocol]               = Schema.derived
 given Schema[SeismicNode]            = Schema.derived
 given Schema[Destination]            = Schema.derived
 given Schema[DestinationIdentifier]  = Schema.derived

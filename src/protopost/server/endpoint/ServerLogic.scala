@@ -40,7 +40,7 @@ import com.mchange.mailutil.Smtp
 
 object ServerLogic extends SelfLogging:
 
-  private val service = protopost.common.Service.protopost // forseeing abstracting some of this to a more abstract restack library
+  private val service = com.mchange.restack.util.common.Service.protopost // forseeing abstracting some of this to a more abstract restack library
 
   /*
    *  Constants

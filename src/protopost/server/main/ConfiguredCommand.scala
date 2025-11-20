@@ -14,15 +14,18 @@ import sttp.client4.httpclient.zio.SttpClient
 import sttp.tapir.server.interceptor.log.DefaultServerLog
 import sttp.tapir.server.ziohttp.{ZioHttpInterpreter, ZioHttpServerOptions}
 
+import com.mchange.restack.util.common.Service
+import com.mchange.restack.util.server.identity.PublicIdentity
+
+
 import protopost.common.api.Destination
-import protopost.common.{EmailAddress,PosterId,Service}
+import protopost.common.{EmailAddress,PosterId}
 import protopost.server.{AppResources,ExternalConfig,ProtoSeismicNode,SeismicNodeWithId}
 import protopost.server.LoggingApi.*
 import protopost.server.db.{PgDatabase,PgSchemaManager}
 import protopost.server.endpoint.Tapir
 import protopost.server.effectlib.encounterProtoSeismicNode
 import protopost.server.exception.{BadService,InconsistentSeismicNodeDefinition,ProtopostException,UnknownDestination,UnknownPoster}
-import protopost.server.identity.PublicIdentity
 
 import com.mchange.cryptoutil.given
 
@@ -85,10 +88,10 @@ object ConfiguredCommand extends SelfLogging:
         .customiseInterceptors
         .serverLog(
           DefaultServerLog[Task](
-            doLogWhenReceived = msg => INFO.zlog(msg),
-            doLogWhenHandled = (msg, error) => error.fold(INFO.zlog(msg))(err => WARNING.zlog(s"msg: ${msg}, err: ${err}")),
-            doLogAllDecodeFailures = (msg, error) => error.fold(INFO.zlog(msg))(err => WARNING.zlog(s"msg: ${msg}, err: ${err}")),
-            doLogExceptions = (msg: String, exc: Throwable) => WARNING.zlog(msg, exc),
+            doLogWhenReceived = msg => INFO.zlog("when-received: "+msg),
+            doLogWhenHandled = (msg, error) => error.fold(INFO.zlog("when-handled-no-err: "+msg))(err => WARNING.zlog("when-handled-with-err: "+s"msg: ${msg}, err: ${err}")),
+            doLogAllDecodeFailures = (msg, error) => error.fold(INFO.zlog("decode-failure-unkown-err: "+msg))(err => WARNING.zlog("decode-failure-with-err: "+s"msg: ${msg}, err: ${err}")),
+            doLogExceptions = (msg: String, exc: Throwable) => WARNING.zlog("exception: "+msg + " -- " + exc, exc),
             noLog = ZIO.unit
           )
         )

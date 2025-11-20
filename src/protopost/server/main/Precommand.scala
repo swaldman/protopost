@@ -7,7 +7,7 @@ object Precommand:
       0
   object GeneratePrivateKey extends Precommand:
     def execute() : Int =
-      import protopost.server.crypto.BouncyCastleSecp256r1
+      import com.mchange.restack.util.server.crypto.BouncyCastleSecp256r1
       val keypair = BouncyCastleSecp256r1.generateKeyPair()
       val S = keypair(0).getS()
       println( BouncyCastleSecp256r1.fieldValueToHex0x(S) )

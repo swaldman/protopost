@@ -3,7 +3,9 @@ package protopost.common.api
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
-import protopost.common.{EmailAddress,Password,PosterId,Protocol,Service}
+import com.mchange.restack.util.common.{Protocol,Service}
+
+import protopost.common.{EmailAddress,Password,PosterId}
 import java.time.Instant
 
 val LastCharString = "\uDBFF\uDFFD"
