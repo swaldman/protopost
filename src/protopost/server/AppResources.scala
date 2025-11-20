@@ -12,7 +12,6 @@ import protopost.server.exception.MissingConfig
 import java.security.interfaces.{ECPrivateKey,ECPublicKey}
 import javax.sql.DataSource
 import scala.collection.mutable
-import com.auth0.jwk.{Jwk,JwkProvider,JwkProviderBuilder}
 
 import sttp.client4.httpclient.zio.SttpClient
 
@@ -22,6 +21,8 @@ import com.mchange.mailutil.Smtp
 
 import com.mchange.conveniences.javautil.*
 import scala.jdk.CollectionConverters.*
+
+import com.mchange.restack.util.server.JwkProviders
 
 import LoggingApi.*
 
@@ -89,9 +90,4 @@ class AppResources( val configProperties : ConfigProperties, val sttpClient : St
     yield
       MailConfig( fromAddress, smtpContext )
 
-  object jwkProviders:
-    private val innerMap : mutable.Map[Location.Simple,JwkProvider] = mutable.HashMap.empty[Location.Simple,JwkProvider]
-    private def get( location : Location.Simple ) : JwkProvider = this.synchronized:
-      innerMap.getOrElseUpdate( location, new JwkProviderBuilder(location.toUrl).build() )
-    def get( location : Location.Simple, service : Service ) : Option[Jwk] =
-      Option( this.get( location ).get( service.toString ) )
+  val jwkProviders = new JwkProviders

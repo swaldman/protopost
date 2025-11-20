@@ -2,6 +2,9 @@ package protopost.server.endpoint
 
 import zio.*
 
+import com.mchange.restack.util.common.{Jwk,Jwks}
+import com.mchange.restack.util.server.createJwk
+
 import sttp.model.StatusCode
 import sttp.model.headers.{CookieValueWithMeta,Cookie}
 import Cookie.SameSite
@@ -86,12 +89,12 @@ object ServerLogic extends SelfLogging:
    *  Non-authenticated endpoint server logic
    */
 
-  def jwks( appResources : AppResources )(u : Unit) : ZOut[jwt.Jwks] =
+  def jwks( appResources : AppResources )(u : Unit) : ZOut[Jwks] =
     ZOut.fromTask:
       ZIO.attempt:
         val identity = appResources.localIdentity
-        val jwk = jwt.Jwk( identity.publicKey, identity.service )
-        jwt.Jwks( List( jwk ) )
+        val jwk = createJwk( identity.publicKey, identity.service )
+        Jwks( List( jwk ) )
 
   def client( appResources : AppResources )(unit : Unit) : ZOut[String] =
     ZOut.fromTask( ZIO.attempt(protopost.client.client_top_html( appResources.localIdentity.location.toUrl ).text) )

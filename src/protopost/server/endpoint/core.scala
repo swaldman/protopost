@@ -9,7 +9,7 @@ import com.mchange.restack.util.server.crypto.{*,given}
 import protopost.common.api.*
 import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.exception.SignatureDoesNotVerify
-import protopost.server.jwt.{AuthenticatedPoster,Jwk,Jwks,Jwt}
+import protopost.server.jwt.{AuthenticatedPoster,Jwt}
 
 import com.mchange.conveniences.throwable.*
 import com.mchange.cryptoutil.{*,given}
@@ -67,8 +67,6 @@ given JsonValueCodec[Jwt] = new JsonValueCodec[Jwt]:
   def encodeValue(x: Jwt, out: JsonWriter): Unit     = out.writeVal(Jwt.s(x))
   def nullValue: Jwt                                 = null.asInstanceOf[Jwt]
 
-given JsonValueCodec[Jwk]           = JsonCodecMaker.make
-given JsonValueCodec[Jwks]          = JsonCodecMaker.make
 //given JsonValueCodec[Jwts]          = JsonCodecMaker.make
 given JsonValueCodec[Envelope]      = JsonCodecMaker.make
 
@@ -78,8 +76,6 @@ given Schema[Password]          = Schema.string.map((s : String) => Some(Passwor
 given Schema[Jwt]               = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => Jwt.s(jwt))
 given Schema[PosterId]          = Schema.schemaForInt.map( (i : Int) => Some(PosterId(i)) )(pid => PosterId.i(pid))
 
-given Schema[Jwk]                    = Schema.derived
-given Schema[Jwks]                   = Schema.derived
 //given Schema[Jwts]                   = Schema.derived
 given Schema[LoginStatus]            = Schema.derived
 given Schema[Envelope]               = Schema.derived

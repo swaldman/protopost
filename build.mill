@@ -60,7 +60,6 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
       mvn"com.monovore::decline:2.5.0",
       mvn"org.postgresql:postgresql:42.7.7",
       mvn"com.auth0:java-jwt:4.5.0",
-      mvn"com.auth0:jwks-rsa:0.23.0",
       mvn"org.scala-lang.modules::scala-xml:2.4.0",
       mvn"org.jsoup:jsoup:1.21.2",
     )

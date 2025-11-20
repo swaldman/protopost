@@ -2,6 +2,9 @@ package protopost.server.endpoint
 
 import zio.*
 
+import com.mchange.restack.util.common.{Jwk,Jwks}
+import com.mchange.restack.util.common.endpoint.given
+
 import sttp.model.StatusCode
 import sttp.model.headers.{CookieValueWithMeta,Cookie}
 import Cookie.SameSite
@@ -64,7 +67,7 @@ object Tapir extends SelfLogging:
   val Envelope = Base.in("envelope")
 
   //val RootJwks = Base.in("jwks.json").out(jsonBody[Jwks])
-  val WellKnownJwks = NakedBase.in(".well-known").in("jwks.json").out(jsonBody[jwt.Jwks])
+  val WellKnownJwks = NakedBase.in(".well-known").in("jwks.json").out(jsonBody[Jwks])
 
   val Login =
     Base.post
