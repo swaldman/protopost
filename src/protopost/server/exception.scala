@@ -21,7 +21,6 @@ final class MissingConfig( message : String, cause : Throwable = null ) extends 
 final class MismatchedContentType( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class NotLoggedIn( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class ResourceNotFound( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
-final class SignatureDoesNotVerify( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class SmtpNotSupported( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class UnacceptableContentType( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
 final class UnexpectedXmlFeedSource( message : String, cause : Throwable = null ) extends ProtopostException( message, cause )
