@@ -1,8 +1,10 @@
 package protopost.server
 
+import com.mchange.restack.util.common.{Protocol,Service}
+import com.mchange.restack.util.server.identity.Location
+
 import protopost.common.api
-import protopost.common.{EmailAddress,PosterId,Protocol,Service}
-import protopost.server.identity.Location
+import protopost.common.{EmailAddress,PosterId}
 
 import com.mchange.rehash.BCryptHash
 

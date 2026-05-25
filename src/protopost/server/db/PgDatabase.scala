@@ -7,8 +7,10 @@ import java.sql.Connection
 import javax.sql.DataSource
 import java.time.Instant
 
+import com.mchange.restack.util.common.Protocol
+
 import protopost.common.api.{Destination,PostDefinition,PostDefinitionUpdate,PosterNoAuth}
-import protopost.common.{EmailAddress,PosterId,Protocol}
+import protopost.common.{EmailAddress,PosterId}
 import protopost.server.{PostDefinitionRaw,PosterWithAuth,SeismicNodeWithId,SubscribedFeed}
 import protopost.server.exception.{ApparentBug,BadSeismicNodeId,UnknownPoster}
 

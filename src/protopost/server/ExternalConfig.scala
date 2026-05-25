@@ -3,7 +3,9 @@ package protopost.server
 import java.util.Properties
 import scala.jdk.CollectionConverters.*
 import protopost.server.exception.MissingConfig
-import protopost.server.identity.Location
+
+import com.mchange.restack.util.server.identity.Location
+
 
 object ExternalConfig:
   enum Key:

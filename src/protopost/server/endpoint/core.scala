@@ -2,11 +2,13 @@ package protopost.server.endpoint
 
 import zio.*
 
+import com.mchange.restack.util.common.endpoint.given
+import com.mchange.restack.util.server.crypto.{*,given}
+
 import protopost.common.api.*
-import protopost.common.{EmailAddress,Password,PosterId,Protocol}
-import protopost.server.crypto.{*,given}
+import protopost.common.{EmailAddress,Password,PosterId}
 import protopost.server.exception.SignatureDoesNotVerify
-import protopost.server.jwt.{AuthenticatedPoster,Jwk,Jwks,Jwt}
+import protopost.server.jwt.{AuthenticatedPoster,Jwt}
 
 import com.mchange.conveniences.throwable.*
 import com.mchange.cryptoutil.{*,given}
@@ -36,26 +38,6 @@ object ZOut:
       case None    => ZIO.fail(None)
 type ZOut[T] = ZIO[Any,ReconstructableThrowable | None.type,T]
 
-object Envelope:
-  def apply( messageBytes : Array[Byte], privateKey : ECPrivateKey ) : Envelope =
-    val signature = BouncyCastleSecp256r1.sign( messageBytes, privateKey )
-    val signer = BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(BouncyCastleSecp256r1.publicKeyFromPrivate(privateKey))
-    Envelope( messageBytes.base64url, signature.unsafeInternalArray.base64url, signer.base64url )
-  def wrap[T : JsonValueCodec]( messageThang : T, privateKey : ECPrivateKey ) : Envelope = this.apply( writeToArray(messageThang), privateKey )
-  def verifyUnwrap[T : JsonValueCodec]( envelope : Envelope ) : T =
-    val messageBytes = envelope.message.toArray  // XXX: should I use unsafeArray?
-    if BouncyCastleSecp256r1.verify( messageBytes, envelope.signature, envelope.signer ) then
-      readFromArray[T]( messageBytes )
-    else
-      throw new SignatureDoesNotVerify( s"The signature of " + envelope + " does not verify." )
-
-case class Envelope( messageBase64url : String, signatureBase64url : String, signerBase64url : String ):
-  lazy val message : immutable.ArraySeq[Byte] = immutable.ArraySeq.ofByte( Base64.getUrlDecoder().decode( messageBase64url ) )
-  lazy val signature : SignatureSHA256withECDSA = SignatureSHA256withECDSA( Base64.getUrlDecoder().decode( signatureBase64url ) )
-  lazy val signer : ECPublicKey = BouncyCastleSecp256r1.publicKeyFromUncompressedFormatBytes( Base64.getUrlDecoder().decode( signerBase64url ) )
-  lazy val hash : Hash.SHA3_256 = Hash.SHA3_256.hash( message.toArray ++ signature.unsafeInternalArray ++ BouncyCastleSecp256r1.publicKeyToUncompressedFormatBytes(signer) )
-  override def toString = s"Envelope[${hash.hex0x}]"
-
 //case class Jwts( highSecurity : Jwt, lowSecurity : Jwt )
 
 // json codecs -- jsoniter-scala
@@ -64,10 +46,7 @@ given JsonValueCodec[Jwt] = new JsonValueCodec[Jwt]:
   def encodeValue(x: Jwt, out: JsonWriter): Unit     = out.writeVal(Jwt.s(x))
   def nullValue: Jwt                                 = null.asInstanceOf[Jwt]
 
-given JsonValueCodec[Jwk]           = JsonCodecMaker.make
-given JsonValueCodec[Jwks]          = JsonCodecMaker.make
 //given JsonValueCodec[Jwts]          = JsonCodecMaker.make
-given JsonValueCodec[Envelope]      = JsonCodecMaker.make
 
 // json codecs -- tapir
 given Schema[EmailAddress]      = Schema.string.map((s : String) => Some(EmailAddress(s)))(addr => EmailAddress.s(addr))
@@ -75,14 +54,11 @@ given Schema[Password]          = Schema.string.map((s : String) => Some(Passwor
 given Schema[Jwt]               = Schema.string.map((s : String) => Some(Jwt(s)))(jwt => Jwt.s(jwt))
 given Schema[PosterId]          = Schema.schemaForInt.map( (i : Int) => Some(PosterId(i)) )(pid => PosterId.i(pid))
 
-given Schema[Jwk]                    = Schema.derived
-given Schema[Jwks]                   = Schema.derived
 //given Schema[Jwts]                   = Schema.derived
 given Schema[LoginStatus]            = Schema.derived
-given Schema[Envelope]               = Schema.derived
 given Schema[EmailPassword]          = Schema.derived
 given Schema[PosterNoAuth]           = Schema.derived
-given Schema[Protocol]               = Schema.derived
+//given Schema[Protocol]               = Schema.derived
 given Schema[SeismicNode]            = Schema.derived
 given Schema[Destination]            = Schema.derived
 given Schema[DestinationIdentifier]  = Schema.derived
