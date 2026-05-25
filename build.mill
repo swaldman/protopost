@@ -36,7 +36,7 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
   val mailutilVersion        = "0.0.5"
   val LogadapterScalaVersion = "0.0.4"
   val RestackUtilVersion     = "0.0.1-SNAPSHOT"
-  val JsoniterVersion        = "2.36.6"
+  val JsoniterVersion        = "2.38.12"
 
   def compileMvnDeps = Seq(
     mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros:${JsoniterVersion}",
@@ -47,21 +47,20 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
     Seq(
       mvn"com.mchange::restack-util-server:$RestackUtilVersion", // includes sttp, tapir, jsoniter (runtime-lib)
       mvn"com.mchange::restack-util-common:$RestackUtilVersion", // includes sttp, tapir, jsoniter (runtime-lib)
-      mvn"com.mchange::mill-daemon-util:0.2.0",  // don't forget to also update mill-daemon in build-level 'mvnDeps' above
+      mvn"com.mchange::mill-daemon-util:0.2.1",  // don't forget to also update mill-daemon in build-level 'mvnDeps' above
       mvn"com.mchange:c3p0-loom:0.13.0",
       mvn"com.mchange::logadapter-scala-log4j2:$LogadapterScalaVersion",
       mvn"com.mchange::logadapter-scala-zio:$LogadapterScalaVersion",
       mvn"com.mchange::sqlutil-scala-zio:0.0.6-SNAPSHOT",
-      mvn"com.mchange::mill-daemon-util:0.1.2",
       mvn"com.mchange::mailutil:${mailutilVersion}",
       mvn"com.mchange::rehash:0.0.1-SNAPSHOT",
       mvn"com.mchange::texttable:0.0.3",
       mvn"at.favre.lib:bcrypt:0.10.2",
-      mvn"com.monovore::decline:2.5.0",
-      mvn"org.postgresql:postgresql:42.7.7",
-      mvn"com.auth0:java-jwt:4.5.0",
+      mvn"com.monovore::decline:2.6.2",
+      mvn"org.postgresql:postgresql:42.7.11",
+      mvn"com.auth0:java-jwt:4.5.2",
       mvn"org.scala-lang.modules::scala-xml:2.4.0",
-      mvn"org.jsoup:jsoup:1.21.2",
+      mvn"org.jsoup:jsoup:1.22.2",
     )
 
   def jslib = Task.Source("jslib")
@@ -128,14 +127,14 @@ object `package` extends UntemplateModule with DaemonModule with ProtopostScalaM
 
   object `test-utest` extends ScalaTests with TestModule.Utest:
     def mvnDeps = Seq(
-      mvn"com.lihaoyi::utest:0.9.0"
+      mvn"com.lihaoyi::utest:0.9.5"
     )
 
 
   object `test-scalacheck` extends ScalaTests with TestModule.ScalaCheck:
     def mvnDeps = Seq(
       //mvn"com.lihaoyi::utest:0.8.5",
-      mvn"org.scalacheck::scalacheck:1.18.1",
+      mvn"org.scalacheck::scalacheck:1.19.0",
     )
     //def testFramework = "utest.runner.Framework"
 
