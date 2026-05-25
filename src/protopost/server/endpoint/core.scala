@@ -7,7 +7,6 @@ import com.mchange.restack.util.server.crypto.{*,given}
 
 import protopost.common.api.*
 import protopost.common.{EmailAddress,Password,PosterId}
-import protopost.server.exception.SignatureDoesNotVerify
 import protopost.server.jwt.{AuthenticatedPoster,Jwt}
 
 import com.mchange.conveniences.throwable.*
